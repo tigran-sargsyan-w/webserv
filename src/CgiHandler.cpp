@@ -155,7 +155,10 @@ HttpResponse CgiHandler::execute() {
 
     while (true) {
         if (time(NULL) - startTime > CGI_TIMEOUT) {
-            kill(pid_, SIGKILL);
+            kill(pid_, SIGTERM);
+            usleep(100000); // 100ms grace period
+            if (waitpid(pid_, NULL, WNOHANG) == 0)
+                kill(pid_, SIGKILL);
             break;
         }
 

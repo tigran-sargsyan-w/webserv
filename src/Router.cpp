@@ -204,8 +204,22 @@ HttpResponse Router::handlePost(const HttpRequest& req, const LocationConfig& lo
             if (fnpos != std::string::npos) {
                 fnpos += 10;
                 size_t fnend = ct->second.find('"', fnpos);
-                if (fnend != std::string::npos)
-                    filename = ct->second.substr(fnpos, fnend - fnpos);
+                if (fnend != std::string::npos) {
+                    std::string rawName = ct->second.substr(fnpos, fnend - fnpos);
+                    // Sanitize: strip path separators and keep basename only
+                    size_t slash = rawName.rfind('/');
+                    if (slash != std::string::npos) rawName = rawName.substr(slash + 1);
+                    size_t bslash = rawName.rfind('\\');
+                    if (bslash != std::string::npos) rawName = rawName.substr(bslash + 1);
+                    // Remove any remaining dangerous characters
+                    std::string safe;
+                    for (size_t i = 0; i < rawName.size(); ++i) {
+                        char c = rawName[i];
+                        if (c != '/' && c != '\\' && c != '\0' && c != '.') safe += c;
+                        else if (c == '.' && !safe.empty()) safe += c; // allow dots but not leading
+                    }
+                    if (!safe.empty()) filename = safe;
+                }
             }
         }
 

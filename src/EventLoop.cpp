@@ -199,7 +199,7 @@ void EventLoop::run() {
     std::vector<pollfd> fds;
     while (g_running) {
         buildPollFds(fds);
-        if (fds.empty()) { usleep(10000); continue; }
+        if (fds.empty()) { std::cerr << "No listen sockets available, shutting down.\n"; break; }
 
         int ret = poll(&fds[0], (nfds_t)fds.size(), 5000);
         if (ret < 0) {

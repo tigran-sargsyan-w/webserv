@@ -216,5 +216,13 @@ void Connection::closeInternal() {
     if (fd_ != -1) { ::close(fd_); fd_ = -1; }
     if (cgiReadFd  != -1) { ::close(cgiReadFd);  cgiReadFd  = -1; }
     if (cgiWriteFd != -1) { ::close(cgiWriteFd); cgiWriteFd = -1; }
-    if (cgiPid > 0) { kill(cgiPid, SIGKILL); waitpid(cgiPid, NULL, WNOHANG); cgiPid = -1; }
+    if (cgiPid > 0) {
+        kill(cgiPid, SIGTERM);
+        usleep(100000);
+        if (waitpid(cgiPid, NULL, WNOHANG) == 0) {
+            kill(cgiPid, SIGKILL);
+            waitpid(cgiPid, NULL, 0);
+        }
+        cgiPid = -1;
+    }
 }

@@ -3,6 +3,8 @@
 #include <cctype>
 #include <fstream>
 #include <sys/stat.h>
+#include <iostream>
+#include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -125,8 +127,12 @@ std::string urlDecode(const std::string& s) {
 
 void setNonBlocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1) flags = 0;
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1) {
+        std::cerr << "fcntl F_GETFL failed for fd " << fd << ": " << strerror(errno) << "\n";
+        return;
+    }
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        std::cerr << "fcntl F_SETFL failed for fd " << fd << ": " << strerror(errno) << "\n";
 }
 
 } // namespace Utils

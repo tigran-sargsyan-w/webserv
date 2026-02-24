@@ -211,13 +211,23 @@ HttpResponse Router::handlePost(const HttpRequest& req, const LocationConfig& lo
                     if (slash != std::string::npos) rawName = rawName.substr(slash + 1);
                     size_t bslash = rawName.rfind('\\');
                     if (bslash != std::string::npos) rawName = rawName.substr(bslash + 1);
-                    // Remove any remaining dangerous characters
+                    // Remove any remaining dangerous characters; collapse multiple dots
                     std::string safe;
+                    bool lastDot = false;
                     for (size_t i = 0; i < rawName.size(); ++i) {
                         char c = rawName[i];
-                        if (c != '/' && c != '\\' && c != '\0' && c != '.') safe += c;
-                        else if (c == '.' && !safe.empty()) safe += c; // allow dots but not leading
+                        if (c == '/' || c == '\\' || c == '\0') continue;
+                        if (c == '.') {
+                            if (safe.empty() || lastDot) continue; // no leading/consecutive dots
+                            safe += c;
+                            lastDot = true;
+                        } else {
+                            safe += c;
+                            lastDot = false;
+                        }
                     }
+                    // Strip trailing dot
+                    if (!safe.empty() && safe[safe.size() - 1] == '.') safe.erase(safe.size() - 1);
                     if (!safe.empty()) filename = safe;
                 }
             }

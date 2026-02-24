@@ -201,7 +201,8 @@ void EventLoop::run() {
         buildPollFds(fds);
         if (fds.empty()) { std::cerr << "No listen sockets available, shutting down.\n"; break; }
 
-        int ret = poll(&fds[0], (nfds_t)fds.size(), 5000);
+        static const int POLL_TIMEOUT_MS = 5000;
+        int ret = poll(&fds[0], (nfds_t)fds.size(), POLL_TIMEOUT_MS);
         if (ret < 0) {
             if (errno == EINTR) continue;
             break;

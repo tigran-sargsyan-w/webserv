@@ -91,11 +91,16 @@ HttpResponse CgiHandler::execute() {
     else if (ext == ".sh") interpreter = "/bin/sh";
     // else direct exec
 
-    // working directory = script's directory
+    // working directory = script's directory; scriptBasename used after chdir
     std::string workDir = scriptPath_;
+    std::string scriptBasename = scriptPath_;
     size_t slash = workDir.rfind('/');
-    if (slash != std::string::npos) workDir = workDir.substr(0, slash);
-    else workDir = ".";
+    if (slash != std::string::npos) {
+        workDir       = workDir.substr(0, slash);
+        scriptBasename = scriptPath_.substr(slash + 1);
+    } else {
+        workDir = ".";
+    }
 
     pid_ = fork();
     if (pid_ < 0) {
@@ -126,14 +131,14 @@ HttpResponse CgiHandler::execute() {
         if (!interpreter.empty()) {
             char* argv[3];
             argv[0] = const_cast<char*>(interpreter.c_str());
-            argv[1] = const_cast<char*>(scriptPath_.c_str());
+            argv[1] = const_cast<char*>(scriptBasename.c_str());
             argv[2] = NULL;
             execve(interpreter.c_str(), argv, &envp[0]);
         } else {
             char* argv[2];
-            argv[0] = const_cast<char*>(scriptPath_.c_str());
+            argv[0] = const_cast<char*>(scriptBasename.c_str());
             argv[1] = NULL;
-            execve(scriptPath_.c_str(), argv, &envp[0]);
+            execve(scriptBasename.c_str(), argv, &envp[0]);
         }
         _exit(1);
     }

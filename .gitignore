@@ -1,0 +1,7 @@
+# Build artifacts
+webserv
+src/*.o
+
+# Upload artifacts at runtime
+uploads/*
+!uploads/.gitkeep

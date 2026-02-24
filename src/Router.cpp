@@ -193,9 +193,10 @@ HttpResponse Router::handlePost(const HttpRequest& req, const LocationConfig& lo
             return errorResponse(413);
 
         // derive filename with counter for uniqueness
-        static long long uploadCounter = 0;
+        static unsigned long uploadSequence = 0;
+        if (uploadSequence == static_cast<unsigned long>(-1)) uploadSequence = 0;
         std::string filename = "upload_" + Utils::intToStr((long long)time(NULL)) +
-                               "_" + Utils::intToStr(++uploadCounter);
+                               "_" + Utils::intToStr((long long)(++uploadSequence));
         std::map<std::string, std::string>::const_iterator ct =
             req.headers.find("content-disposition");
         if (ct != req.headers.end()) {

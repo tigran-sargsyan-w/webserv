@@ -2,8 +2,8 @@
 import os
 import sys
 
-print("Content-Type: text/html\r")
-print("\r")
+print("Content-Type: text/html")
+print("")
 print("<!DOCTYPE html>")
 print("<html><head><title>CGI Hello</title></head><body>")
 print("<h1>Hello from CGI!</h1>")

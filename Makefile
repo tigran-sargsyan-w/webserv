@@ -16,7 +16,7 @@ DEPS = $(OBJS:.o=.d)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) -I$(INC_DIR) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)

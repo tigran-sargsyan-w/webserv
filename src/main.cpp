@@ -11,15 +11,18 @@ int	main()
 
 	WebServ serv;
 
-	int serverFd = socket(AF_INET, SOCK_STREAM, 0);
-	if (serverFd == -1)
+	// 1. Create socket
+	
+	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (serverSocket == -1)
 	{
 		std::cerr << "socket() failed\n";
 		return (1);
 	}
 
-	std::cout << "Server socked created, FD = " << serverFd << "\n";
+	std::cout << "Server socked created, FD = " << serverSocket << "\n";
 
+	// 2. Setup address for socket
 
 	sockaddr_in addr;
 
@@ -27,12 +30,22 @@ int	main()
 	addr.sin_port = htons(8080);
 	addr.sin_addr.s_addr = INADDR_ANY;
 
-	if (bind(serverFd, (sockaddr *) &addr, sizeof(addr)))
+	if (bind(serverSocket, (sockaddr *) &addr, sizeof(addr)) == -1)
 	{
 		std::cerr << "Error binding socket\n";
+		close(serverSocket);
 		return (1);
 	}
 
-	close(serverFd);
+	// 3. Socket listening
+
+	if (listen(serverSocket, 10) == -1)
+	{
+		std::cerr << "Error on socket listening\n";
+		close(serverSocket);
+		return (1);
+	}
+
+	close(serverSocket);
 	return (0);
 }

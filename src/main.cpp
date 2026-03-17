@@ -28,7 +28,7 @@ int	main()
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(8080);
-	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(serverSocket, (sockaddr *) &addr, sizeof(addr)) == -1)
 	{
@@ -45,6 +45,23 @@ int	main()
 		close(serverSocket);
 		return (1);
 	}
+
+	// 4. Accept connections
+
+	int clientSocket = accept(serverSocket, NULL, NULL);
+	if (clientSocket == -1)
+	{
+		std::cerr << "Error accepting client connection\n";
+		close(serverSocket);
+		return (1);
+	}
+
+
+	// 5. Receive data from client
+
+	char buffer[1024] = {0};
+	recv(clientSocket, buffer, sizeof(buffer), 0);
+	std::cout << "Message from client:\n" << buffer << "\n";
 
 	close(serverSocket);
 	return (0);

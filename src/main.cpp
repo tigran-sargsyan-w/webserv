@@ -46,22 +46,32 @@ int	main()
 		return (1);
 	}
 
-	// 4. Accept connections
-
-	int clientSocket = accept(serverSocket, NULL, NULL);
-	if (clientSocket == -1)
+	while (true)
 	{
-		std::cerr << "Error accepting client connection\n";
-		close(serverSocket);
-		return (1);
+		// 4. Accept connections
+
+		int clientSocket = accept(serverSocket, NULL, NULL);
+		if (clientSocket == -1)
+		{
+			std::cerr << "Error accepting client connection\n";
+			close(serverSocket);
+			return (1);
+		}
+
+
+		// 5. Receive data from client
+
+		char input_buffer[1024] = {0};
+		char output_buffer[25] = "Response from server!\n";
+
+		recv(clientSocket, input_buffer, sizeof(input_buffer), 0);
+		std::cout << "Message from client:\n" << input_buffer << "\n";
+
+		send(clientSocket, output_buffer, sizeof(output_buffer), 0);
 	}
 
 
-	// 5. Receive data from client
-
-	char buffer[1024] = {0};
-	recv(clientSocket, buffer, sizeof(buffer), 0);
-	std::cout << "Message from client:\n" << buffer << "\n";
+	//close(clientSocket);
 
 	close(serverSocket);
 	return (0);

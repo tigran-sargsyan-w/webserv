@@ -1,4 +1,6 @@
 #include <iostream>
+#include <sstream>
+#include <string>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -61,13 +63,27 @@ int	main()
 
 		// 5. Receive data from client
 
-		char input_buffer[1024] = {0};
-		char output_buffer[25] = "Response from server!\n";
+		char input_buffer[4096] = {0};
+		// char output_buffer[25] = "Response from server!\n";
+    std::string body = "<html><body><h1>Hello from WebServ</h1></body></html>";
+    std::stringstream ss;
+    ss << body.size();
+
+
+    std::string response =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/html\r\n"
+      "Content-Length " + ss.str() + "\r\n"
+      "Connection: close\r\n"
+      "\r\n"
+      + body;
+
+
 
 		recv(clientSocket, input_buffer, sizeof(input_buffer), 0);
 		std::cout << "Message from client:\n" << input_buffer << "\n";
 
-		send(clientSocket, output_buffer, sizeof(output_buffer), 0);
+		send(clientSocket, response.c_str(), response.size(), 0);
 	}
 
 

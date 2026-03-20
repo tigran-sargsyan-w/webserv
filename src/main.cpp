@@ -59,6 +59,7 @@ int	main()
 	}
 
   std::cout << "Listening on localhost:8080\n";
+
   // 4. Accept connections
 
   int clientSocket = accept(serverSocket, NULL, NULL);

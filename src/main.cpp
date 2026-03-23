@@ -60,6 +60,8 @@ int	main()
 
   std::cout << "Listening on localhost:8080\n";
 
+  while (true)
+  {
   // 4. Accept connections
 
   int clientSocket = accept(serverSocket, NULL, NULL);
@@ -104,11 +106,12 @@ int	main()
 
 
     send(clientSocket, response.c_str(), response.size(), 0);
+    close(clientSocket);
+  }
   }
 
 
 
-	close(clientSocket);
 	close(serverSocket);
 	return (0);
 }

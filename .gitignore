@@ -1,0 +1,31 @@
+# executables
+webserv
+client
+
+# build folders
+obj/
+build/
+
+# object / dependency files
+*.o
+*.d
+
+# static / shared libs
+*.a
+*.so
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Vim / Neovim swap files
+*.swp
+*.swo
+
+# backup files
+*~
+
+# test output / logs
+*.log

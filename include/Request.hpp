@@ -19,6 +19,8 @@ class Request
         const std::string& getMethod() const { return _method; }
         const std::string& getPath() const { return _path; }
         const std::string& getVersion() const { return _version; }
+        const std::map<std::string, std::string>& getHeaders() const { return _headers; }
+        const std::string& getBody() const { return _body; }
 
     private:
         std::string _method;

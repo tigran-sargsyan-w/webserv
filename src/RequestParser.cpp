@@ -59,9 +59,6 @@ Request RequestParser::parse(const std::string& rawRequest)
         std::istringstream ss(headerLine);
         parseHeader(ss, request);
     }
-   
-
-
-
+   //TODO: parse body if Content-Length is present
     return request;
 }

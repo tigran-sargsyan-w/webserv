@@ -1,5 +1,7 @@
 #include <iostream>
 #include "WebServ.hpp"
+#include "RequestParser.hpp"
+#include "Request.hpp"
 
 WebServ::WebServ()
 {
@@ -113,6 +115,8 @@ int WebServ::run()
   {
     buffer[bytes] = '\0';
     std::cout << "Message from client:\n" << buffer << "\n";
+	RequestParser::parse(std::string(buffer));
+
     std::string body = "<html><body><h1>Hello from WebServ</h1></body></html>";
     std::stringstream ss;
     ss << body.size();

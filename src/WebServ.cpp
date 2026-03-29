@@ -2,6 +2,8 @@
 #include "WebServ.hpp"
 #include "RequestParser.hpp"
 #include "Request.hpp"
+#include "RequestHandler.hpp"
+#include "Response.hpp"
 
 WebServ::WebServ()
 {
@@ -128,42 +130,8 @@ int WebServ::run()
 				close(clientSocket);
 				continue;
 			}
-			if (request.getPath() == "/")
-			{
-				std::string body = "<html><body><h1>Hello from WebServ</h1></body></html>";
-				std::stringstream ss;
-				ss << body.size();
-
-
-				std::string response =
-					"HTTP/1.1 200 OK\r\n"
-					"Content-Type: text/html\r\n"
-					"Content-Length: " + ss.str() + "\r\n"
-					"Connection: close\r\n"
-					"\r\n"
-					+ body;
-
-
-				send(clientSocket, response.c_str(), response.size(), 0);
-			}
-			else
-			{
-				std::string body = "<html><body><h1>404 Not Found</h1></body></html>";
-				std::stringstream ss;
-				ss << body.size();
-
-
-				std::string response =
-					"HTTP/1.1 404 Not Found\r\n"
-					"Content-Type: text/html\r\n"
-					"Content-Length: " + ss.str() + "\r\n"
-					"Connection: close\r\n"
-					"\r\n"
-					+ body;
-
-
-				send(clientSocket, response.c_str(), response.size(), 0);
-			}
+			Response response = RequestHandler::handleRequest(request);
+			send(clientSocket, response.toString().c_str(), response.toString().size(), 0);
 
 			close(clientSocket);
 		}

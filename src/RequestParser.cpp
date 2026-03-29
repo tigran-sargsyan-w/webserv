@@ -24,7 +24,6 @@ static void parseRequestLine(std::string& requestLine, Request& request)
 
 static void parseHeader(std::istringstream& header,Request& request)
 {
-    (void) request;
     std::string key;
     std::string value;
 
@@ -35,7 +34,7 @@ static void parseHeader(std::istringstream& header,Request& request)
         return;
     if (value.back() == '\r')
         value.pop_back();
-    std::cout << "key: " << key << "value: " << value << "\n";
+    std::cout << "key: " << key << "  value: " << value << "\n";
     request.addHeader(key, value);
     return;
 }

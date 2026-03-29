@@ -33,6 +33,8 @@ Response RequestHandler::handleRequest(const Request& request)
         response.setStatusCode("405");
         response.setBody("<html><body><h1>405 Method Not Allowed</h1></body></html>");
     }
-
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Connection", "close");
+    response.addHeader("Content-Length", std::to_string(response.getBody().size()));
     return response;
 }

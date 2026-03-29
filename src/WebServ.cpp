@@ -2,6 +2,8 @@
 #include "WebServ.hpp"
 #include "RequestParser.hpp"
 #include "Request.hpp"
+#include "RequestHandler.hpp"
+#include "Response.hpp"
 
 WebServ::WebServ()
 {
@@ -84,55 +86,54 @@ int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
 
-	  while (true)
-  {
-  // 4. Accept connections
+	while (true)
+	{
+		// 4. Accept connections
 
-  int clientSocket = accept(_serverSocket, NULL, NULL);
-  if (clientSocket == -1)
-  {
-    std::cerr << "Error accepting client connection\n";
-    close(_serverSocket);
-    return (1);
-  }
-
-
-  // 5. Receive data from client
-
-  char buffer[4096];
-  // char output_buffer[25] = "Response from server!\n";
-
-  ssize_t bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-  if (bytes == -1)
-  {
-    std::cout << "recv() failed\n";
-  }
-  else if (bytes == 0)
-  {
-    std::cout << "Client closed connection\n";
-  }
-  else
-  {
-    buffer[bytes] = '\0';
-    std::cout << "Message from client:\n" << buffer << "\n";
-	RequestParser::parse(std::string(buffer));
-
-    std::string body = "<html><body><h1>Hello from WebServ</h1></body></html>";
-    std::stringstream ss;
-    ss << body.size();
+		int clientSocket = accept(_serverSocket, NULL, NULL);
+		if (clientSocket == -1)
+		{
+			std::cerr << "Error accepting client connection\n";
+			close(_serverSocket);
+			return (1);
+		}
 
 
-    std::string response =
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/html\r\n"
-      "Content-Length: " + ss.str() + "\r\n"
-      "Connection: close\r\n"
-      "\r\n"
-      + body;
+		// 5. Receive data from client
 
+		char buffer[4096];
 
-    send(clientSocket, response.c_str(), response.size(), 0);
-    close(clientSocket);
-  }
-  }
+		ssize_t bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+		if (bytes == -1)
+		{
+			std::cout << "recv() failed\n";
+		}
+		else if (bytes == 0)
+		{
+			std::cout << "Client closed connection\n";
+		}
+		else
+		{
+			buffer[bytes] = '\0';
+			std::cout << "Message from client:\n" << buffer << "\n";
+			Request request = RequestParser::parse(std::string(buffer));
+
+			if (request.getMethod().empty())
+			{
+				std::cout << "Failed to parse request\n";
+				close(clientSocket);
+				continue;
+			}
+			if (request.getMethod() != "GET")
+			{
+				std::cout << "Unsupported HTTP method: " << request.getMethod() << "\n";
+				close(clientSocket);
+				continue;
+			}
+			Response response = RequestHandler::handleRequest(request);
+			send(clientSocket, response.toString().c_str(), response.toString().size(), 0);
+
+			close(clientSocket);
+		}
+	}
 }

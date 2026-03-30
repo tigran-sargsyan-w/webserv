@@ -8,8 +8,8 @@ static void parseRequestLine(std::string& requestLine, Request& request)
 {
     if (requestLine.empty())
         return;
-    if (requestLine.back() == '\r')
-        requestLine.pop_back();
+    if (requestLine[requestLine.length() - 1] == '\r')
+        requestLine.erase(requestLine.length() - 1);
 
     std::istringstream lineStream(requestLine);
     std::string method;
@@ -28,12 +28,12 @@ static void parseHeader(std::istringstream& header,Request& request)
     std::string value;
 
     header >> key >> value;
-    if (key.back() == ':')
-        key.pop_back();
+    if (key[key.length() - 1] == ':')
+        key.erase(key.length() - 1);
     else
         return;
-    if (value.back() == '\r')
-        value.pop_back();
+    if (value[value.length() - 1] == '\r')
+        value.erase(value.length() - 1);
     std::cout << "key: " << key << "  value: " << value << "\n";
     request.addHeader(key, value);
     return;
@@ -48,8 +48,8 @@ Request RequestParser::parse(const std::string& rawRequest)
     std::getline(ss, requestLine);
     if (requestLine.empty())
         return request;
-    if (requestLine.back() == '\r')
-        requestLine.pop_back();
+    if (requestLine[requestLine.length() - 1] == '\r')
+        requestLine.erase(requestLine.length() - 1);
     parseRequestLine(requestLine, request);
 
     std::string headerLine;

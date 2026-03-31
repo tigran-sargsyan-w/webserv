@@ -11,7 +11,7 @@ class RequestHandler
         ~RequestHandler();
 
        static Response handleRequest(const Request& request);
-       //static void sendResponse(const Response& response);
+       static Response handleStatic(const Request& request);
 };
 
 #endif

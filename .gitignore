@@ -20,6 +20,9 @@ build/
 # VS Code
 .vscode/
 
+# CLion
+.idea/
+
 # Vim / Neovim swap files
 *.swp
 *.swo

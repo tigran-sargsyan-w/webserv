@@ -1,5 +1,7 @@
 #include "RequestHandler.hpp"
-#include "RequestParser.hpp"
+#include "Request.hpp"
+#include "Response.hpp"
+#include <sstream>
 
 RequestHandler::RequestHandler()
 {
@@ -33,8 +35,10 @@ Response RequestHandler::handleRequest(const Request& request)
         response.setStatusCode("405");
         response.setBody("<html><body><h1>405 Method Not Allowed</h1></body></html>");
     }
+    std::stringstream ss;
+    ss << response.getBody().length();
     response.addHeader("Content-Type", "text/html");
     response.addHeader("Connection", "close");
-    response.addHeader("Content-Length", std::to_string(response.getBody().size()));
+    response.addHeader("Content-Length", ss.str());
     return response;
 }

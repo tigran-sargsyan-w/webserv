@@ -26,16 +26,14 @@ Response RequestHandler::handleStatic(const Request& request)
   std::ifstream file(fullPath.c_str());
   if (!file)
   {
-    std::cerr << "Resourse not found!" << std::endl; //TODO: return 404 response
+      res.setStatusCode("404");
+      res.setBody("<html><body><h1>404 Not Found</h1></body></html>");
+      std::cerr << "Resourse not found!" << std::endl; //TODO: return 404 response
   }
   if (file)
   {
-    std::ostringstream oss;
-    std::string line;
     res.setStatusCode("200");
-    file >> line;
-    std::cout << line << "\n";
-    res.setBody(line);
+    res.setBodyFromFile(fullPath);
   }
   return res;
 }
@@ -47,15 +45,7 @@ Response RequestHandler::handleRequest(const Request& request)
 
     if (request.getMethod() == "GET")
     {
-        if (request.getPath() == "/")
-        {
-            response = handleStatic(request);
-        }
-        else
-        {
-            response.setStatusCode("404");
-            response.setBody("<html><body><h1>404 Not Found</h1></body></html>");
-        }
+            response = RequestHandler::handleStatic(request);
     }
     else
     {
@@ -67,5 +57,6 @@ Response RequestHandler::handleRequest(const Request& request)
     response.addHeader("Content-Type", "text/html");
     response.addHeader("Connection", "close");
     response.addHeader("Content-Length", oss.str());
+    std::cout << response.toString();
     return response;
 }

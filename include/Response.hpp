@@ -17,6 +17,7 @@ class Response
         void setStatusCode(const std::string& statusCode) { _statusCode = statusCode; }
         void addHeader(const std::string& key, const std::string& value) { _headers[key] = value; }
         void setBody(const std::string& body) { _body = body; }
+        void setBodyFromFile(const std::string& path);
         std::string toString() const;
 
     private:

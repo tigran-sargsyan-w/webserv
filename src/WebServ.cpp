@@ -115,7 +115,7 @@ int WebServ::run()
 		else
 		{
 			buffer[bytes] = '\0';
-			std::cout << "Message from client:\n" << buffer << "\n";
+			std::cout << "Message from client:\n\n\n" << buffer << "\n\n\n";
 			Request request = RequestParser::parse(std::string(buffer));
 
 			if (request.getMethod().empty())

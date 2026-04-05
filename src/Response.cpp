@@ -1,4 +1,5 @@
 #include "Response.hpp"
+#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -24,14 +25,16 @@ std::string Response::toString() const
     return response;
 }
 
-
 void Response::setBodyFromFile(const std::string& path)
 {
-  std::ifstream file(path);
+  std::ifstream file(path.c_str());
 
+  if (!file)
+  {
+    std::cerr << "File not found!\n";
+  }
   std::ostringstream ss;
   ss << file.rdbuf();
-  std::string res = ss.str();
-  _body = res;
+  _body = ss.str();
 }
 

@@ -10,18 +10,19 @@ class Response
         Response();
         ~Response();
 
-        std::string getStatusCode() const { return _statusCode; }
+        int getStatusCode() const { return _statusCode; }
         std::map<std::string, std::string> getHeaders() const { return _headers; }
         std::string getBody() const { return _body; }
 
-        void setStatusCode(const std::string& statusCode) { _statusCode = statusCode; }
+        void setStatusCode(int statusCode) { _statusCode = statusCode; }
         void addHeader(const std::string& key, const std::string& value) { _headers[key] = value; }
         void setBody(const std::string& body) { _body = body; }
         void setBodyFromFile(const std::string& path);
+        std::string getReasonPhrase() const;
         std::string toString() const;
 
     private:
-        std::string _statusCode;
+        int _statusCode;
         std::map<std::string, std::string> _headers;
         std::string _body;
 

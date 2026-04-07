@@ -6,6 +6,8 @@
 #include <fstream>
 #include <string>
 
+#include <sstream>
+
 RequestHandler::RequestHandler()
 {
 

@@ -1,63 +1,59 @@
-#include <string>
-#include <sstream>
-#include <iostream>
 #include "RequestParser.hpp"
 #include "Request.hpp"
+#include <iostream>
+#include <sstream>
+#include <string>
 
-static void parseRequestLine(std::string& requestLine, Request& request)
-{
-    if (requestLine.empty())
-        return;
-    if (requestLine[requestLine.length() - 1] == '\r')
-        requestLine.erase(requestLine.length() - 1);
-
-    std::istringstream lineStream(requestLine);
-    std::string method;
-    std::string path;
-    std::string version;
-    lineStream >> method >> path >> version;
-
-    request.setMethod(method);
-    request.setPath(path);
-    request.setVersion(version);
-}
-
-static void parseHeader(std::istringstream& header,Request& request)
-{
-    std::string key;
-    std::string value;
-
-    header >> key >> value;
-    if (key[key.length() - 1] == ':')
-        key.erase(key.length() - 1);
-    else
-        return;
-    if (value[value.length() - 1] == '\r')
-        value.erase(value.length() - 1);
-    std::cout << "key: " << key << "  value: " << value << "\n";
-    request.addHeader(key, value);
+static void parseRequestLine(std::string &requestLine, Request &request) {
+  if (requestLine.empty())
     return;
+  if (requestLine[requestLine.length() - 1] == '\r')
+    requestLine.erase(requestLine.length() - 1);
+
+  std::istringstream lineStream(requestLine);
+  std::string method;
+  std::string path;
+  std::string version;
+  lineStream >> method >> path >> version;
+
+  request.setMethod(method);
+  request.setPath(path);
+  request.setVersion(version);
 }
 
-Request RequestParser::parse(const std::string& rawRequest)
-{
-    Request request;
+static void parseHeader(std::istringstream &header, Request &request) {
+  std::string key;
+  std::string value;
 
-    std::istringstream ss(rawRequest);
-    std::string requestLine;
-    std::getline(ss, requestLine);
-    if (requestLine.empty())
-        return request;
-    if (requestLine[requestLine.length() - 1] == '\r')
-        requestLine.erase(requestLine.length() - 1);
-    parseRequestLine(requestLine, request);
+  header >> key >> value;
+  if (key[key.length() - 1] == ':')
+    key.erase(key.length() - 1);
+  else
+    return;
+  if (value[value.length() - 1] == '\r')
+    value.erase(value.length() - 1);
+  std::cout << "key: " << key << "  value: " << value << "\n";
+  request.addHeader(key, value);
+}
 
-    std::string headerLine;
-    while (std::getline(ss, headerLine) && headerLine != "\r\n" && !headerLine.empty())
-    {
-        std::istringstream ss(headerLine);
-        parseHeader(ss, request);
-    }
-   //TODO: parse body if Content-Length is present
+Request RequestParser::parse(const std::string &rawRequest) {
+  Request request;
+
+  std::istringstream ss(rawRequest);
+  std::string requestLine;
+  std::getline(ss, requestLine);
+  if (requestLine.empty())
     return request;
+  if (requestLine[requestLine.length() - 1] == '\r')
+    requestLine.erase(requestLine.length() - 1);
+  parseRequestLine(requestLine, request);
+
+  std::string headerLine;
+  while (std::getline(ss, headerLine) && headerLine != "\r\n" &&
+         !headerLine.empty()) {
+    std::istringstream ss(headerLine);
+    parseHeader(ss, request);
+  }
+  // TODO: parse body if Content-Length is present
+  return request;
 }

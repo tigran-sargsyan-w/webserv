@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fcntl.h>
 #include "WebServ.hpp"
 #include "RequestParser.hpp"
 #include "Request.hpp"
@@ -77,6 +78,7 @@ int WebServ::setup()
 		close(_serverSocket);
 		return (1);
 	}
+  fcntl(_serverSocket, O_NONBLOCK);
 
   std::cout << "Listening on localhost:8080\n";
   return (0);
@@ -97,6 +99,7 @@ int WebServ::run()
 			close(_serverSocket);
 			return (1);
 		}
+    fcntl(clientSocket, O_NONBLOCK);
 
 
 		// 5. Receive data from client

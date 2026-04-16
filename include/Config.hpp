@@ -15,4 +15,10 @@ struct ListenConfig
 	ListenConfig() : host(""), port(0) {}
 };
 
+struct CgiConfig
+{
+	std::string extension;
+	std::string executable;
+};
+
 #endif

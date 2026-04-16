@@ -21,4 +21,22 @@ struct CgiConfig
 	std::string executable;
 };
 
+struct RouteConfig
+{
+	std::string path;
+	std::set<std::string> methods;
+	std::string root;
+	std::string index;
+	bool autoindex;
+	bool uploadEnable;
+	std::string uploadStore;
+	bool hasReturn;
+	int returnCode;
+	std::string returnPath;
+	std::vector<CgiConfig> cgi;
+
+	RouteConfig() : autoindex(false), uploadEnable(false), hasReturn(false), returnCode(0) {}
+};
+
+
 #endif

@@ -51,5 +51,9 @@ struct ServerConfig
 	ServerConfig() : clientMaxBodySize(0) {}
 };
 
+struct Config
+{
+	std::vector<ServerConfig> servers;
+};
 
 #endif

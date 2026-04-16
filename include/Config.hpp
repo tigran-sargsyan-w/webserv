@@ -38,5 +38,18 @@ struct RouteConfig
 	RouteConfig() : autoindex(false), uploadEnable(false), hasReturn(false), returnCode(0) {}
 };
 
+struct ServerConfig
+{
+	ListenConfig listen;
+	std::string serverName;
+	std::string root;
+	std::string index;
+	size_t clientMaxBodySize;
+	std::map<int, std::string> errorPages;
+	std::vector<RouteConfig> routes;
+
+	ServerConfig() : clientMaxBodySize(0) {}
+};
+
 
 #endif

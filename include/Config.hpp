@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
+# include "HttpMethod.hpp"
 
 struct ListenConfig
 {
@@ -24,7 +25,7 @@ struct CgiConfig
 struct RouteConfig
 {
 	std::string path;
-	std::set<std::string> methods;
+	std::set<HttpMethod> methods;
 	std::string root;
 	std::string index;
 	bool autoindex;

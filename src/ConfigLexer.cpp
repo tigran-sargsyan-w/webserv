@@ -4,9 +4,7 @@
 #include <iostream>
 
 ConfigLexer::ConfigLexer(const std::string &input)
-	: inputText(input), position(0), currentLine(1), currentColumn(1)
-{
-}
+	: inputText(input), position(0), currentLine(1), currentColumn(1) {}
 
 char ConfigLexer::peek() const
 {

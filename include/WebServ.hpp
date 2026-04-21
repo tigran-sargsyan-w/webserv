@@ -1,10 +1,8 @@
 #ifndef WEBSERV_HPP
 # define WEBSERV_HPP
 
-#include <iostream>
+#include <vector>
 #include <cerrno>
-#include <sstream>
-#include <string>
 #include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,9 +19,12 @@ class WebServ
 
 		int setup();
 		int run();
+    int createListenSocket();
+    int bindSockAddress();
 	
 	private:
 		int _serverSocket;
+    std::vector<int> _fds;
 };
 
 #endif

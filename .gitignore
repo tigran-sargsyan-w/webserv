@@ -32,3 +32,6 @@ build/
 
 # test output / logs
 *.log
+
+# formatter for nvim
+.clang-format

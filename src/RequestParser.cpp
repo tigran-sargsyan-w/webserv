@@ -55,5 +55,6 @@ Request RequestParser::parse(const std::string &rawRequest) {
     parseHeader(ss, request);
   }
   // TODO: parse body if Content-Length is present
+  request.setIsCgi(); // For testing CGI
   return request;
 }

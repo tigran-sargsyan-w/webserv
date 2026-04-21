@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <poll.h>
 
 class WebServ
 {
@@ -19,12 +20,13 @@ class WebServ
 
 		int setup();
 		int run();
-    int createListenSocket();
+    int initListeningSocket();
     int bindSockAddress();
+    int acceptConnection();
 	
 	private:
 		int _serverSocket;
-    std::vector<int> _fds;
+    std::vector<pollfd> _pollfds;
 };
 
 #endif

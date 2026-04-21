@@ -5,6 +5,7 @@
 #include "Response.hpp"
 #include <fcntl.h>
 #include <iostream>
+#include <poll.h>
 
 WebServ::WebServ() { std::cout << "WebServ created!\n"; }
 
@@ -24,9 +25,7 @@ WebServ &WebServ::operator=(const WebServ &other) {
   return (*this);
 }
 
-int WebServ::createListenSocket() {
-  // 1. Create socket
-
+int WebServ::initListeningSocket() {
   _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (_serverSocket == -1) {
     std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
@@ -42,7 +41,10 @@ int WebServ::createListenSocket() {
     close(_serverSocket);
     return (1);
   }
-  _fds.push_back(_serverSocket);
+
+  struct pollfd tmpPollfd;
+  tmpPollfd.fd = _serverSocket;
+  _pollfds.push_back(tmpPollfd);
   return (0);
 }
 
@@ -65,7 +67,9 @@ int WebServ::bindSockAddress() {
 
 int WebServ::setup() {
   std::cout << "WebServ setup called!\n";
-  if (createListenSocket())
+
+  // 1. Create socket
+  if (initListeningSocket())
     return (1);
 
   // 2. Setup address for socket
@@ -85,14 +89,15 @@ int WebServ::setup() {
   return (0);
 }
 
-static int acceptConnection(int serverSocket) {
+int WebServ::acceptConnection() {
 
-  int clientSocket = accept(serverSocket, NULL, NULL);
-  if (clientSocket == -1) {
-    std::cerr << "Error accepting client connection\n";
-    close(serverSocket);
+  int clientSocket = accept(_serverSocket, NULL, NULL);
+  if (clientSocket == -1)
     return (-1);
-  }
+  struct pollfd tmpPollfd;
+  tmpPollfd.fd = clientSocket;
+  tmpPollfd.events = POLLIN;
+  _pollfds.push_back(tmpPollfd);
   return (clientSocket);
 }
 
@@ -100,12 +105,28 @@ int WebServ::run() {
   std::cout << "WebServ run called!\n";
 
   while (true) {
+
+    int ready = poll(_pollfds.data(), _pollfds.size(), -1);
+    std::cout << "Ready - " << ready << std::endl;
+
     // 4. Accept connections
 
-    int clientSocket;
-    if ((clientSocket = acceptConnection(_serverSocket)) == -1)
-      continue;
-    fcntl(clientSocket, O_NONBLOCK);
+    if (_pollfds.at(0).revents == POLLIN)
+    {
+      int clientSocket;
+      if ((clientSocket = acceptConnection()) == -1)
+      {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+          continue;
+        else
+        {
+          std::cerr << "Error accepting client connection\n";
+          close(_serverSocket);
+          return (1);
+        }
+      }
+      fcntl(clientSocket, O_NONBLOCK);
+    }
 
     // 5. Receive data from client
 

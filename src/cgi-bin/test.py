@@ -1,0 +1,1 @@
+print("HELLO FROM PYTHON CGI!")

@@ -1,6 +1,7 @@
 #include "RequestHandler.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
+#include "CgiHandler.hpp"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -45,6 +46,8 @@ Response RequestHandler::handleRequest(const Request& request)
     // Generate a response
     Response response;
 
+    if (request.getIsCgi())
+      CgiHandler::runCgi();
     if (request.getMethod() == "GET")
     {
             response = RequestHandler::handleStatic(request);

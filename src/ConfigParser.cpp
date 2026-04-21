@@ -9,9 +9,7 @@
 #include <stdexcept>
 
 ConfigParser::ConfigParser(const std::vector<ConfigToken> &tokens)
-	: tokens(tokens), currentIndex(0)
-{
-}
+	: tokens(tokens), currentIndex(0) {}
 
 Config ConfigParser::parseFile(const std::string &filePath)
 {

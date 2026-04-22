@@ -1,45 +1,38 @@
-#include <cstring>
-#include <errno.h>
-#include <iostream>
-#include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <iostream>
+#include "Client.hpp"
+#include "Response.hpp"
+#include "RequestParser.hpp"
+#include "RequestHandler.hpp"
 
-int main() {
-  int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+Client::Client(int fd) : _fd(fd) {}
 
-  sockaddr_in serverAddress;
+int  Client::fillInBuffer()
+{
+      ssize_t bytes = recv(_fd, inBuffer, sizeof(inBuffer) - 1, 0);
+      if (bytes == -1) {
+        std::cout << "recv() failed\n";
+        return (1);
+      } else if (bytes == 0) {
+        std::cout << "Client closed connection\n";
+      } else {
+        inBuffer[bytes] = '\0';
+        std::cout << "Message from client:\n\n\n" << inBuffer << "\n\n\n";
+      }
 
-  serverAddress.sin_family = AF_INET;
-  serverAddress.sin_port = htons(8080);
-  serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+      Request request = RequestParser::parse(std::string(inBuffer));
+      setRequest(request);
 
-  if (connect(clientSocket, (sockaddr *)&serverAddress,
-              sizeof(serverAddress)) == -1) {
-    std::cerr << "connect() failed: " << strerror(errno) << "\n";
-    close(clientSocket);
-    return (1);
-  }
+      return (0);
+}
 
-  const char *request = "GET /HTTP/1.1\r\n"
-                        "Content-Type: text/html\r\n"
-                        "Host: localhost:8080\r\n"
-                        "\r\n";
+int Client::fillOutBuffer()
+{
+      Response response = RequestHandler::handleRequest(_request);
+      send(_fd, response.toString().c_str(),
+           response.toString().size(), 0);
 
-  send(clientSocket, request, strlen(request), 0);
-
-  char buffer[4096];
-  ssize_t bytesReceived;
-
-  while ((bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0)) >
-         0) {
-    buffer[bytesReceived] = '\0';
-    std::cout << buffer;
-  }
-
-  if (bytesReceived == -1) {
-    std::cerr << "recv() failed: " << strerror(errno) << "\n";
-  }
-  close(clientSocket);
-  return (0);
+      close(_fd);
+      return (0);
 }

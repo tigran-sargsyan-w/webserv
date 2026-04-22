@@ -1,11 +1,10 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
-#include "RequestHandler.hpp"
-#include "RequestParser.hpp"
-#include "Response.hpp"
 #include <fcntl.h>
 #include <iostream>
 #include <poll.h>
+#include <sys/poll.h>
+#include <utility>
 
 WebServ::WebServ() { std::cout << "WebServ created!\n"; }
 
@@ -98,6 +97,7 @@ int WebServ::acceptConnection() {
   tmpPollfd.fd = clientSocket;
   tmpPollfd.events = POLLIN;
   _pollfds.push_back(tmpPollfd);
+  _clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
   return (clientSocket);
 }
 
@@ -107,6 +107,8 @@ int WebServ::run() {
   while (true) {
 
     int ready = poll(_pollfds.data(), _pollfds.size(), -1);
+    if (ready < 0)
+      continue;
     std::cout << "Ready - " << ready << std::endl;
 
     // 4. Accept connections
@@ -118,45 +120,41 @@ int WebServ::run() {
       {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
           continue;
-        else
-        {
-          std::cerr << "Error accepting client connection\n";
-          close(_serverSocket);
-          return (1);
-        }
+        std::cerr << "Error accepting client connection\n";
+        close(_serverSocket);
+        return (1);
       }
       fcntl(clientSocket, O_NONBLOCK);
+
     }
 
     // 5. Receive data from client
 
-    char buffer[4096];
+    for (size_t i = 1; i < _pollfds.size(); i++)
+    {
+      if (_pollfds[i].revents & POLLIN)
+      {
+        Client curClient = _clients.at(_pollfds[i].fd);
+        curClient.fillInBuffer();
 
-    ssize_t bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-    if (bytes == -1) {
-      std::cout << "recv() failed\n";
-    } else if (bytes == 0) {
-      std::cout << "Client closed connection\n";
-    } else {
-      buffer[bytes] = '\0';
-      std::cout << "Message from client:\n\n\n" << buffer << "\n\n\n";
-      Request request = RequestParser::parse(std::string(buffer));
 
-      if (request.getMethod().empty()) {
-        std::cout << "Failed to parse request\n";
-        close(clientSocket);
-        continue;
-      }
-      if (request.getMethod() != "GET") {
-        std::cout << "Unsupported HTTP method: " << request.getMethod() << "\n";
-        close(clientSocket);
-        continue;
-      }
-      Response response = RequestHandler::handleRequest(request);
-      send(clientSocket, response.toString().c_str(),
-           response.toString().size(), 0);
-
-      close(clientSocket);
+        if (curClient.getRequest().getMethod().empty()) {
+          std::cout << "Failed to parse request\n";
+          close(_pollfds[i].fd);
+          break;
+        }
+        if (curClient.getRequest().getMethod() != "GET") {
+          std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
+          close(_pollfds[i].fd);
+          break;
+        }
+          }
+        if (_pollfds[i].revents & POLLOUT)
+        {
+          Client curClient = _clients.at(_pollfds[i].fd);
+          curClient.fillOutBuffer();
+        }
     }
+    
   }
 }

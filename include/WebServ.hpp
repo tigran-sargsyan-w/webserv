@@ -1,14 +1,14 @@
 #ifndef WEBSERV_HPP
 # define WEBSERV_HPP
 
+#include <map>
 #include <vector>
-#include <cerrno>
-#include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include "Client.hpp"
 
 class WebServ
 {
@@ -27,6 +27,7 @@ class WebServ
 	private:
 		int _serverSocket;
     std::vector<pollfd> _pollfds;
+    std::map<int, Client> _clients;
 };
 
 #endif

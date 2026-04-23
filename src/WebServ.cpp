@@ -67,7 +67,7 @@ int WebServ::bindSockAddress() {
   return (0);
 }
 
-int WebServ::setup() {
+int WebServ::setup(const ServerConfig &serverConfig) {
   std::cout << "WebServ setup called!\n";
 
   // 1. Create socket
@@ -87,7 +87,7 @@ int WebServ::setup() {
   }
   fcntl(_serverSocket, O_NONBLOCK);
 
-  std::cout << "Listening on localhost:8080\n";
+	std::cout << "Listening on " << serverConfig.listen.host << ":" << serverConfig.listen.port << "\n";
   return (0);
 }
 

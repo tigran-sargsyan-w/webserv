@@ -1,4 +1,5 @@
 #include <iostream>
+#include <arpa/inet.h>
 #include "WebServ.hpp"
 #include "RequestParser.hpp"
 #include "Request.hpp"
@@ -31,7 +32,7 @@ WebServ& WebServ::operator=(const WebServ& other)
 }
 
 
-int WebServ::setup()
+int WebServ::setup(const ServerConfig &serverConfig)
 {
 	std::cout << "WebServ setup called!\n";
 
@@ -59,8 +60,11 @@ int WebServ::setup()
 	sockaddr_in addr;
   	std::memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(8080);
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sin_port = htons(serverConfig.listen.port);
+	if (serverConfig.listen.host == "0.0.0.0")
+		addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	else
+		addr.sin_addr.s_addr = inet_addr(serverConfig.listen.host.c_str());
 
 	if (bind(_serverSocket, (sockaddr *) &addr, sizeof(addr)) == -1)
 	{
@@ -78,7 +82,7 @@ int WebServ::setup()
 		return (1);
 	}
 
-  std::cout << "Listening on localhost:8080\n";
+	std::cout << "Listening on " << serverConfig.listen.host << ":" << serverConfig.listen.port << "\n";
   return (0);
 }
 

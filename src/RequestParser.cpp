@@ -1,6 +1,5 @@
 #include "RequestParser.hpp"
 #include "Request.hpp"
-#include <iostream>
 #include <sstream>
 #include <string>
 
@@ -26,13 +25,12 @@ static void parseHeader(std::istringstream &header, Request &request) {
   std::string value;
 
   header >> key >> value;
-  if (key[key.length() - 1] == ':')
+  if (key[key.length() - 1] == ':') // TODO: replace with substr
     key.erase(key.length() - 1);
   else
     return;
   if (value[value.length() - 1] == '\r')
     value.erase(value.length() - 1);
-  std::cout << "key: " << key << "  value: " << value << "\n";
   request.addHeader(key, value);
 }
 
@@ -55,6 +53,5 @@ Request RequestParser::parse(const std::string &rawRequest) {
     parseHeader(ss, request);
   }
   // TODO: parse body if Content-Length is present
-  request.setIsCgi(); // For testing CGI
   return request;
 }

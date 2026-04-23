@@ -1,10 +1,10 @@
 #include "WebServ.hpp"
 
-int	main()
-{
-	WebServ serv;
+int main() {
+  WebServ serv;
 
-	serv.setup();
-	serv.run();
-	return (0);
+  if (serv.setup())
+    return (1);
+  serv.run();
+  return (0);
 }

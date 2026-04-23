@@ -1,14 +1,13 @@
+#include <CgiHandler.hpp>
 #include <iostream>
 #include <string>
-#include <unistd.h>
 #include <sys/wait.h>
-#include <CgiHandler.hpp>
+#include <unistd.h>
 
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
 
-void CgiHandler::runCgi()
-{
+void CgiHandler::runCgi() {
   int fd[2];
   pid_t pid;
   int status;
@@ -18,12 +17,12 @@ void CgiHandler::runCgi()
   pid = fork();
   if (pid < 0)
     return;
-  if (pid == 0)
-  {
+  if (pid == 0) {
     dup2(fd[1], STDOUT_FILENO);
     close(fd[1]);
     close(fd[0]);
-    char *argv[] = { (char *)"/usr/bin/python3", (char *)"src/cgi-bin/test.py", NULL};
+    char *argv[] = {(char *)"/usr/bin/python3", (char *)"src/cgi-bin/test.py",
+                    NULL};
     execve("/usr/bin/python3", argv, NULL);
     _exit(1);
   }

@@ -18,21 +18,20 @@ int  Client::fillInBuffer()
         std::cout << "Client closed connection\n";
       } else {
         inBuffer[bytes] = '\0';
-        std::cout << "Message from client:\n\n\n" << inBuffer << "\n\n\n";
+        std::cout << "Request from client:\n\n" << inBuffer << std::endl;
       }
-
       Request request = RequestParser::parse(std::string(inBuffer));
       setRequest(request);
-
+      std::cout << "IS CGI TRUE? : " << _request.getIsCgi() << std::endl;
       return (0);
 }
 
 int Client::fillOutBuffer()
 {
-      Response response = RequestHandler::handleRequest(_request);
-      send(_fd, response.toString().c_str(),
-           response.toString().size(), 0);
-
-      close(_fd);
-      return (0);
+    Response response = RequestHandler::handleRequest(_request);
+    std::cout << "Response to client:\n\n" << response.toString() << std::endl;
+    send(_fd, response.toString().c_str(),
+         response.toString().size(), 0);
+    close(_fd);
+    return (0);
 }

@@ -37,7 +37,8 @@ Response RequestHandler::handleRequest(const Request &request) {
   // Generate a response
   Response response;
 
-  if (request.getIsCgi())
+
+  if (!request.getIsCgi())
     CgiHandler::runCgi();
   if (request.getMethod() == "GET") {
     response = RequestHandler::handleStatic(request);
@@ -51,6 +52,5 @@ Response RequestHandler::handleRequest(const Request &request) {
   response.addHeader("Content-Type", "text/html");
   response.addHeader("Connection", "close");
   response.addHeader("Content-Length", oss.str());
-  std::cout << response.toString();
   return response;
 }

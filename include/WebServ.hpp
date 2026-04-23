@@ -23,6 +23,7 @@ class WebServ
     int initListeningSocket();
     int bindSockAddress();
     int acceptConnection();
+    void  removePollfd(int fd);
 	
 	private:
 		int _serverSocket;

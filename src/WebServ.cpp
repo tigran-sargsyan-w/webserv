@@ -1,6 +1,8 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
 #include <fcntl.h>
+#include <cstring>
+#include <cerrno>
 #include <iostream>
 #include <poll.h>
 #include <sys/poll.h>
@@ -43,6 +45,7 @@ int WebServ::initListeningSocket() {
 
   struct pollfd tmpPollfd;
   tmpPollfd.fd = _serverSocket;
+  tmpPollfd.events = POLLIN;
   _pollfds.push_back(tmpPollfd);
   return (0);
 }
@@ -93,6 +96,7 @@ int WebServ::acceptConnection() {
   int clientSocket = accept(_serverSocket, NULL, NULL);
   if (clientSocket == -1)
     return (-1);
+  fcntl(clientSocket, O_NONBLOCK);
   struct pollfd tmpPollfd;
   tmpPollfd.fd = clientSocket;
   tmpPollfd.events = POLLIN;
@@ -101,15 +105,26 @@ int WebServ::acceptConnection() {
   return (clientSocket);
 }
 
+
+void  WebServ::removePollfd(int fd)
+{
+  for (size_t i = 0; i < _pollfds.size(); i++)
+  {
+    if (_pollfds[i].fd == fd)
+    {
+      _pollfds.erase(_pollfds.begin() + i);
+    }
+  }
+}
+
 int WebServ::run() {
   std::cout << "WebServ run called!\n";
 
   while (true) {
-
     int ready = poll(_pollfds.data(), _pollfds.size(), -1);
     if (ready < 0)
       continue;
-    std::cout << "Ready - " << ready << std::endl;
+    std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
     // 4. Accept connections
 
@@ -132,27 +147,32 @@ int WebServ::run() {
 
     for (size_t i = 1; i < _pollfds.size(); i++)
     {
+      int curFD = _pollfds[i].fd;
       if (_pollfds[i].revents & POLLIN)
       {
-        Client curClient = _clients.at(_pollfds[i].fd);
+        Client& curClient = _clients.at(curFD);
         curClient.fillInBuffer();
 
 
         if (curClient.getRequest().getMethod().empty()) {
           std::cout << "Failed to parse request\n";
-          close(_pollfds[i].fd);
+          close(curFD);
           break;
         }
         if (curClient.getRequest().getMethod() != "GET") {
           std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
-          close(_pollfds[i].fd);
+          close(curFD);
           break;
         }
+        _pollfds[i].events = POLLOUT;
           }
         if (_pollfds[i].revents & POLLOUT)
         {
-          Client curClient = _clients.at(_pollfds[i].fd);
+          Client& curClient = _clients.at(curFD);
           curClient.fillOutBuffer();
+          close(curFD);
+          removePollfd(curFD);
+          _clients.erase(curFD);
         }
     }
     

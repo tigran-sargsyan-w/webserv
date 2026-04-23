@@ -1,21 +1,18 @@
 #ifndef WEBSERV_HPP
 # define WEBSERV_HPP
 
-#include <iostream>
-#include <cerrno>
-#include <sstream>
-#include <string>
-#include <cstring>
+#include <map>
+#include <vector>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <poll.h>
+#include "Client.hpp"
 #include "Config.hpp"
 
 class WebServ
 {
-	private:
-		int _serverSocket;
 
 	public:
 		WebServ();
@@ -25,6 +22,15 @@ class WebServ
 
 		int setup(const ServerConfig &serverConfig);
 		int run();
+    	int initListeningSocket();
+    	int bindSockAddress();
+    	int acceptConnection();
+    	void  removePollfd(int fd);
+	
+	private:
+		int _serverSocket;
+    	std::vector<pollfd> _pollfds;
+    	std::map<int, Client> _clients;
 };
 
 #endif

@@ -1,13 +1,13 @@
 NAME = webserv
 
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g
 
 SRC_DIR = src
 OBJ_DIR = obj
 INC_DIR = include
 
-SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp Response.cpp utils.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp
+SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp Response.cpp utils.cpp CgiHandler.cpp Client.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp
 
 SRCS = $(addprefix $(SRC_DIR)/, $(SRC_FILES))
 OBJS = $(addprefix $(OBJ_DIR)/, $(SRC_FILES:.cpp=.o))

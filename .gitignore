@@ -1,3 +1,4 @@
+request.txt
 # executables
 webserv
 client
@@ -32,3 +33,6 @@ build/
 
 # test output / logs
 *.log
+
+# formatter for nvim
+.clang-format

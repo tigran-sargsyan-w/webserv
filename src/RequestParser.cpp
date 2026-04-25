@@ -24,12 +24,10 @@ static void parseRequestLine(std::string &requestLine, Request &request) {
 
 #include <cstdio>
 #include <unistd.h>
-#include <iostream>
 
 static void parseHeader(std::string &header, Request &request) {
   std::string key;
   std::string value;
-
 
   int colonIndex = header.find(":");
   key = header.substr(0, colonIndex);
@@ -42,8 +40,6 @@ static void parseHeader(std::string &header, Request &request) {
 Request RequestParser::parse(const std::string &rawRequest) {
   Request request;
 
-  std::cout << "Raw request from client:\n"
-            << rawRequest << std::endl;
   std::istringstream ss(rawRequest);
   std::string requestLine;
   std::getline(ss, requestLine);

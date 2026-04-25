@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
+#include "RequestParser.hpp"
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
@@ -153,6 +154,9 @@ int WebServ::run() {
         Client& curClient = _clients.at(curFD);
         curClient.fillInBuffer();
 
+      Request request = RequestParser::parse(curClient.getRawRequest());
+      curClient.setRequest(request);
+      curClient.setIsRequestReady();
 
         if (curClient.getRequest().getMethod().empty()) {
           std::cout << "Failed to parse request\n";
@@ -169,7 +173,8 @@ int WebServ::run() {
         if (_pollfds[i].revents & POLLOUT)
         {
           Client& curClient = _clients.at(curFD);
-          curClient.fillOutBuffer();
+          if (curClient.isRequestReady())
+            curClient.fillOutBuffer();
           close(curFD);
           removePollfd(curFD);
           _clients.erase(curFD);

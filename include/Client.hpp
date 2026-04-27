@@ -14,15 +14,13 @@ class Client
 
     void setFd(int fd) { _fd = fd; };
     void setRequest(Request& request) { _request = request; };
-    void setIsRequestReady() { _requestReady = true; };
     int  fillInBuffer();
     int  fillOutBuffer();
-    bool isRequestReady() { return _requestReady; };
+    bool isRequestReady() { return _request.isReady(); };
 
   private:
     int _fd;
     Request _request;
-    bool _requestReady;
     std::string _rawRequest;
 };
 

@@ -151,34 +151,34 @@ int WebServ::run() {
       int curFD = _pollfds[i].fd;
       if (_pollfds[i].revents & POLLIN)
       {
-        Client& curClient = _clients.at(curFD);
-        curClient.fillInBuffer();
+          Client& curClient = _clients.at(curFD);
+          curClient.fillInBuffer();
 
-      Request request = RequestParser::parse(curClient.getRawRequest());
-      curClient.setRequest(request);
-      curClient.setIsRequestReady();
+        Request request = RequestParser::parse(curClient.getRawRequest());
+        if (ready)
+          curClient.setRequest(request);
 
         if (curClient.getRequest().getMethod().empty()) {
           std::cout << "Failed to parse request\n";
           close(curFD);
           break;
         }
-        if (curClient.getRequest().getMethod() != "GET") {
-          std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
-          close(curFD);
-          break;
-        }
-        _pollfds[i].events = POLLOUT;
+          if (curClient.getRequest().getMethod() != "GET") {
+            std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
+            close(curFD);
+            break;
           }
-        if (_pollfds[i].revents & POLLOUT)
-        {
-          Client& curClient = _clients.at(curFD);
-          if (curClient.isRequestReady())
-            curClient.fillOutBuffer();
-          close(curFD);
-          removePollfd(curFD);
-          _clients.erase(curFD);
-        }
+          _pollfds[i].events = POLLOUT;
+      }
+      if (_pollfds[i].revents & POLLOUT)
+      {
+        Client& curClient = _clients.at(curFD);
+        if (curClient.isRequestReady())
+          curClient.fillOutBuffer();
+        close(curFD);
+        removePollfd(curFD);
+        _clients.erase(curFD);
+      }
     }
     
   }

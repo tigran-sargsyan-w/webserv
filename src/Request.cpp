@@ -1,5 +1,5 @@
 #include "Request.hpp"
 
-Request::Request() : _isCgi(false) {}
+Request::Request() : ready(false), _isCgi(false)  {}
 
 Request::~Request() {}

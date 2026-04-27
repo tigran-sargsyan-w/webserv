@@ -7,7 +7,7 @@
 #include "RequestHandler.hpp"
 #include <errno.h>
 
-Client::Client(int fd) : _fd(fd), _requestReady(false) {}
+Client::Client(int fd) : _fd(fd) {}
 
 int  Client::fillInBuffer()
 {

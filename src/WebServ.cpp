@@ -141,7 +141,6 @@ int WebServ::run() {
         return (1);
       }
       fcntl(clientSocket, O_NONBLOCK);
-
     }
 
     // 5. Receive data from client
@@ -155,8 +154,7 @@ int WebServ::run() {
           curClient.fillInBuffer();
 
         Request request = RequestParser::parse(curClient.getRawRequest());
-        if (ready)
-          curClient.setRequest(request);
+        curClient.setRequest(request);
 
         if (curClient.getRequest().getMethod().empty()) {
           std::cout << "Failed to parse request\n";

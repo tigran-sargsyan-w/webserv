@@ -7,14 +7,14 @@
 #include "RequestHandler.hpp"
 #include <errno.h>
 
-Client::Client(int fd) : _fd(fd) {}
+Client::Client(int fd) : fd(fd), requestValid(false), requestReady(false) {}
 
 int  Client::fillInBuffer()
 {
       ssize_t bytesRead;
       char buffer[4096];
 
-      bytesRead = recv(_fd, buffer, sizeof(buffer) - 1, 0);
+      bytesRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
       _rawRequest.append(buffer, bytesRead);
       if (bytesRead == -1) {
         if (errno == EWOULDBLOCK || errno == EAGAIN)
@@ -35,8 +35,9 @@ int Client::fillOutBuffer()
 {
     Response response = RequestHandler::handleRequest(_request);
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
-    send(_fd, response.toString().c_str(),
+    //TODO: check how many bytes sent. Handle if not all bytes sent in one send call
+    send(this->fd, response.toString().c_str(),
          response.toString().size(), 0);
-    close(_fd);
+    close(this->fd);
     return (0);
 }

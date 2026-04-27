@@ -54,8 +54,6 @@ Request RequestParser::parse(const std::string &rawRequest) {
          !headerLine.empty()) {
     parseHeader(headerLine, request);
   }
-  if (headerLine == "\r\n")
-    request.setReady();
   // TODO: parse body if Content-Length is present
   // TODO: check is request vaild and if it's finished
   return request;

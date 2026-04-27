@@ -7,7 +7,8 @@
 #include <sstream>
 #include <string>
 
-#include <sstream>
+#include <string>
+#include <utils.hpp>
 
 RequestHandler::RequestHandler() {}
 
@@ -37,6 +38,19 @@ Response RequestHandler::handleRequest(const Request &request) {
   // Generate a response
   Response response;
 
+  if (request.getPath() == "/cgi-bin/hello.py")
+  {
+    Response response;
+    std::string cgiOutput = CgiHandler::runCgi();
+
+    response.setStatusCode(200);
+    response.setBody(cgiOutput);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Content-Length", intToString(response.getBody().length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+  }
 
   if (!request.getIsCgi())
     CgiHandler::runCgi();

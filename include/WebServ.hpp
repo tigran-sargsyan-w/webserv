@@ -9,26 +9,28 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include "Client.hpp"
+#include "Config.hpp"
 
 class WebServ
 {
+
 	public:
 		WebServ();
 		WebServ(const WebServ& other);
 		~WebServ();
 		WebServ& operator=(const WebServ& other);
 
-		int setup();
+		int setup(const ServerConfig &serverConfig);
 		int run();
-    int initListeningSocket();
-    int bindSockAddress();
-    int acceptConnection();
-    void  removePollfd(int fd);
+    	int initListeningSocket();
+    	int bindSockAddress();
+    	int acceptConnection();
+    	void  removePollfd(int fd);
 	
 	private:
 		int _serverSocket;
-    std::vector<pollfd> _pollfds;
-    std::map<int, Client> _clients;
+    	std::vector<pollfd> _pollfds;
+    	std::map<int, Client> _clients;
 };
 
 #endif

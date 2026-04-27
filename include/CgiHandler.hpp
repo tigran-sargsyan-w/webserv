@@ -1,13 +1,15 @@
 #ifndef CGI_HANDLER_HPP
 # define CGI_HANDLER_HPP
 
+#include <string>
+
 class CgiHandler
 {
   public:
     CgiHandler();
     ~CgiHandler();
 
-    static void runCgi();
+    static std::string runCgi();
 };
 
 #endif

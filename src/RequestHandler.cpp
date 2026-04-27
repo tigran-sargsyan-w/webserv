@@ -52,8 +52,8 @@ Response RequestHandler::handleRequest(const Request &request) {
     return (response);
   }
 
-  if (!request.getIsCgi())
-    CgiHandler::runCgi();
+  // if (!request.getIsCgi())
+  //   CgiHandler::runCgi();
   if (request.getMethod() == "GET") {
     response = RequestHandler::handleStatic(request);
   } else {

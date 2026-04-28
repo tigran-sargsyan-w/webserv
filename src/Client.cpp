@@ -1,37 +1,43 @@
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <iostream>
 #include "Client.hpp"
 #include "Response.hpp"
-#include "RequestParser.hpp"
 #include "RequestHandler.hpp"
+#include <errno.h>
 
-Client::Client(int fd) : _fd(fd) {}
+Client::Client(int fd) : fd(fd), requestValid(false), requestReady(false) {}
 
 int  Client::fillInBuffer()
 {
-      ssize_t bytes = recv(_fd, inBuffer, sizeof(inBuffer) - 1, 0);
-      if (bytes == -1) {
-        std::cout << "recv() failed\n";
-        return (1);
-      } else if (bytes == 0) {
+      ssize_t bytesRead;
+      char buffer[4096];
+
+      bytesRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
+      this->rawRequest.append(buffer, bytesRead);
+      if (bytesRead == -1) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+          return (0);
+        return 1;
+      } else if (bytesRead == 0) {
         std::cout << "Client closed connection\n";
       } else {
-        inBuffer[bytes] = '\0';
-        std::cout << "Request from client:\n\n" << inBuffer << std::endl;
+        buffer[bytesRead] = '\0';
+        this->rawRequest.append(buffer);
+        std::cout << "Request from client:\n\n" << this->rawRequest << std::endl;
       }
-      Request request = RequestParser::parse(std::string(inBuffer));
-      setRequest(request);
-      std::cout << "IS CGI TRUE? : " << _request.getIsCgi() << std::endl;
+
       return (0);
 }
 
 int Client::fillOutBuffer()
 {
-    Response response = RequestHandler::handleRequest(_request);
+    Response response = RequestHandler::handleRequest(this->request);
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
-    send(_fd, response.toString().c_str(),
+    //TODO: check how many bytes sent. Handle if not all bytes sent in one send call
+    send(this->fd, response.toString().c_str(),
          response.toString().size(), 0);
-    close(_fd);
+    close(this->fd);
     return (0);
 }

@@ -10,11 +10,11 @@ class Response
         Response();
         ~Response();
 
-        int getStatusCode() const { return _statusCode; }
+        int getStatusCode() const { return this->statusCode; }
         std::map<std::string, std::string> getHeaders() const { return _headers; }
         std::string getBody() const { return _body; }
 
-        void setStatusCode(int statusCode) { _statusCode = statusCode; }
+        void setStatusCode(int statusCode) { this->statusCode = statusCode; }
         void addHeader(const std::string& key, const std::string& value) { _headers[key] = value; }
         void setBody(const std::string& body) { _body = body; }
         void setBodyFromFile(const std::string& path);
@@ -22,7 +22,7 @@ class Response
         std::string toString() const;
 
     private:
-        int _statusCode;
+        int statusCode;
         std::map<std::string, std::string> _headers;
         std::string _body;
 

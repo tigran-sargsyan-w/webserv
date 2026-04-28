@@ -8,20 +8,24 @@ class Client
   public:
     Client(int fd);
     ~Client() {};
-    int getFd() const { return _fd; };
-    const Request& getRequest() const { return _request; };
-    char *getInBuffer() { return inBuffer; }
+    int getFd() const { return fd; };
+    const Request& getRequest() const { return this->request; };
+    std::string& getRawRequest() { return this->rawRequest; };
 
-    void setFd(int fd) { _fd = fd; };
-    void setRequest(Request& request) { _request = request; };
+    void setFd(int fd) { this->fd = fd; };
+    void setRequest(Request& request) { this->request = request; };
     int  fillInBuffer();
     int  fillOutBuffer();
+    bool isRequestReady() { return this->requestReady; };
+    bool isRequestValid() { return this->requestValid; };
 
   private:
-    int _fd;
-    Request _request;
-    char inBuffer[4096];
-    /*char outBuffer[4096];*/
+    int fd;
+    Request request;
+    std::string rawRequest;
+    bool requestValid;
+    bool requestReady;
+    //TODO: check if rawRequest is valid and finished before parsing
 };
 
 #endif

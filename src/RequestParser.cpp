@@ -2,6 +2,7 @@
 #include "Request.hpp"
 #include <sstream>
 #include <string>
+#include <cstring>
 
 static void parseRequestLine(std::string &requestLine, Request &request) {
   if (requestLine.empty())
@@ -20,15 +21,17 @@ static void parseRequestLine(std::string &requestLine, Request &request) {
   request.setVersion(version);
 }
 
-static void parseHeader(std::istringstream &header, Request &request) {
+
+#include <cstdio>
+#include <unistd.h>
+
+static void parseHeader(std::string &header, Request &request) {
   std::string key;
   std::string value;
 
-  header >> key >> value;
-  if (key[key.length() - 1] == ':') // TODO: replace with substr
-    key.erase(key.length() - 1);
-  else
-    return;
+  int colonIndex = header.find(":");
+  key = header.substr(0, colonIndex);
+  value = header.substr(colonIndex + 1);
   if (value[value.length() - 1] == '\r')
     value.erase(value.length() - 1);
   request.addHeader(key, value);
@@ -49,9 +52,9 @@ Request RequestParser::parse(const std::string &rawRequest) {
   std::string headerLine;
   while (std::getline(ss, headerLine) && headerLine != "\r\n" &&
          !headerLine.empty()) {
-    std::istringstream ss(headerLine);
-    parseHeader(ss, request);
+    parseHeader(headerLine, request);
   }
   // TODO: parse body if Content-Length is present
+  // TODO: check is request vaild and if it's finished
   return request;
 }

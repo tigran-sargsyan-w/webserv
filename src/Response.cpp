@@ -11,7 +11,7 @@ Response::~Response() {}
 
 std::string Response::getReasonPhrase() const {
 
-  switch (_statusCode) {
+  switch (this->statusCode) {
   case 200:
     return "OK";
   case 404:
@@ -23,7 +23,7 @@ std::string Response::getReasonPhrase() const {
 
 std::string Response::toString() const {
   std::string response =
-      "HTTP/1.1 " + intToString(_statusCode) + " " + getReasonPhrase() + "\r\n";
+      "HTTP/1.1 " + intToString(this->statusCode) + " " + getReasonPhrase() + "\r\n";
 
   for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
        it != _headers.end(); ++it) {

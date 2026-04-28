@@ -19,6 +19,8 @@ class WebServ
 		WebServ(const WebServ& other);
 		~WebServ();
 		WebServ& operator=(const WebServ& other);
+    int  readFromClient(Client& client);
+    int  SendToClient(Client& client);
 
 		int setup(const ServerConfig &serverConfig);
 		int run();

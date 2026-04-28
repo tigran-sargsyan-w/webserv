@@ -8,12 +8,9 @@
 class RequestParser
 {
   public:
-        RequestParser() : requestComplete(false) {};
+        RequestParser() {};
         CheckRequestStatus checkRequest(const std::string& rawRequest);
         int parse(const std::string& rawRequest, Request& req);
-
-  private:
-        bool requestComplete;
 };
 
 #endif

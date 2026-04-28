@@ -7,8 +7,9 @@ std::string intToString(int num);
 
 enum CheckRequestStatus
 {
-  IN_PROCESS,
+  PARSE_MORE,
   COMPLETED,
+  HEADER_TOO_BIG,
   INVALID
 };
 

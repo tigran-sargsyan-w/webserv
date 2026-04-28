@@ -22,15 +22,15 @@ class WebServ
 
 		int setup(const ServerConfig &serverConfig);
 		int run();
-    	int initListeningSocket();
-    	int bindSockAddress();
-    	int acceptConnection();
-    	void  removePollfd(int fd);
+    int initListeningSocket();
+    int bindSockAddress();
+    int acceptConnection();
+    void  removePollfd(int fd);
 	
 	private:
-		int _serverSocket;
-    	std::vector<pollfd> _pollfds;
-    	std::map<int, Client> _clients;
+		int serverSocket;
+    std::vector<pollfd> _pollfds;
+    std::map<int, Client> _clients;
 };
 
 #endif

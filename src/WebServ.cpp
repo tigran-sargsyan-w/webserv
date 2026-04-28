@@ -18,7 +18,7 @@ WebServ::WebServ(const WebServ &other) {
 
 WebServ::~WebServ() {
   std::cout << "WebServ destroyed!\n";
-  close(_serverSocket);
+  close(this->serverSocket);
 }
 
 WebServ &WebServ::operator=(const WebServ &other) {
@@ -28,24 +28,24 @@ WebServ &WebServ::operator=(const WebServ &other) {
 }
 
 int WebServ::initListeningSocket() {
-  _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-  if (_serverSocket == -1) {
+  this->serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+  if (this->serverSocket == -1) {
     std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
     return (1);
   }
 
-  std::cout << "Server socked created, FD = " << _serverSocket << "\n";
+  std::cout << "Server socked created, FD = " << this->serverSocket << "\n";
 
   int opt = 1;
-  if (setsockopt(_serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
+  if (setsockopt(this->serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
       -1) {
     std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
-    close(_serverSocket);
+    close(this->serverSocket);
     return (1);
   }
 
   struct pollfd tmpPollfd;
-  tmpPollfd.fd = _serverSocket;
+  tmpPollfd.fd = this->serverSocket;
   tmpPollfd.events = POLLIN;
   _pollfds.push_back(tmpPollfd);
   return (0);
@@ -60,9 +60,9 @@ int WebServ::bindSockAddress() {
   addr.sin_port = htons(8080);
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  if (bind(_serverSocket, (sockaddr *)&addr, sizeof(addr)) == -1) {
+  if (bind(this->serverSocket, (sockaddr *)&addr, sizeof(addr)) == -1) {
     std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
-    close(_serverSocket);
+    close(this->serverSocket);
     return (1);
   }
   return (0);
@@ -81,12 +81,12 @@ int WebServ::setup(const ServerConfig &serverConfig) {
 
   // 3. Socket listening
 
-  if (listen(_serverSocket, 10) == -1) {
+  if (listen(this->serverSocket, 10) == -1) {
     std::cerr << "Error on socket listening\n";
-    close(_serverSocket);
+    close(this->serverSocket);
     return (1);
   }
-  fcntl(_serverSocket, O_NONBLOCK);
+  fcntl(this->serverSocket, O_NONBLOCK);
 
 	std::cout << "Listening on " << serverConfig.listen.host << ":" << serverConfig.listen.port << "\n";
   return (0);
@@ -94,7 +94,7 @@ int WebServ::setup(const ServerConfig &serverConfig) {
 
 int WebServ::acceptConnection() {
 
-  int clientSocket = accept(_serverSocket, NULL, NULL);
+  int clientSocket = accept(this->serverSocket, NULL, NULL);
   if (clientSocket == -1)
     return (-1);
   fcntl(clientSocket, O_NONBLOCK);
@@ -137,7 +137,7 @@ int WebServ::run() {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
           continue;
         std::cerr << "Error accepting client connection\n";
-        close(_serverSocket);
+        close(this->serverSocket);
         return (1);
       }
       fcntl(clientSocket, O_NONBLOCK);

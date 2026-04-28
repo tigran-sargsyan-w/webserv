@@ -14,27 +14,31 @@ RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
 
-Response RequestHandler::handleStatic(const Request &request) {
+Response RequestHandler::handleStatic(const Request &request)
+{
   Response res;
 
   std::string fullPath = "www" + request.getPath();
   if (fullPath == "www/")
     fullPath = "www/index.html";
   std::ifstream file(fullPath.c_str());
-  if (!file) {
+  if (!file)
+  {
     res.setStatusCode(404);
     res.setBody("<html><body><h1>404 Not Found</h1></body></html>");
     std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
                                                      // response
   }
-  if (file) {
+  if (file)
+  {
     res.setStatusCode(200);
     res.setBodyFromFile(fullPath);
   }
   return res;
 }
 
-Response RequestHandler::handleRequest(const Request &request) {
+Response RequestHandler::handleRequest(const Request &request)
+{
   // Generate a response
   Response response;
 
@@ -43,9 +47,35 @@ Response RequestHandler::handleRequest(const Request &request) {
     Response response;
     std::string cgiOutput = CgiHandler::runCgi();
 
-    response.setStatusCode(200);
-    response.setBody(cgiOutput);
-    response.addHeader("Content-Type", "text/html");
+    std::string separator = "\r\n\r\n";
+    size_t bodyStart = cgiOutput.find(separator);
+
+    if (bodyStart == std::string::npos)
+    {
+      separator = "\n\n";
+      bodyStart = cgiOutput.find(separator);
+    }
+
+    if (bodyStart != std::string::npos)
+    {
+      std::string cgiHeaders = cgiOutput.substr(0, bodyStart);
+      std::string cgiBody = cgiOutput.substr(bodyStart + separator.length());
+
+      response.setStatusCode(200);
+      response.setBody(cgiBody);
+
+      if (cgiHeaders.find("Content-Type:") != std::string::npos)
+        response.addHeader("Content-Type", "text/html");
+      else
+        response.addHeader("Content-Type", "text/plain");
+    }
+    else
+    {
+      response.setStatusCode(200);
+      response.setBody(cgiOutput);
+      response.addHeader("Content-Type", "text/plain");
+    }
+
     response.addHeader("Content-Length", intToString(response.getBody().length()));
     response.addHeader("Connection", "close");
 
@@ -54,9 +84,12 @@ Response RequestHandler::handleRequest(const Request &request) {
 
   // if (!request.getIsCgi())
   //   CgiHandler::runCgi();
-  if (request.getMethod() == "GET") {
+  if (request.getMethod() == "GET")
+  {
     response = RequestHandler::handleStatic(request);
-  } else {
+  }
+  else
+  {
     response.setStatusCode(405);
     response.setBody(
         "<html><body><h1>405 Method Not Allowed</h1></body></html>");

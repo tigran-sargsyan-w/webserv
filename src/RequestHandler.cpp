@@ -76,9 +76,18 @@ static Response buildCgiResponse(const std::string &cgiOutput)
     return (response);
 }
 
+static std::string getPathWithoutQuery(const std::string &path)
+{
+    size_t questionMark = path.find('?');
+
+    if (questionMark == std::string::npos)
+        return (path);
+    return (path.substr(0, questionMark));
+}
+
 static std::string buildCgiScriptPath(const Request &request)
 {
-    return ("www" + request.getPath());
+    return ("www" + getPathWithoutQuery(request.getPath()));
 }
 
 static bool isCgiPath(const std::string &path)

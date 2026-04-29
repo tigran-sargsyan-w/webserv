@@ -83,7 +83,7 @@ Response RequestHandler::handleRequest(const Request &request)
 
   if (request.getPath() == "/cgi-bin/hello.py")
   {
-      std::string cgiOutput = CgiHandler::runCgi();
+      std::string cgiOutput = CgiHandler::runCgi("www/cgi-bin/hello.py");
       return (buildCgiResponse(cgiOutput));
   }
 

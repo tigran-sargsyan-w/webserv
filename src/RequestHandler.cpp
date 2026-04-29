@@ -76,6 +76,11 @@ static Response buildCgiResponse(const std::string &cgiOutput)
     return (response);
 }
 
+static std::string buildCgiScriptPath(const Request &request)
+{
+    return ("www" + request.getPath());
+}
+
 Response RequestHandler::handleRequest(const Request &request)
 {
   // Generate a response
@@ -83,7 +88,8 @@ Response RequestHandler::handleRequest(const Request &request)
 
   if (request.getPath() == "/cgi-bin/hello.py")
   {
-      std::string cgiOutput = CgiHandler::runCgi("www/cgi-bin/hello.py");
+      std::string scriptPath = buildCgiScriptPath(request);
+      std::string cgiOutput = CgiHandler::runCgi(scriptPath);
       return (buildCgiResponse(cgiOutput));
   }
 

@@ -25,7 +25,7 @@ Response RequestHandler::handleStatic(const Request &request)
   if (!file)
   {
     res.setStatusCode(404);
-    res.setBody("<html><body><h1>404 Not Found</h1></body></html>");
+    res.setBodyFromFile("www/error.html");
     std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
                                                      // response
   }

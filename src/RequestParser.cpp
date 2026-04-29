@@ -1,12 +1,34 @@
 #include "RequestParser.hpp"
 #include "Request.hpp"
+#include "utils.hpp"
 #include <sstream>
 #include <string>
 #include <cstring>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <iostream>
 
-static void parseRequestLine(std::string &requestLine, Request &request) {
+
+CheckRequestStatus RequestParser::checkRequest(const std::string& rawRequest)
+{
+  const size_t MAX_HEADER_SIZE = 8192;
+  //const size_t MAX_BODY_SIZE = 1000000;
+
+  size_t headerEnd = rawRequest.find("\r\n\r\n");
+  if (headerEnd == std::string::npos)
+    {
+      if (rawRequest.size() > MAX_HEADER_SIZE)
+        return HEADER_TOO_BIG;
+      return PARSE_MORE;
+    }
+  return COMPLETED;
+  //TODO: Check headers / body size if Content-Length is presented
+}
+
+static int parseRequestLine(std::string &requestLine, Request &request) {
   if (requestLine.empty())
-    return;
+    return (1);
   if (requestLine[requestLine.length() - 1] == '\r')
     requestLine.erase(requestLine.length() - 1);
 
@@ -19,11 +41,16 @@ static void parseRequestLine(std::string &requestLine, Request &request) {
   request.setMethod(method);
   request.setPath(path);
   request.setVersion(version);
+
+  struct stat st;
+  stat(path.c_str(), &st);
+ if (!(S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)))
+ {
+   std::cout << "Invalid path in request!\n";
+   return (1);
+  }
+  return (0);
 }
-
-
-#include <cstdio>
-#include <unistd.h>
 
 static void parseHeader(std::string &header, Request &request) {
   std::string key;
@@ -37,24 +64,34 @@ static void parseHeader(std::string &header, Request &request) {
   request.addHeader(key, value);
 }
 
-Request RequestParser::parse(const std::string &rawRequest) {
-  Request request;
+int RequestParser::parse(const std::string &rawRequest, Request& req) {
 
   std::istringstream ss(rawRequest);
   std::string requestLine;
   std::getline(ss, requestLine);
   if (requestLine.empty())
-    return request;
+    return 1;
   if (requestLine[requestLine.length() - 1] == '\r')
     requestLine.erase(requestLine.length() - 1);
-  parseRequestLine(requestLine, request);
+  if (parseRequestLine(requestLine, req))
+  {
+    return 1;
+  }
 
   std::string headerLine;
   while (std::getline(ss, headerLine) && headerLine != "\r\n" &&
          !headerLine.empty()) {
-    parseHeader(headerLine, request);
+    parseHeader(headerLine, req);
   }
   // TODO: parse body if Content-Length is present
   // TODO: check is request vaild and if it's finished
-  return request;
+        if (req.getMethod().empty()) {
+          std::cout << "Failed to parse request\n";
+          return 1;
+        }
+          if (req.getMethod() != "GET") {
+            std::cout << "Unsupported HTTP method: " << req.getMethod() << "\n";
+          return 0;
+          }
+  return 0;
 }

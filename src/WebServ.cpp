@@ -1,6 +1,8 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Response.hpp"
+#include "RequestHandler.hpp"
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
@@ -25,6 +27,47 @@ WebServ &WebServ::operator=(const WebServ &other) {
   (void)other;
   std::cout << "WebServ assignement operator called!\n";
   return (*this);
+}
+
+int  WebServ::readFromClient(Client& client)
+{
+      ssize_t bytesRead;
+      char buffer[4096];
+
+      bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
+      if (bytesRead == -1) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+          return (0);
+        return 1;
+      } else if (bytesRead == 0) {
+        std::cout << "Client closed connection\n";
+        client.state = CLOSING_CONNECTION;
+      } else {
+        buffer[bytesRead] = '\0';
+        client.rawRequest.append(buffer);
+        //std::cout << "Request from client:\n\n" << client.rawRequest << std::endl;
+      }
+
+      return (0);
+}
+
+int WebServ::SendToClient(Client& client)
+{
+    Response response = RequestHandler::handleRequest(client.request);
+    std::cout << "Response to client:\n\n" << response.toString() << std::endl;
+    
+    ssize_t bytesSent = send(client.fd, response.toString().c_str(),
+         response.toString().size(), 0);
+    if (bytesSent == -1)
+    {
+      if (errno == EWOULDBLOCK || EAGAIN)
+        return (0);
+      std::cout << "send: " << strerror(errno) << std::endl;
+      return (1);
+    }
+    if (bytesSent)
+      client.state = CLOSING_CONNECTION;
+    return (0);
 }
 
 int WebServ::initListeningSocket() {
@@ -148,34 +191,40 @@ int WebServ::run() {
     for (size_t i = 1; i < _pollfds.size(); i++)
     {
       int curFD = _pollfds[i].fd;
+      Client& curClient = _clients.at(curFD);
       if (_pollfds[i].revents & POLLIN)
       {
-          Client& curClient = _clients.at(curFD);
-          curClient.fillInBuffer();
-
-        Request request = RequestParser::parse(curClient.getRawRequest());
-        curClient.setRequest(request);
-
-        if (curClient.getRequest().getMethod().empty()) {
-          std::cout << "Failed to parse request\n";
+        curClient.state = READING;
+        this->readFromClient(curClient);
+        if (curClient.state == CLOSING_CONNECTION)
+        {
           close(curFD);
-          break;
+          removePollfd(curFD);
+          _clients.erase(curFD);
         }
-          if (curClient.getRequest().getMethod() != "GET") {
-            std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
-            close(curFD);
-            break;
-          }
-          _pollfds[i].events = POLLOUT;
+
+        RequestParser parser;
+        if (parser.checkRequest(curClient.getRawRequest()) == COMPLETED)
+        {
+          parser.parse(curClient.getRawRequest(), curClient.request);
+          std::cout << "METHOD: "  << curClient.request.getMethod() << "\n\n";
+        }
+        else 
+          continue;
+
+        //TODO: if request is valid set as POLLOUT
+        _pollfds[i].events = POLLOUT;
       }
       if (_pollfds[i].revents & POLLOUT)
       {
-        Client& curClient = _clients.at(curFD);
-        if (curClient.isRequestReady())
-          curClient.fillOutBuffer();
-        close(curFD);
-        removePollfd(curFD);
-        _clients.erase(curFD);
+        curClient.state = WRITING;
+        this->SendToClient(curClient);
+        if (curClient.state == CLOSING_CONNECTION)
+        {
+          close(curFD);
+          removePollfd(curFD);
+          _clients.erase(curFD);
+        }
       }
     }
     

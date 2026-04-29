@@ -25,11 +25,11 @@ std::string Response::toString() const {
   std::string response =
       "HTTP/1.1 " + intToString(this->statusCode) + " " + getReasonPhrase() + "\r\n";
 
-  for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
-       it != _headers.end(); ++it) {
+  for (std::map<std::string, std::string>::const_iterator it = this->headers.begin();
+       it != this->headers.end(); ++it) {
     response += it->first + ": " + it->second + "\r\n";
   }
-  response += "\r\n" + _body;
+  response += "\r\n" + this->body;
   return response;
 }
 
@@ -41,5 +41,5 @@ void Response::setBodyFromFile(const std::string &path) {
   }
   std::ostringstream ss;
   ss << file.rdbuf();
-  _body = ss.str();
+  this->body = ss.str();
 }

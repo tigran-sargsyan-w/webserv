@@ -1,7 +1,13 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
-
 # include "Request.hpp"
+
+enum ClientState
+{
+  WRITING,
+  READING,
+  CLOSING_CONNECTION
+};
 
 class Client 
 {
@@ -14,17 +20,15 @@ class Client
 
     void setFd(int fd) { this->fd = fd; };
     void setRequest(Request& request) { this->request = request; };
-    int  fillInBuffer();
-    int  fillOutBuffer();
     bool isRequestReady() { return this->requestReady; };
     bool isRequestValid() { return this->requestValid; };
 
-  private:
     int fd;
     Request request;
     std::string rawRequest;
     bool requestValid;
     bool requestReady;
+    ClientState state;
     //TODO: check if rawRequest is valid and finished before parsing
 };
 

@@ -9,7 +9,7 @@
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
 
-std::string CgiHandler::runCgi(const std::string &scriptPath)
+std::string CgiHandler::runCgi(const std::string &scriptPath, const std::string &queryString)
 {
 	int pipeFd[2];
 	pid_t pid;
@@ -48,7 +48,9 @@ std::string CgiHandler::runCgi(const std::string &scriptPath)
 			const_cast<char *>(scriptPath.c_str()),
 			NULL};
 
+		std::string queryEnv = "QUERY_STRING=" + queryString;
 		char *envp[] = {
+			const_cast<char *>(queryEnv.c_str()),
 			NULL};
 
 		execve("/usr/bin/python3", argv, envp);

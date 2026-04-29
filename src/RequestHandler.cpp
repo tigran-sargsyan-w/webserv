@@ -76,6 +76,15 @@ static Response buildCgiResponse(const std::string &cgiOutput)
     return (response);
 }
 
+static std::string getQueryString(const std::string &path)
+{
+    size_t questionMark = path.find('?');
+
+    if (questionMark == std::string::npos)
+        return ("");
+    return (path.substr(questionMark + 1));
+}
+
 static std::string getPathWithoutQuery(const std::string &path)
 {
     size_t questionMark = path.find('?');
@@ -103,8 +112,10 @@ Response RequestHandler::handleRequest(const Request &request)
   if (isCgiPath(request.getPath()))
   {
     std::string scriptPath = buildCgiScriptPath(request);
-      std::string cgiOutput = CgiHandler::runCgi(scriptPath);
-      return (buildCgiResponse(cgiOutput));
+    std::string queryString = getQueryString(request.getPath());
+
+    std::string cgiOutput = CgiHandler::runCgi(scriptPath, queryString);
+    return (buildCgiResponse(cgiOutput));
   }
 
   // if (!request.getIsCgi())

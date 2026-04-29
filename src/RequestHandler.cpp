@@ -81,14 +81,19 @@ static std::string buildCgiScriptPath(const Request &request)
     return ("www" + request.getPath());
 }
 
+static bool isCgiPath(const std::string &path)
+{
+    return (path.find("/cgi-bin/") == 0);
+}
+
 Response RequestHandler::handleRequest(const Request &request)
 {
   // Generate a response
   Response response;
 
-  if (request.getPath() == "/cgi-bin/hello.py")
+  if (isCgiPath(request.getPath()))
   {
-      std::string scriptPath = buildCgiScriptPath(request);
+    std::string scriptPath = buildCgiScriptPath(request);
       std::string cgiOutput = CgiHandler::runCgi(scriptPath);
       return (buildCgiResponse(cgiOutput));
   }

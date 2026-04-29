@@ -9,7 +9,7 @@ class CgiHandler
     CgiHandler();
     ~CgiHandler();
 
-    static std::string runCgi();
+    static std::string runCgi(const std::string &scriptPath);
 };
 
 #endif

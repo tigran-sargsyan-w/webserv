@@ -9,7 +9,7 @@
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
 
-std::string CgiHandler::runCgi()
+std::string CgiHandler::runCgi(const std::string &scriptPath)
 {
 	int pipeFd[2];
 	pid_t pid;
@@ -45,7 +45,7 @@ std::string CgiHandler::runCgi()
 
 		char *argv[] = {
 			(char *)"/usr/bin/python3",
-			(char *)"www/cgi-bin/hello.py",
+			const_cast<char *>(scriptPath.c_str()),
 			NULL};
 
 		char *envp[] = {

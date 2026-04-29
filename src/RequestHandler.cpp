@@ -37,6 +37,45 @@ Response RequestHandler::handleStatic(const Request &request)
   return res;
 }
 
+static Response buildCgiResponse(const std::string &cgiOutput)
+{
+    Response response;
+
+    std::string separator = "\r\n\r\n";
+    size_t bodyStart = cgiOutput.find(separator);
+
+    if (bodyStart == std::string::npos)
+    {
+        separator = "\n\n";
+        bodyStart = cgiOutput.find(separator);
+    }
+
+    if (bodyStart != std::string::npos)
+    {
+        std::string cgiHeaders = cgiOutput.substr(0, bodyStart);
+        std::string cgiBody = cgiOutput.substr(bodyStart + separator.length());
+
+        response.setStatusCode(200);
+        response.setBody(cgiBody);
+
+        if (cgiHeaders.find("Content-Type:") != std::string::npos)
+            response.addHeader("Content-Type", "text/html");
+        else
+            response.addHeader("Content-Type", "text/plain");
+    }
+    else
+    {
+        response.setStatusCode(200);
+        response.setBody(cgiOutput);
+        response.addHeader("Content-Type", "text/plain");
+    }
+
+    response.addHeader("Content-Length", intToString(response.getBody().length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+}
+
 Response RequestHandler::handleRequest(const Request &request)
 {
   // Generate a response
@@ -44,42 +83,8 @@ Response RequestHandler::handleRequest(const Request &request)
 
   if (request.getPath() == "/cgi-bin/hello.py")
   {
-    Response response;
-    std::string cgiOutput = CgiHandler::runCgi();
-
-    std::string separator = "\r\n\r\n";
-    size_t bodyStart = cgiOutput.find(separator);
-
-    if (bodyStart == std::string::npos)
-    {
-      separator = "\n\n";
-      bodyStart = cgiOutput.find(separator);
-    }
-
-    if (bodyStart != std::string::npos)
-    {
-      std::string cgiHeaders = cgiOutput.substr(0, bodyStart);
-      std::string cgiBody = cgiOutput.substr(bodyStart + separator.length());
-
-      response.setStatusCode(200);
-      response.setBody(cgiBody);
-
-      if (cgiHeaders.find("Content-Type:") != std::string::npos)
-        response.addHeader("Content-Type", "text/html");
-      else
-        response.addHeader("Content-Type", "text/plain");
-    }
-    else
-    {
-      response.setStatusCode(200);
-      response.setBody(cgiOutput);
-      response.addHeader("Content-Type", "text/plain");
-    }
-
-    response.addHeader("Content-Length", intToString(response.getBody().length()));
-    response.addHeader("Connection", "close");
-
-    return (response);
+      std::string cgiOutput = CgiHandler::runCgi();
+      return (buildCgiResponse(cgiOutput));
   }
 
   // if (!request.getIsCgi())

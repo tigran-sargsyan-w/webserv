@@ -114,7 +114,7 @@ Response RequestHandler::handleRequest(const Request &request)
     std::string scriptPath = buildCgiScriptPath(request);
     std::string queryString = getQueryString(request.getPath());
 
-    std::string cgiOutput = CgiHandler::runCgi(scriptPath, queryString);
+    std::string cgiOutput = CgiHandler::runCgi("/usr/bin/python3", scriptPath, queryString);
     return (buildCgiResponse(cgiOutput));
   }
 

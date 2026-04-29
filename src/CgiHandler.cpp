@@ -9,7 +9,7 @@
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
 
-std::string CgiHandler::runCgi(const std::string &scriptPath, const std::string &queryString)
+std::string CgiHandler::runCgi(const std::string &executable, const std::string &scriptPath, const std::string &queryString)
 {
 	int pipeFd[2];
 	pid_t pid;
@@ -44,7 +44,7 @@ std::string CgiHandler::runCgi(const std::string &scriptPath, const std::string 
 		close(pipeFd[1]);
 
 		char *argv[] = {
-			(char *)"/usr/bin/python3",
+			const_cast<char *>(executable.c_str()),
 			const_cast<char *>(scriptPath.c_str()),
 			NULL};
 
@@ -53,7 +53,7 @@ std::string CgiHandler::runCgi(const std::string &scriptPath, const std::string 
 			const_cast<char *>(queryEnv.c_str()),
 			NULL};
 
-		execve("/usr/bin/python3", argv, envp);
+		execve(executable.c_str(), argv, envp);
 
 		_exit(1);
 	}

@@ -3,6 +3,7 @@
 #include "RequestParser.hpp"
 #include "Response.hpp"
 #include "RequestHandler.hpp"
+#include "RequestInspector.hpp"
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
@@ -161,6 +162,7 @@ void  WebServ::removePollfd(int fd)
   }
 }
 
+
 int WebServ::run() {
   std::cout << "WebServ run called!\n";
 
@@ -204,13 +206,23 @@ int WebServ::run() {
         }
 
         RequestParser parser;
-        if (parser.checkRequest(curClient.getRawRequest()) == COMPLETED)
+        RequestInspector inspector;
+
+        inspector.inspectRequest(curClient.getRawRequest());
+        if (inspector.status == COMPLETED)
         {
           parser.parse(curClient.getRawRequest(), curClient.request);
-          std::cout << "METHOD: "  << curClient.request.getMethod() << "\n\n";
         }
-        else 
+        else if (inspector.status == NEED_MORE_DATA)
           continue;
+        else
+        {
+          //TODO: RequestHandler for errors and close connection
+          close(curFD);
+          removePollfd(curFD);
+          _clients.erase(curFD);
+          continue;
+        }
 
         //TODO: if request is valid set as POLLOUT
         _pollfds[i].events = POLLOUT;

@@ -99,6 +99,25 @@ static std::string buildCgiScriptPath(const Request &request)
     return ("www" + getPathWithoutQuery(request.getPath()));
 }
 
+static std::string getFileExtension(const std::string &path)
+{
+    std::string cleanPath = getPathWithoutQuery(path);
+    size_t dot = cleanPath.rfind('.');
+
+    if (dot == std::string::npos)
+        return ("");
+    return (cleanPath.substr(dot));
+}
+
+static std::string getCgiExecutable(const std::string &path)
+{
+    std::string extension = getFileExtension(path);
+
+    if (extension == ".py")
+        return ("/usr/bin/python3");
+    return ("");
+}
+
 static bool isCgiPath(const std::string &path)
 {
     return (path.find("/cgi-bin/") == 0);
@@ -113,8 +132,20 @@ Response RequestHandler::handleRequest(const Request &request)
   {
     std::string scriptPath = buildCgiScriptPath(request);
     std::string queryString = getQueryString(request.getPath());
+    std::string executable = getCgiExecutable(request.getPath());
 
-    std::string cgiOutput = CgiHandler::runCgi("/usr/bin/python3", scriptPath, queryString);
+    if (executable.empty())
+    {
+        Response response;
+        response.setStatusCode(403);
+        response.setBody("<html><body><h1>403 Forbidden</h1></body></html>");
+        response.addHeader("Content-Type", "text/html");
+        response.addHeader("Content-Length", intToString(response.getBody().length()));
+        response.addHeader("Connection", "close");
+        return (response);
+    }
+
+    std::string cgiOutput = CgiHandler::runCgi(executable, scriptPath, queryString);
     return (buildCgiResponse(cgiOutput));
   }
 

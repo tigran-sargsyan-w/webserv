@@ -9,23 +9,6 @@
 #include <sys/types.h>
 #include <iostream>
 
-
-CheckRequestStatus RequestParser::checkRequest(const std::string& rawRequest)
-{
-  const size_t MAX_HEADER_SIZE = 8192;
-  //const size_t MAX_BODY_SIZE = 1000000;
-
-  size_t headerEnd = rawRequest.find("\r\n\r\n");
-  if (headerEnd == std::string::npos)
-    {
-      if (rawRequest.size() > MAX_HEADER_SIZE)
-        return HEADER_TOO_BIG;
-      return PARSE_MORE;
-    }
-  return COMPLETED;
-  //TODO: Check headers / body size if Content-Length is presented
-}
-
 static int parseRequestLine(std::string &requestLine, Request &request) {
   if (requestLine.empty())
     return (1);

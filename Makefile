@@ -7,7 +7,7 @@ SRC_DIR = src
 OBJ_DIR = obj
 INC_DIR = include
 
-SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp Response.cpp utils.cpp CgiHandler.cpp Client.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp
+SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp RequestInspector.cpp Response.cpp utils.cpp CgiHandler.cpp Client.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp
 
 SRCS = $(addprefix $(SRC_DIR)/, $(SRC_FILES))
 OBJS = $(addprefix $(OBJ_DIR)/, $(SRC_FILES:.cpp=.o))

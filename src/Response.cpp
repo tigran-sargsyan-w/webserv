@@ -16,6 +16,8 @@ std::string Response::getReasonPhrase() const {
     return "OK";
   case 404:
     return "Not Found";
+  case 403:
+        return ("Forbidden");
   default:
     return "Unknown";
   }

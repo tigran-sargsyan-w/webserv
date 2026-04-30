@@ -9,6 +9,8 @@
 
 #include <string>
 #include <utils.hpp>
+#include "Config.hpp"
+#include <vector>
 
 RequestHandler::RequestHandler() {}
 
@@ -109,12 +111,18 @@ static std::string getFileExtension(const std::string &path)
     return (cleanPath.substr(dot));
 }
 
-static std::string getCgiExecutable(const std::string &path)
+static std::string getCgiExecutable(const std::string &path, const std::vector<CgiConfig> &cgiConfigs)
 {
     std::string extension = getFileExtension(path);
 
-    if (extension == ".py")
-        return ("/usr/bin/python3");
+    for (std::vector<CgiConfig>::const_iterator it = cgiConfigs.begin();
+         it != cgiConfigs.end();
+         ++it)
+    {
+        if (it->extension == extension)
+            return (it->executable);
+    }
+
     return ("");
 }
 
@@ -130,9 +138,15 @@ Response RequestHandler::handleRequest(const Request &request)
 
   if (isCgiPath(request.getPath()))
   {
+    std::vector<CgiConfig> cgiConfigs;
+    CgiConfig pythonCgi;
+    pythonCgi.extension = ".py";
+    pythonCgi.executable = "/usr/bin/python3";
+    cgiConfigs.push_back(pythonCgi);
+
     std::string scriptPath = buildCgiScriptPath(request);
     std::string queryString = getQueryString(request.getPath());
-    std::string executable = getCgiExecutable(request.getPath());
+    std::string executable = getCgiExecutable(request.getPath(), cgiConfigs);
 
     if (executable.empty())
     {

@@ -52,6 +52,23 @@ int  WebServ::readFromClient(Client& client)
       return (0);
 }
 
+static bool routeMatchesPath(const std::string &routePath, const std::string &requestPath)
+{
+    if (routePath == "/")
+        return (true);
+
+    if (requestPath == routePath)
+        return (true);
+
+    if (requestPath.find(routePath) != 0)
+        return (false);
+
+    if (requestPath.length() > routePath.length() && requestPath[routePath.length()] == '/')
+        return (true);
+
+    return (false);
+}
+
 static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
 {
     const RouteConfig *bestRoute = NULL;
@@ -61,12 +78,10 @@ static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, co
          it != serverConfig.routes.end();
          ++it)
     {
-        const std::string &routePath = it->path;
-
-        if (requestPath.find(routePath) == 0 && routePath.length() > bestLength)
+        if (routeMatchesPath(it->path, requestPath) && it->path.length() > bestLength)
         {
             bestRoute = &(*it);
-            bestLength = routePath.length();
+            bestLength = it->path.length();
         }
     }
 

@@ -52,23 +52,45 @@ int  WebServ::readFromClient(Client& client)
       return (0);
 }
 
-static const RouteConfig &findRouteByPath(const ServerConfig &serverConfig, const std::string &path)
+static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
 {
+    const RouteConfig *bestRoute = NULL;
+    size_t bestLength = 0;
+
     for (std::vector<RouteConfig>::const_iterator it = serverConfig.routes.begin();
          it != serverConfig.routes.end();
          ++it)
     {
-        if (it->path == path)
-            return (*it);
+        const std::string &routePath = it->path;
+
+        if (requestPath.find(routePath) == 0 && routePath.length() > bestLength)
+        {
+            bestRoute = &(*it);
+            bestLength = routePath.length();
+        }
     }
+
+    if (bestRoute != NULL)
+        return (*bestRoute);
 
     return (serverConfig.routes.front());
 }
 
+static std::string getPathWithoutQuery(const std::string &path)
+{
+    size_t questionMark = path.find('?');
+
+    if (questionMark == std::string::npos)
+        return (path);
+    return (path.substr(0, questionMark));
+}
+
 int WebServ::SendToClient(Client& client)
 {
-    const RouteConfig &route = findRouteByPath(this->serverConfig, "/cgi-bin");
-   Response response = RequestHandler::handleRequest(client.request, route);
+    std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+    const RouteConfig &route = findMatchingRoute(this->serverConfig, cleanPath);
+    std::cout << "Matched route: " << route.path << std::endl;
+    Response response = RequestHandler::handleRequest(client.request, route);
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
     
     ssize_t bytesSent = send(client.fd, response.toString().c_str(),

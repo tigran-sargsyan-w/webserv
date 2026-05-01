@@ -52,9 +52,23 @@ int  WebServ::readFromClient(Client& client)
       return (0);
 }
 
+static const RouteConfig &findRouteByPath(const ServerConfig &serverConfig, const std::string &path)
+{
+    for (std::vector<RouteConfig>::const_iterator it = serverConfig.routes.begin();
+         it != serverConfig.routes.end();
+         ++it)
+    {
+        if (it->path == path)
+            return (*it);
+    }
+
+    return (serverConfig.routes.front());
+}
+
 int WebServ::SendToClient(Client& client)
 {
-    Response response = RequestHandler::handleRequest(client.request);
+    const RouteConfig &route = findRouteByPath(this->serverConfig, "/cgi-bin");
+   Response response = RequestHandler::handleRequest(client.request, route);
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
     
     ssize_t bytesSent = send(client.fd, response.toString().c_str(),
@@ -115,6 +129,7 @@ int WebServ::bindSockAddress() {
 int WebServ::setup(const ServerConfig &serverConfig) {
   std::cout << "WebServ setup called!\n";
 
+  this->serverConfig = serverConfig;
   // 1. Create socket
   if (initListeningSocket())
     return (1);

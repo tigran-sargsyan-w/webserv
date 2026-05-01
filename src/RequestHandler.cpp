@@ -131,22 +131,16 @@ static bool isCgiPath(const std::string &path)
     return (path.find("/cgi-bin/") == 0);
 }
 
-Response RequestHandler::handleRequest(const Request &request)
+Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route)
 {
   // Generate a response
   Response response;
 
   if (isCgiPath(request.getPath()))
   {
-    std::vector<CgiConfig> cgiConfigs;
-    CgiConfig pythonCgi;
-    pythonCgi.extension = ".py";
-    pythonCgi.executable = "/usr/bin/python3";
-    cgiConfigs.push_back(pythonCgi);
-
     std::string scriptPath = buildCgiScriptPath(request);
     std::string queryString = getQueryString(request.getPath());
-    std::string executable = getCgiExecutable(request.getPath(), cgiConfigs);
+    std::string executable = getCgiExecutable(request.getPath(), route.cgi);
 
     if (executable.empty())
     {

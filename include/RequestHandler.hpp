@@ -3,6 +3,7 @@
 
 #include "Request.hpp"
 #include "Response.hpp"
+#include "Config.hpp"
 
 class RequestHandler
 {
@@ -10,7 +11,7 @@ class RequestHandler
         RequestHandler();
         ~RequestHandler();
 
-       static Response handleRequest(const Request& request);
+       static Response handleRequest(const Request& request, const RouteConfig& route);
        static Response handleStatic(const Request& request);
 };
 

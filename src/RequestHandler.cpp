@@ -160,6 +160,11 @@ static bool isCgiRequest(const std::string &path, const RouteConfig &route)
     return (!getCgiExecutable(path, route.cgi).empty());
 }
 
+static bool routeHasCgiConfig(const RouteConfig &route)
+{
+    return (!route.cgi.empty());
+}
+
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route)
 {
   // Generate a response
@@ -174,6 +179,17 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
         std::string cgiOutput = CgiHandler::runCgi(executable, scriptPath, queryString);
         return (buildCgiResponse(cgiOutput));
+    }
+
+    if (routeHasCgiConfig(route))
+    {
+        Response response;
+        response.setStatusCode(403);
+        response.setBody("<html><body><h1>403 Forbidden</h1></body></html>");
+        response.addHeader("Content-Type", "text/html");
+        response.addHeader("Content-Length", intToString(response.getBody().length()));
+        response.addHeader("Connection", "close");
+        return (response);
     }
 
   // if (!request.getIsCgi())

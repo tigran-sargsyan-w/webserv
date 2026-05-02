@@ -19,6 +19,8 @@ class WebServ
 		WebServ(const WebServ& other);
 		~WebServ();
 		WebServ& operator=(const WebServ& other);
+    int  readFromClient(Client& client);
+    int  SendToClient(Client& client);
 
 		int setup(const ServerConfig &serverConfig);
 		int run();
@@ -29,8 +31,9 @@ class WebServ
 	
 	private:
 		int serverSocket;
-    std::vector<pollfd> _pollfds;
-    std::map<int, Client> _clients;
+		ServerConfig serverConfig;
+    	std::vector<pollfd> _pollfds;
+    	std::map<int, Client> _clients;
 };
 
 #endif

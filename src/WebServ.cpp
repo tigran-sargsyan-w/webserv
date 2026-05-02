@@ -1,6 +1,9 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
 #include "RequestParser.hpp"
+#include "Response.hpp"
+#include "RequestHandler.hpp"
+#include "RequestInspector.hpp"
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
@@ -25,6 +28,98 @@ WebServ &WebServ::operator=(const WebServ &other) {
   (void)other;
   std::cout << "WebServ assignement operator called!\n";
   return (*this);
+}
+
+int  WebServ::readFromClient(Client& client)
+{
+      ssize_t bytesRead;
+      char buffer[4096];
+
+      bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
+      if (bytesRead == -1) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+          return (0);
+        return 1;
+      } else if (bytesRead == 0) {
+        std::cout << "Client closed connection\n";
+        client.state = CLOSING_CONNECTION;
+      } else {
+        buffer[bytesRead] = '\0';
+        client.rawRequest.append(buffer);
+        //std::cout << "Request from client:\n\n" << client.rawRequest << std::endl;
+      }
+
+      return (0);
+}
+
+static bool routeMatchesPath(const std::string &routePath, const std::string &requestPath)
+{
+    if (routePath == "/")
+        return (true);
+
+    if (requestPath == routePath)
+        return (true);
+
+    if (requestPath.find(routePath) != 0)
+        return (false);
+
+    if (requestPath.length() > routePath.length() && requestPath[routePath.length()] == '/')
+        return (true);
+
+    return (false);
+}
+
+static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
+{
+    const RouteConfig *bestRoute = NULL;
+    size_t bestLength = 0;
+
+    for (std::vector<RouteConfig>::const_iterator it = serverConfig.routes.begin();
+         it != serverConfig.routes.end();
+         ++it)
+    {
+        if (routeMatchesPath(it->path, requestPath) && it->path.length() > bestLength)
+        {
+            bestRoute = &(*it);
+            bestLength = it->path.length();
+        }
+    }
+
+    if (bestRoute != NULL)
+        return (*bestRoute);
+
+    return (serverConfig.routes.front());
+}
+
+static std::string getPathWithoutQuery(const std::string &path)
+{
+    size_t questionMark = path.find('?');
+
+    if (questionMark == std::string::npos)
+        return (path);
+    return (path.substr(0, questionMark));
+}
+
+int WebServ::SendToClient(Client& client)
+{
+    std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+    const RouteConfig &route = findMatchingRoute(this->serverConfig, cleanPath);
+    std::cout << "Matched route: " << route.path << std::endl;
+    Response response = RequestHandler::handleRequest(client.request, route);
+    std::cout << "Response to client:\n\n" << response.toString() << std::endl;
+    
+    ssize_t bytesSent = send(client.fd, response.toString().c_str(),
+         response.toString().size(), 0);
+    if (bytesSent == -1)
+    {
+      if (errno == EWOULDBLOCK || EAGAIN)
+        return (0);
+      std::cout << "send: " << strerror(errno) << std::endl;
+      return (1);
+    }
+    if (bytesSent)
+      client.state = CLOSING_CONNECTION;
+    return (0);
 }
 
 int WebServ::initListeningSocket() {
@@ -71,6 +166,7 @@ int WebServ::bindSockAddress() {
 int WebServ::setup(const ServerConfig &serverConfig) {
   std::cout << "WebServ setup called!\n";
 
+  this->serverConfig = serverConfig;
   // 1. Create socket
   if (initListeningSocket())
     return (1);
@@ -118,6 +214,7 @@ void  WebServ::removePollfd(int fd)
   }
 }
 
+
 int WebServ::run() {
   std::cout << "WebServ run called!\n";
 
@@ -148,34 +245,50 @@ int WebServ::run() {
     for (size_t i = 1; i < _pollfds.size(); i++)
     {
       int curFD = _pollfds[i].fd;
+      Client& curClient = _clients.at(curFD);
       if (_pollfds[i].revents & POLLIN)
       {
-          Client& curClient = _clients.at(curFD);
-          curClient.fillInBuffer();
-
-        Request request = RequestParser::parse(curClient.getRawRequest());
-        curClient.setRequest(request);
-
-        if (curClient.getRequest().getMethod().empty()) {
-          std::cout << "Failed to parse request\n";
+        curClient.state = READING;
+        this->readFromClient(curClient);
+        if (curClient.state == CLOSING_CONNECTION)
+        {
           close(curFD);
-          break;
+          removePollfd(curFD);
+          _clients.erase(curFD);
         }
-          if (curClient.getRequest().getMethod() != "GET") {
-            std::cout << "Unsupported HTTP method: " << curClient.getRequest().getMethod() << "\n";
-            close(curFD);
-            break;
-          }
-          _pollfds[i].events = POLLOUT;
+
+        RequestParser parser;
+        RequestInspector inspector;
+
+        inspector.inspectRequest(curClient.getRawRequest());
+        if (inspector.status == COMPLETED)
+        {
+          parser.parse(curClient.getRawRequest(), curClient.request);
+        }
+        else if (inspector.status == NEED_MORE_DATA)
+          continue;
+        else
+        {
+          //TODO: RequestHandler for errors and close connection
+          close(curFD);
+          removePollfd(curFD);
+          _clients.erase(curFD);
+          continue;
+        }
+
+        //TODO: if request is valid set as POLLOUT
+        _pollfds[i].events = POLLOUT;
       }
       if (_pollfds[i].revents & POLLOUT)
       {
-        Client& curClient = _clients.at(curFD);
-        if (curClient.isRequestReady())
-          curClient.fillOutBuffer();
-        close(curFD);
-        removePollfd(curFD);
-        _clients.erase(curFD);
+        curClient.state = WRITING;
+        this->SendToClient(curClient);
+        if (curClient.state == CLOSING_CONNECTION)
+        {
+          close(curFD);
+          removePollfd(curFD);
+          _clients.erase(curFD);
+        }
       }
     }
     

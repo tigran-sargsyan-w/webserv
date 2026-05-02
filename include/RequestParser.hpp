@@ -3,14 +3,16 @@
 
 #include <string>
 #include "Request.hpp"
+#include "RequestInspector.hpp"
 
 class RequestParser
 {
-    public:
-        RequestParser();
-        ~RequestParser();
+  public:
+        RequestParser() {};
+        int parse(const std::string& rawRequest, Request& req);
+        InspectRequestStatus status;
 
-        static Request parse(const std::string& rawRequest);
+  private: 
 };
 
 #endif

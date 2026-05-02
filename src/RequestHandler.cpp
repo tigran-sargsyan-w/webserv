@@ -96,9 +96,38 @@ static std::string getPathWithoutQuery(const std::string &path)
     return (path.substr(0, questionMark));
 }
 
-static std::string buildCgiScriptPath(const Request &request)
+static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route)
 {
-    return ("www" + getPathWithoutQuery(request.getPath()));
+    std::string cleanPath = getPathWithoutQuery(requestPath);
+
+    if (route.path == "/")
+        return (cleanPath);
+
+    if (cleanPath.find(route.path) != 0)
+        return (cleanPath);
+
+    return (cleanPath.substr(route.path.length()));
+}
+
+static std::string joinPaths(const std::string &left, const std::string &right)
+{
+    if (left.empty())
+        return (right);
+    if (right.empty())
+        return (left);
+
+    if (left[left.length() - 1] == '/' && right[0] == '/')
+        return (left + right.substr(1));
+    if (left[left.length() - 1] != '/' && right[0] != '/')
+        return (left + "/" + right);
+    return (left + right);
+}
+
+static std::string buildCgiScriptPath(const Request &request, const RouteConfig &route)
+{
+    std::string pathInsideRoute = getPathInsideRoute(request.getPath(), route);
+
+    return (joinPaths(route.root, pathInsideRoute));
 }
 
 static std::string getFileExtension(const std::string &path)
@@ -138,7 +167,8 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     if (isCgiRequest(request.getPath(), route))
     {
-        std::string scriptPath = buildCgiScriptPath(request);
+        std::string scriptPath = buildCgiScriptPath(request, route);
+        std::cout << "CGI script path: " << scriptPath << std::endl;
         std::string queryString = getQueryString(request.getPath());
         std::string executable = getCgiExecutable(request.getPath(), route.cgi);
 

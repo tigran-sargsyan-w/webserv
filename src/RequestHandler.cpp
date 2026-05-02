@@ -126,9 +126,9 @@ static std::string getCgiExecutable(const std::string &path, const std::vector<C
     return ("");
 }
 
-static bool isCgiPath(const std::string &path)
+static bool isCgiRequest(const std::string &path, const RouteConfig &route)
 {
-    return (path.find("/cgi-bin/") == 0);
+    return (!getCgiExecutable(path, route.cgi).empty());
 }
 
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route)
@@ -136,26 +136,15 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
   // Generate a response
   Response response;
 
-  if (isCgiPath(request.getPath()))
-  {
-    std::string scriptPath = buildCgiScriptPath(request);
-    std::string queryString = getQueryString(request.getPath());
-    std::string executable = getCgiExecutable(request.getPath(), route.cgi);
-
-    if (executable.empty())
+    if (isCgiRequest(request.getPath(), route))
     {
-        Response response;
-        response.setStatusCode(403);
-        response.setBody("<html><body><h1>403 Forbidden</h1></body></html>");
-        response.addHeader("Content-Type", "text/html");
-        response.addHeader("Content-Length", intToString(response.getBody().length()));
-        response.addHeader("Connection", "close");
-        return (response);
-    }
+        std::string scriptPath = buildCgiScriptPath(request);
+        std::string queryString = getQueryString(request.getPath());
+        std::string executable = getCgiExecutable(request.getPath(), route.cgi);
 
-    std::string cgiOutput = CgiHandler::runCgi(executable, scriptPath, queryString);
-    return (buildCgiResponse(cgiOutput));
-  }
+        std::string cgiOutput = CgiHandler::runCgi(executable, scriptPath, queryString);
+        return (buildCgiResponse(cgiOutput));
+    }
 
   // if (!request.getIsCgi())
   //   CgiHandler::runCgi();

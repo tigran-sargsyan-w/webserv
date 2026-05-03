@@ -202,7 +202,7 @@ static std::string getContentLength(const Request &request)
     return ("");
 }
 
-static void addStandardCgiVariables(CgiContext &context, const Request &request, const ServerConfig &server)
+static void addStandardCgiVariables(CgiContext &context, const Request &request, const ServerConfig &server, const std::string &remoteAddr)
 {
     context.standard.values["AUTH_TYPE"] = "";
     context.standard.values["CONTENT_LENGTH"] = getContentLength(request);
@@ -211,7 +211,7 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
     context.standard.values["PATH_INFO"] = "";
     context.standard.values["PATH_TRANSLATED"] = "";
     context.standard.values["QUERY_STRING"] = getQueryString(request.getPath());
-    context.standard.values["REMOTE_ADDR"] = "";
+    context.standard.values["REMOTE_ADDR"] = remoteAddr;
     context.standard.values["REMOTE_HOST"] = "";
     context.standard.values["REMOTE_IDENT"] = "";
     context.standard.values["REMOTE_USER"] = "";
@@ -223,18 +223,18 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
     context.standard.values["SERVER_SOFTWARE"] = "webserv/1.0";
 }
 
-static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &executable)
+static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &executable, const std::string &remoteAddr)
 {
     CgiContext context;
 
     context.executable = executable;
     context.scriptPath = buildCgiScriptPath(request, route);
     context.requestBody = request.getBody();
-    addStandardCgiVariables(context, request, server);
+    addStandardCgiVariables(context, request, server, remoteAddr);
     return (context);
 }
 
-Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server)
+Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     // Generate a response
     Response response;
@@ -242,7 +242,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     if (isCgiRequest(request.getPath(), route))
     {
         std::string executable = getCgiExecutable(request.getPath(), route.cgi);
-        CgiContext context = buildCgiContext(request, route, server, executable);
+        CgiContext context = buildCgiContext(request, route, server, executable, remoteAddr);
         std::cout << "CGI script path: " << context.scriptPath << std::endl;
         std::string cgiOutput = CgiHandler::runCgi(context);
         return (buildCgiResponse(cgiOutput));

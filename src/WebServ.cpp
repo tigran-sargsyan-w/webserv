@@ -105,7 +105,7 @@ int WebServ::SendToClient(Client& client)
     std::string cleanPath = getPathWithoutQuery(client.request.getPath());
     const RouteConfig &route = findMatchingRoute(this->serverConfig, cleanPath);
     std::cout << "Matched route: " << route.path << std::endl;
-    Response response = RequestHandler::handleRequest(client.request, route);
+    Response response = RequestHandler::handleRequest(client.request, route, this->serverConfig);
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
     
     ssize_t bytesSent = send(client.fd, response.toString().c_str(),

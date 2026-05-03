@@ -11,6 +11,7 @@
 #include <poll.h>
 #include <sys/poll.h>
 #include <utility>
+#include <sstream>
 
 WebServ::WebServ() { std::cout << "WebServ created!\n"; }
 
@@ -105,7 +106,7 @@ int WebServ::SendToClient(Client& client)
     std::string cleanPath = getPathWithoutQuery(client.request.getPath());
     const RouteConfig &route = findMatchingRoute(this->serverConfig, cleanPath);
     std::cout << "Matched route: " << route.path << std::endl;
-    Response response = RequestHandler::handleRequest(client.request, route, this->serverConfig);
+    Response response = RequestHandler::handleRequest(client.request, route, this->serverConfig, client.getRemoteAddr());
     std::cout << "Response to client:\n\n" << response.toString() << std::endl;
     
     ssize_t bytesSent = send(client.fd, response.toString().c_str(),
@@ -188,18 +189,42 @@ int WebServ::setup(const ServerConfig &serverConfig) {
   return (0);
 }
 
-int WebServ::acceptConnection() {
+static std::string ipToString(uint32_t address)
+{
+    std::ostringstream oss;
+    uint32_t hostAddress;
 
-  int clientSocket = accept(this->serverSocket, NULL, NULL);
-  if (clientSocket == -1)
-    return (-1);
-  fcntl(clientSocket, O_NONBLOCK);
-  struct pollfd tmpPollfd;
-  tmpPollfd.fd = clientSocket;
-  tmpPollfd.events = POLLIN;
-  _pollfds.push_back(tmpPollfd);
-  _clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
-  return (clientSocket);
+    hostAddress = ntohl(address);
+    oss << ((hostAddress >> 24) & 255) << "."
+        << ((hostAddress >> 16) & 255) << "."
+        << ((hostAddress >> 8) & 255) << "."
+        << (hostAddress & 255);
+    return (oss.str());
+}
+
+int WebServ::acceptConnection()
+{
+    sockaddr_in clientAddress;
+    socklen_t clientAddressLength;
+    int clientSocket;
+    struct pollfd tmpPollfd;
+    std::map<int, Client>::iterator clientIt;
+
+    clientAddressLength = sizeof(clientAddress);
+    clientSocket = accept(this->serverSocket,(sockaddr *)&clientAddress, &clientAddressLength);
+    if (clientSocket == -1)
+        return (-1);
+    fcntl(clientSocket, O_NONBLOCK);
+
+    tmpPollfd.fd = clientSocket;
+    tmpPollfd.events = POLLIN;
+    _pollfds.push_back(tmpPollfd);
+
+    _clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
+    clientIt = _clients.find(clientSocket);
+    if (clientIt != _clients.end())
+        clientIt->second.setRemoteAddr(ipToString(clientAddress.sin_addr.s_addr));
+    return (clientSocket);
 }
 
 

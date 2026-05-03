@@ -17,6 +17,8 @@ class Client
     int getFd() const { return fd; };
     const Request& getRequest() const { return this->request; };
     std::string& getRawRequest() { return this->rawRequest; };
+    const std::string &getRemoteAddr() const { return (this->remoteAddr); };
+    void setRemoteAddr(const std::string &remoteAddr) {this->remoteAddr = remoteAddr;};
 
     void setFd(int fd) { this->fd = fd; };
     void setRequest(Request& request) { this->request = request; };
@@ -30,6 +32,8 @@ class Client
     bool requestReady;
     ClientState state;
     //TODO: check if rawRequest is valid and finished before parsing
+  private:
+    std::string remoteAddr;
 };
 
 #endif

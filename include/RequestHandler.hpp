@@ -1,5 +1,5 @@
 #ifndef REQUESTHANDLER_HPP
-# define REQUESTHANDLER_HPP
+#define REQUESTHANDLER_HPP
 
 #include "Request.hpp"
 #include "Response.hpp"
@@ -7,12 +7,12 @@
 
 class RequestHandler
 {
-    public:
-        RequestHandler();
-        ~RequestHandler();
+public:
+    RequestHandler();
+    ~RequestHandler();
 
-       static Response handleRequest(const Request& request, const RouteConfig& route);
-       static Response handleStatic(const Request& request);
+    static Response handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server);
+    static Response handleStatic(const Request &request);
 };
 
 #endif

@@ -126,57 +126,57 @@ static std::string joinPaths(const std::string &left, const std::string &right)
 
 static bool isCgiExtensionBoundary(const std::string &path, size_t position, const std::string &extension)
 {
-	size_t end;
+    size_t end;
 
-	end = position + extension.length();
-	if (end == path.length())
-		return (true);
-	if (path[end] == '/')
-		return (true);
-	return (false);
+    end = position + extension.length();
+    if (end == path.length())
+        return (true);
+    if (path[end] == '/')
+        return (true);
+    return (false);
 }
 
 static size_t findCgiExtensionPosition(const std::string &path, const std::string &extension)
 {
-	size_t position;
+    size_t position;
 
-	position = path.find(extension);
-	while (position != std::string::npos)
-	{
-		if (isCgiExtensionBoundary(path, position, extension))
-			return (position);
-		position = path.find(extension, position + 1);
-	}
-	return (std::string::npos);
+    position = path.find(extension);
+    while (position != std::string::npos)
+    {
+        if (isCgiExtensionBoundary(path, position, extension))
+            return (position);
+        position = path.find(extension, position + 1);
+    }
+    return (std::string::npos);
 }
 
 static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig &route)
 {
-	CgiResolvedPath	info;
-	std::string		cleanPath;
-	size_t			position;
-	size_t			scriptEnd;
+    CgiResolvedPath info;
+    std::string cleanPath;
+    size_t position;
+    size_t scriptEnd;
 
-	cleanPath = getPathWithoutQuery(request.getPath());
-	for (std::vector<CgiConfig>::const_iterator it = route.cgi.begin();
-		it != route.cgi.end(); ++it)
-	{
-		position = findCgiExtensionPosition(cleanPath, it->extension);
-		if (position != std::string::npos)
-		{
-			scriptEnd = position + it->extension.length();
-			info.isCgi = true;
-			info.executable = it->executable;
-			info.scriptName = cleanPath.substr(0, scriptEnd);
-			info.pathInfo = cleanPath.substr(scriptEnd);
-			info.scriptPath = joinPaths(route.root,
-					getPathInsideRoute(info.scriptName, route));
-			if (!info.pathInfo.empty())
-				info.pathTranslated = joinPaths(route.root, info.pathInfo);
-			return (info);
-		}
-	}
-	return (info);
+    cleanPath = getPathWithoutQuery(request.getPath());
+    for (std::vector<CgiConfig>::const_iterator it = route.cgi.begin();
+         it != route.cgi.end(); ++it)
+    {
+        position = findCgiExtensionPosition(cleanPath, it->extension);
+        if (position != std::string::npos)
+        {
+            scriptEnd = position + it->extension.length();
+            info.isCgi = true;
+            info.executable = it->executable;
+            info.scriptName = cleanPath.substr(0, scriptEnd);
+            info.pathInfo = cleanPath.substr(scriptEnd);
+            info.scriptPath = joinPaths(route.root,
+                                        getPathInsideRoute(info.scriptName, route));
+            if (!info.pathInfo.empty())
+                info.pathTranslated = joinPaths(route.root, info.pathInfo);
+            return (info);
+        }
+    }
+    return (info);
 }
 
 static bool routeHasCgiConfig(const RouteConfig &route)

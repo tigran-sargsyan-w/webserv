@@ -12,6 +12,18 @@ struct CgiStandardMetaVariables
 	CgiEnv values;
 };
 
+struct CgiResolvedPath
+{
+	bool isCgi;
+	std::string executable;
+	std::string scriptName;
+	std::string scriptPath;
+	std::string pathInfo;
+	std::string pathTranslated;
+
+	CgiResolvedPath() : isCgi(false) {}
+};
+
 struct CgiContext
 {
 	std::string executable;

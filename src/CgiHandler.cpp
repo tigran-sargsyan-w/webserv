@@ -68,7 +68,8 @@ static void debugPrintEnv(const CgiEnv &env)
 
 std::string CgiHandler::runCgi(const CgiContext &context)
 {
-	int pipeFd[2];
+	int stdinPipe[2];
+	int stdoutPipe[2];
 	pid_t pid;
 	std::string output;
 	char buffer[4096];
@@ -76,32 +77,55 @@ std::string CgiHandler::runCgi(const CgiContext &context)
 	std::vector<std::string> envStrings;
 	std::vector<char *> envp;
 
-	if (pipe(pipeFd) == -1)
+	if (pipe(stdinPipe) == -1)
 	{
 		std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
 		return ("");
 	}
+	if (pipe(stdoutPipe) == -1)
+	{
+		std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+		close(stdinPipe[0]);
+		close(stdinPipe[1]);
+		return ("");
+	}
+
 	env = buildEnvironment(context);
 	debugPrintEnv(env);
 	envStrings = buildEnvironmentStrings(env);
 	envp = buildEnvironmentPointers(envStrings);
+
 	pid = fork();
 	if (pid == -1)
 	{
 		std::cerr << "fork() failed: " << std::strerror(errno) << std::endl;
-		close(pipeFd[0]);
-		close(pipeFd[1]);
+		close(stdinPipe[0]);
+		close(stdinPipe[1]);
+		close(stdoutPipe[0]);
+		close(stdoutPipe[1]);
 		return ("");
 	}
+
 	if (pid == 0)
 	{
-		close(pipeFd[0]);
-		if (dup2(pipeFd[1], STDOUT_FILENO) == -1)
+		close(stdinPipe[1]);
+		close(stdoutPipe[0]);
+
+		if (dup2(stdinPipe[0], STDIN_FILENO) == -1)
 		{
-			close(pipeFd[1]);
+			close(stdinPipe[0]);
+			close(stdoutPipe[1]);
 			_exit(1);
 		}
-		close(pipeFd[1]);
+		if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1)
+		{
+			close(stdinPipe[0]);
+			close(stdoutPipe[1]);
+			_exit(1);
+		}
+
+		close(stdinPipe[0]);
+		close(stdoutPipe[1]);
 
 		char *argv[] = {
 			const_cast<char *>(context.executable.c_str()),
@@ -111,14 +135,34 @@ std::string CgiHandler::runCgi(const CgiContext &context)
 		execve(context.executable.c_str(), argv, &envp[0]);
 		_exit(1);
 	}
-	close(pipeFd[1]);
+
+	close(stdinPipe[0]);
+	close(stdoutPipe[1]);
+
+	if (!context.requestBody.empty())
+	{
+		ssize_t bytesWritten;
+		size_t totalWritten;
+
+		totalWritten = 0;
+		while (totalWritten < context.requestBody.length())
+		{
+			bytesWritten = write(stdinPipe[1],
+								 context.requestBody.c_str() + totalWritten,
+								 context.requestBody.length() - totalWritten);
+			if (bytesWritten <= 0)
+				break;
+			totalWritten += bytesWritten;
+		}
+	}
+	close(stdinPipe[1]);
 
 	ssize_t bytesRead = 0;
-	while ((bytesRead = read(pipeFd[0], buffer, sizeof(buffer))) > 0)
+	while ((bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0)
 	{
 		output.append(buffer, bytesRead);
 	}
-	close(pipeFd[0]);
+	close(stdoutPipe[0]);
 
 	int status = 0;
 	waitpid(pid, &status, 0);

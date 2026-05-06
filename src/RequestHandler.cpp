@@ -248,6 +248,7 @@ static CgiContext buildCgiContext(const Request &request, const ServerConfig &se
     context.executable = cgiPath.executable;
     context.scriptPath = cgiPath.scriptPath;
     context.requestBody = request.getBody();
+    std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
     addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
     return (context);
 }

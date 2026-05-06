@@ -11,6 +11,7 @@
 #include <utils.hpp>
 #include "Config.hpp"
 #include <vector>
+#include <map>
 
 RequestHandler::RequestHandler() {}
 
@@ -18,25 +19,25 @@ RequestHandler::~RequestHandler() {}
 
 Response RequestHandler::handleStatic(const Request &request)
 {
-  Response res;
+    Response res;
 
-  std::string fullPath = "www" + request.getPath();
-  if (fullPath == "www/")
-    fullPath = "www/index.html";
-  std::ifstream file(fullPath.c_str());
-  if (!file)
-  {
-    res.setStatusCode(404);
-    res.setBodyFromFile("www/error.html");
-    std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
-                                                     // response
-  }
-  if (file)
-  {
-    res.setStatusCode(200);
-    res.setBodyFromFile(fullPath);
-  }
-  return res;
+    std::string fullPath = "www" + request.getPath();
+    if (fullPath == "www/")
+        fullPath = "www/index.html";
+    std::ifstream file(fullPath.c_str());
+    if (!file)
+    {
+        res.setStatusCode(404);
+        res.setBodyFromFile("www/error.html");
+        std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
+                                                         // response
+    }
+    if (file)
+    {
+        res.setStatusCode(200);
+        res.setBodyFromFile(fullPath);
+    }
+    return res;
 }
 
 static Response buildCgiResponse(const std::string &cgiOutput)
@@ -123,41 +124,59 @@ static std::string joinPaths(const std::string &left, const std::string &right)
     return (left + right);
 }
 
-static std::string buildCgiScriptPath(const Request &request, const RouteConfig &route)
+static bool isCgiExtensionBoundary(const std::string &path, size_t position, const std::string &extension)
 {
-    std::string pathInsideRoute = getPathInsideRoute(request.getPath(), route);
+    size_t end;
 
-    return (joinPaths(route.root, pathInsideRoute));
+    end = position + extension.length();
+    if (end == path.length())
+        return (true);
+    if (path[end] == '/')
+        return (true);
+    return (false);
 }
 
-static std::string getFileExtension(const std::string &path)
+static size_t findCgiExtensionPosition(const std::string &path, const std::string &extension)
 {
-    std::string cleanPath = getPathWithoutQuery(path);
-    size_t dot = cleanPath.rfind('.');
+    size_t position;
 
-    if (dot == std::string::npos)
-        return ("");
-    return (cleanPath.substr(dot));
-}
-
-static std::string getCgiExecutable(const std::string &path, const std::vector<CgiConfig> &cgiConfigs)
-{
-    std::string extension = getFileExtension(path);
-
-    for (std::vector<CgiConfig>::const_iterator it = cgiConfigs.begin();
-         it != cgiConfigs.end();
-         ++it)
+    position = path.find(extension);
+    while (position != std::string::npos)
     {
-        if (it->extension == extension)
-            return (it->executable);
+        if (isCgiExtensionBoundary(path, position, extension))
+            return (position);
+        position = path.find(extension, position + 1);
     }
-
-    return ("");
+    return (std::string::npos);
 }
 
-static bool isCgiRequest(const std::string &path, const RouteConfig &route)
+static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig &route)
 {
-    return (!getCgiExecutable(path, route.cgi).empty());
+    CgiResolvedPath info;
+    std::string cleanPath;
+    size_t position;
+    size_t scriptEnd;
+
+    cleanPath = getPathWithoutQuery(request.getPath());
+    for (std::vector<CgiConfig>::const_iterator it = route.cgi.begin();
+         it != route.cgi.end(); ++it)
+    {
+        position = findCgiExtensionPosition(cleanPath, it->extension);
+        if (position != std::string::npos)
+        {
+            scriptEnd = position + it->extension.length();
+            info.isCgi = true;
+            info.executable = it->executable;
+            info.scriptName = cleanPath.substr(0, scriptEnd);
+            info.pathInfo = cleanPath.substr(scriptEnd);
+            info.scriptPath = joinPaths(route.root,
+                                        getPathInsideRoute(info.scriptName, route));
+            if (!info.pathInfo.empty())
+                info.pathTranslated = joinPaths(route.root, info.pathInfo);
+            return (info);
+        }
+    }
+    return (info);
 }
 
 static bool routeHasCgiConfig(const RouteConfig &route)
@@ -165,19 +184,88 @@ static bool routeHasCgiConfig(const RouteConfig &route)
     return (!route.cgi.empty());
 }
 
-Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route)
+static std::string trimHeaderValue(const std::string &value)
 {
-  // Generate a response
-  Response response;
+    size_t start;
+    size_t end;
 
-    if (isCgiRequest(request.getPath(), route))
+    start = 0;
+    while (start < value.length() && (value[start] == ' ' || value[start] == '\t'))
+        start++;
+    end = value.length();
+    while (end > start && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r'))
+        end--;
+    return (value.substr(start, end - start));
+}
+
+static std::string getHeaderValue(const Request &request, const std::string &name)
+{
+    std::map<std::string, std::string>::const_iterator it;
+
+    it = request.getHeaders().find(name);
+    if (it != request.getHeaders().end())
+        return (trimHeaderValue(it->second));
+    return ("");
+}
+
+static std::string getContentLength(const Request &request)
+{
+    std::string contentLength;
+
+    contentLength = getHeaderValue(request, "Content-Length");
+    if (!contentLength.empty())
+        return (contentLength);
+    if (!request.getBody().empty())
+        return (intToString(request.getBody().length()));
+    return ("");
+}
+
+static void addStandardCgiVariables(CgiContext &context, const Request &request, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
+{
+    context.standard.values["AUTH_TYPE"] = "";
+    context.standard.values["CONTENT_LENGTH"] = getContentLength(request);
+    context.standard.values["CONTENT_TYPE"] = getHeaderValue(request, "Content-Type");
+    context.standard.values["GATEWAY_INTERFACE"] = "CGI/1.1";
+    context.standard.values["PATH_INFO"] = cgiPath.pathInfo;
+    context.standard.values["PATH_TRANSLATED"] = cgiPath.pathTranslated;
+    context.standard.values["QUERY_STRING"] = getQueryString(request.getPath());
+    context.standard.values["REMOTE_ADDR"] = remoteAddr;
+    context.standard.values["REMOTE_HOST"] = "";
+    context.standard.values["REMOTE_IDENT"] = "";
+    context.standard.values["REMOTE_USER"] = "";
+    context.standard.values["REQUEST_METHOD"] = request.getMethod();
+    context.standard.values["SCRIPT_NAME"] = cgiPath.scriptName;
+    context.standard.values["SERVER_NAME"] = server.serverName;
+    context.standard.values["SERVER_PORT"] = intToString(server.listen.port);
+    context.standard.values["SERVER_PROTOCOL"] = request.getVersion();
+    context.standard.values["SERVER_SOFTWARE"] = "webserv/1.0";
+}
+
+static CgiContext buildCgiContext(const Request &request, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
+{
+    CgiContext context;
+
+    context.executable = cgiPath.executable;
+    context.scriptPath = cgiPath.scriptPath;
+    context.requestBody = request.getBody();
+    std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
+    addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
+    return (context);
+}
+
+Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+{
+    // Generate a response
+    Response response;
+
+    CgiResolvedPath cgiPath;
+
+    cgiPath = resolveCgiPath(request, route);
+    if (cgiPath.isCgi)
     {
-        std::string scriptPath = buildCgiScriptPath(request, route);
-        std::cout << "CGI script path: " << scriptPath << std::endl;
-        std::string queryString = getQueryString(request.getPath());
-        std::string executable = getCgiExecutable(request.getPath(), route.cgi);
-
-        std::string cgiOutput = CgiHandler::runCgi(executable, scriptPath, queryString);
+        CgiContext context = buildCgiContext(request, server, remoteAddr, cgiPath);
+        std::cout << "CGI script path: " << context.scriptPath << std::endl;
+        std::string cgiOutput = CgiHandler::runCgi(context);
         return (buildCgiResponse(cgiOutput));
     }
 
@@ -192,22 +280,20 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
         return (response);
     }
 
-  // if (!request.getIsCgi())
-  //   CgiHandler::runCgi();
-  if (request.getMethod() == "GET")
-  {
-    response = RequestHandler::handleStatic(request);
-  }
-  else
-  {
-    response.setStatusCode(405);
-    response.setBody(
-        "<html><body><h1>405 Method Not Allowed</h1></body></html>");
-  }
-  std::ostringstream oss;
-  oss << response.getBody().length();
-  response.addHeader("Content-Type", "text/html");
-  response.addHeader("Connection", "close");
-  response.addHeader("Content-Length", oss.str());
-  return response;
+    if (request.getMethod() == "GET")
+    {
+        response = RequestHandler::handleStatic(request);
+    }
+    else
+    {
+        response.setStatusCode(405);
+        response.setBody(
+            "<html><body><h1>405 Method Not Allowed</h1></body></html>");
+    }
+    std::ostringstream oss;
+    oss << response.getBody().length();
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Connection", "close");
+    response.addHeader("Content-Length", oss.str());
+    return response;
 }

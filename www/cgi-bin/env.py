@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 
 print("Content-Type: text/plain")
 print()
@@ -26,3 +27,7 @@ keys = [
 
 for key in keys:
     print(f"{key}={os.environ.get(key, '<missing>')}")
+
+print()
+print("BODY:")
+print(sys.stdin.read())

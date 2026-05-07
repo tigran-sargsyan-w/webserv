@@ -40,7 +40,7 @@ int WebServ::setNonBlocking(int fd) {
     std::cerr << "fcntl: " << strerror(errno) << "\n";
     return (1);
   }
-  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
     std::cerr << "fcntl: " << strerror(errno) << "\n";
     return (1);
   }

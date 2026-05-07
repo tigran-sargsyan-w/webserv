@@ -246,8 +246,10 @@ int WebServ::acceptConnection() {
                         &clientAddressLength);
   if (clientSocket == -1)
     return (-1);
-  if (setNonBlocking(clientSocket))
+  if (setNonBlocking(clientSocket)) {
+    close(clientSocket);
     return (-1);
+  }
 
   tmpPollfd.fd = clientSocket;
   tmpPollfd.events = POLLIN;

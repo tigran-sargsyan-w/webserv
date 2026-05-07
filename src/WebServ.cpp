@@ -188,6 +188,7 @@ int WebServ::bindSockAddress() {
 
   if (bind(this->serverSocket, res->ai_addr, res->ai_addrlen) == -1) {
     std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
+    freeaddrinfo(res);
     close(this->serverSocket);
     return (1);
   }

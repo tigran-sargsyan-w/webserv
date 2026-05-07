@@ -33,6 +33,19 @@ WebServ &WebServ::operator=(const WebServ &other) {
   return (*this);
 }
 
+int WebServ::setNonBlocking(int fd) {
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (flags == -1) {
+    std::cerr << "fcntl: " << strerror(errno) << "\n";
+    return (1);
+  }
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
+    std::cerr << "fcntl: " << strerror(errno) << "\n";
+    return (1);
+  }
+  return (0);
+}
+
 int WebServ::readFromClient(Client &client) {
   ssize_t bytesRead;
   char buffer[4096];
@@ -156,7 +169,7 @@ int WebServ::bindSockAddress() {
 
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
+  hints.ai_flags = 0;
 
   std::stringstream ss;
   ss << this->serverConfig.listen.port;
@@ -201,7 +214,9 @@ int WebServ::setup(const ServerConfig &serverConfig) {
     close(this->serverSocket);
     return (1);
   }
-  fcntl(this->serverSocket, O_NONBLOCK);
+  if (setNonBlocking(this->serverSocket)) {
+    return (1);
+  }
 
   std::cout << "Listening on " << serverConfig.listen.host << ":"
             << serverConfig.listen.port << "\n";
@@ -230,7 +245,8 @@ int WebServ::acceptConnection() {
                         &clientAddressLength);
   if (clientSocket == -1)
     return (-1);
-  fcntl(clientSocket, O_NONBLOCK);
+  if (setNonBlocking(clientSocket))
+    return (-1);
 
   tmpPollfd.fd = clientSocket;
   tmpPollfd.events = POLLIN;
@@ -271,7 +287,6 @@ int WebServ::run() {
         close(this->serverSocket);
         return (1);
       }
-      fcntl(clientSocket, O_NONBLOCK);
     }
 
     // 5. Receive data from client

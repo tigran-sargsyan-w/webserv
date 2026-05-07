@@ -150,7 +150,7 @@ int WebServ::initListeningSocket() {
 int WebServ::bindSockAddress() {
 
   struct addrinfo hints;
-  struct addrinfo *res;
+  struct addrinfo *res = NULL;
 
   std::memset(&hints, 0, sizeof(hints));
 
@@ -169,7 +169,8 @@ int WebServ::bindSockAddress() {
 
   int ret = getaddrinfo(host_cstr, port_str.c_str(), &hints, &res);
   if (ret) {
-    std::cerr << gai_strerror(ret);
+    std::cerr << "getaddrinfo: " << gai_strerror(ret) << "\n";
+    return (1);
   }
 
   if (bind(this->serverSocket, res->ai_addr, res->ai_addrlen) == -1) {
@@ -177,6 +178,7 @@ int WebServ::bindSockAddress() {
     close(this->serverSocket);
     return (1);
   }
+  freeaddrinfo(res);
   return (0);
 }
 

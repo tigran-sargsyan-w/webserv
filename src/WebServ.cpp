@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <utility>
 
-WebServ::WebServ() { std::cout << "WebServ created!\n"; }
+WebServ::WebServ() : serverSocket(-1) { std::cout << "WebServ created!\n"; }
 
 WebServ::WebServ(const WebServ &other) {
   (void)other;
@@ -24,7 +24,8 @@ WebServ::WebServ(const WebServ &other) {
 
 WebServ::~WebServ() {
   std::cout << "WebServ destroyed!\n";
-  close(this->serverSocket);
+  if (this->serverSocket != -1)
+    close(this->serverSocket);
 }
 
 WebServ &WebServ::operator=(const WebServ &other) {

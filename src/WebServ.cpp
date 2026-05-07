@@ -157,6 +157,7 @@ int WebServ::initListeningSocket() {
   struct pollfd tmpPollfd;
   tmpPollfd.fd = this->serverSocket;
   tmpPollfd.events = POLLIN;
+  tmpPollfd.revents = 0;
   _pollfds.push_back(tmpPollfd);
   return (0);
 }
@@ -254,6 +255,7 @@ int WebServ::acceptConnection() {
 
   tmpPollfd.fd = clientSocket;
   tmpPollfd.events = POLLIN;
+  tmpPollfd.revents = 0;
   _pollfds.push_back(tmpPollfd);
 
   _clients.insert(std::make_pair(clientSocket, Client(clientSocket)));

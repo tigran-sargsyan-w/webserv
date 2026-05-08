@@ -340,10 +340,7 @@ int WebServ::run()
 			// 4. Accept connections
 
 			if (_pollfds.at(0).revents == POLLIN)
-			{
-				if (acceptConnection() == -1)
-					continue;
-			}
+				acceptConnection();
 		}
 
 		// 5. Receive data from client

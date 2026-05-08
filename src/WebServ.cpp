@@ -339,7 +339,7 @@ int WebServ::run()
 
 			// 4. Accept connections
 
-			if (_pollfds.at(0).revents == POLLIN)
+			if (_pollfds.at(0).revents & POLLIN)
 				acceptConnection();
 		}
 

@@ -355,6 +355,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					_clients.erase(curFD);
+					continue;
 				}
 
 				RequestParser parser;

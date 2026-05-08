@@ -329,7 +329,12 @@ int WebServ::run()
 		{
 			int ready = poll(_pollfds.data(), _pollfds.size(), -1);
 			if (ready < 0)
-				continue;
+			{
+				if (errno == EINTR)
+					continue;
+				std::cerr << "poll: " << strerror(errno) << std::endl;
+				return (1);
+			}
 			std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
 			// 4. Accept connections

@@ -283,9 +283,15 @@ int WebServ::acceptConnection()
 	clientSocket = accept(
 	    this->serverSocket, (sockaddr *)&clientAddress, &clientAddressLength);
 	if (clientSocket == -1)
-		return (-1);
-	if (setNonBlocking(clientSocket))
 	{
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+			std::cerr << "accept: " << strerror(errno) << std::endl;
+		return (-1);
+	}
+
+	if (setNonBlocking(clientSocket) == -1)
+	{
+		std::cerr << "fcntl: " << strerror(errno) << std::endl;
 		close(clientSocket);
 		return (-1);
 	}
@@ -320,23 +326,18 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(_pollfds.data(), _pollfds.size(), -1);
-		if (ready < 0)
-			continue;
-		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
-
-		// 4. Accept connections
-
-		if (_pollfds.at(0).revents == POLLIN)
 		{
-			int clientSocket;
-			if ((clientSocket = acceptConnection()) == -1)
+			int ready = poll(_pollfds.data(), _pollfds.size(), -1);
+			if (ready < 0)
+				continue;
+			std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+
+			// 4. Accept connections
+
+			if (_pollfds.at(0).revents == POLLIN)
 			{
-				if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+				if (acceptConnection() == -1)
 					continue;
-				std::cerr << "Error accepting client connection\n";
-				close(this->serverSocket);
-				return (1);
 			}
 		}
 

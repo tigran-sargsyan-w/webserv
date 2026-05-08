@@ -11,29 +11,29 @@
 #include <unistd.h>
 #include <vector>
 
-class WebServ {
-
+class WebServ
+{
 public:
-  WebServ();
-  WebServ(const WebServ &other);
-  ~WebServ();
-  WebServ &operator=(const WebServ &other);
-  int readFromClient(Client &client);
-  int SendToClient(Client &client);
+	WebServ();
+	WebServ(const WebServ& other);
+	~WebServ();
+	WebServ& operator=(const WebServ& other);
+	int readFromClient(Client& client);
+	int SendToClient(Client& client);
 
-  int setup(const ServerConfig &serverConfig);
-  int run();
-  int initListeningSocket();
-  int bindSockAddress();
-  int acceptConnection();
-  void removePollfd(int fd);
+	int setup(const ServerConfig& serverConfig);
+	int run();
+	int initListeningSocket();
+	int bindSockAddress();
+	int acceptConnection();
+	void removePollfd(int fd);
 
 private:
-  int setNonBlocking(int fd);
-  int serverSocket;
-  ServerConfig serverConfig;
-  std::vector<pollfd> _pollfds;
-  std::map<int, Client> _clients;
+	int setNonBlocking(int fd);
+	int serverSocket;
+	ServerConfig serverConfig;
+	std::vector<pollfd> _pollfds;
+	std::map<int, Client> _clients;
 };
 
 #endif

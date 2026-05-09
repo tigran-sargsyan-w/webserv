@@ -185,7 +185,7 @@ int WebServ::initListeningSocket()
 	tmpPollfd.fd = this->serverSocket;
 	tmpPollfd.events = POLLIN;
 	tmpPollfd.revents = 0;
-	_pollfds.push_back(tmpPollfd);
+	this->pollFds.push_back(tmpPollfd);
 	return (0);
 }
 
@@ -299,11 +299,11 @@ int WebServ::acceptConnection()
 	tmpPollfd.fd = clientSocket;
 	tmpPollfd.events = POLLIN;
 	tmpPollfd.revents = 0;
-	_pollfds.push_back(tmpPollfd);
+	this->pollFds.push_back(tmpPollfd);
 
-	_clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
-	clientIt = _clients.find(clientSocket);
-	if (clientIt != _clients.end())
+	clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
+	clientIt = clients.find(clientSocket);
+	if (clientIt != clients.end())
 		clientIt->second.setRemoteAddr(
 		    ipToString(clientAddress.sin_addr.s_addr));
 	return (clientSocket);
@@ -311,11 +311,11 @@ int WebServ::acceptConnection()
 
 void WebServ::removePollfd(int fd)
 {
-	for (size_t i = 0; i < _pollfds.size(); i++)
+	for (size_t i = 0; i < this->pollFds.size(); i++)
 	{
-		if (_pollfds[i].fd == fd)
+		if (this->pollFds[i].fd == fd)
 		{
-			_pollfds.erase(_pollfds.begin() + i);
+			this->pollFds.erase(this->pollFds.begin() + i);
 		}
 	}
 }
@@ -327,7 +327,7 @@ int WebServ::run()
 	while (true)
 	{
 		{
-			int ready = poll(_pollfds.data(), _pollfds.size(), -1);
+			int ready = poll(this->pollFds.data(), this->pollFds.size(), -1);
 			if (ready < 0)
 			{
 				if (errno == EINTR)
@@ -339,17 +339,17 @@ int WebServ::run()
 
 			// 4. Accept connections
 
-			if (_pollfds.at(0).revents & POLLIN)
+			if (this->pollFds.at(0).revents & POLLIN)
 				acceptConnection();
 		}
 
 		// 5. Receive data from client
 
-		for (size_t i = 1; i < _pollfds.size(); i++)
+		for (size_t i = 1; i < this->pollFds.size(); i++)
 		{
-			int curFD = _pollfds[i].fd;
-			Client& curClient = _clients.at(curFD);
-			if (_pollfds[i].revents & POLLIN)
+			int curFD = this->pollFds[i].fd;
+			Client& curClient = clients.at(curFD);
+			if (this->pollFds[i].revents & POLLIN)
 			{
 				curClient.state = READING;
 				this->readFromClient(curClient);
@@ -357,7 +357,7 @@ int WebServ::run()
 				{
 					close(curFD);
 					removePollfd(curFD);
-					_clients.erase(curFD);
+					clients.erase(curFD);
           i--;
 					continue;
 				}
@@ -377,15 +377,15 @@ int WebServ::run()
 					// TODO: RequestHandler for errors and close connection
 					close(curFD);
 					removePollfd(curFD);
-					_clients.erase(curFD);
+					clients.erase(curFD);
           i--;
 					continue;
 				}
 
 				// TODO: if request is valid set as POLLOUT
-				_pollfds[i].events = POLLOUT;
+				this->pollFds[i].events = POLLOUT;
 			}
-			if (_pollfds[i].revents & POLLOUT)
+			if (this->pollFds[i].revents & POLLOUT)
 			{
 				curClient.state = WRITING;
 				this->SendToClient(curClient);
@@ -393,7 +393,7 @@ int WebServ::run()
 				{
 					close(curFD);
 					removePollfd(curFD);
-					_clients.erase(curFD);
+					clients.erase(curFD);
           i--;
 				}
 			}

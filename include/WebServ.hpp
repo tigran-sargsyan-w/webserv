@@ -32,8 +32,8 @@ private:
 	int setNonBlocking(int fd);
 	int serverSocket;
 	ServerConfig serverConfig;
-	std::vector<pollfd> _pollfds;
-	std::map<int, Client> _clients;
+	std::vector<pollfd> pollFds;
+	std::map<int, Client> clients;
 };
 
 #endif

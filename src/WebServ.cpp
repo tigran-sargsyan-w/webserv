@@ -326,22 +326,20 @@ int WebServ::run()
 
 	while (true)
 	{
+		int ready = poll(this->pollFds.data(), this->pollFds.size(), -1);
+		if (ready < 0)
 		{
-			int ready = poll(this->pollFds.data(), this->pollFds.size(), -1);
-			if (ready < 0)
-			{
-				if (errno == EINTR)
-					continue;
-				std::cerr << "poll: " << strerror(errno) << std::endl;
-				return (1);
-			}
-			std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
-
-			// 4. Accept connections
-
-			if (this->pollFds.at(0).revents & POLLIN)
-				acceptConnection();
+			if (errno == EINTR)
+				continue;
+			std::cerr << "poll: " << strerror(errno) << std::endl;
+			return (1);
 		}
+		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+
+		// 4. Accept connections
+
+		if (this->pollFds.at(0).revents & POLLIN)
+			acceptConnection();
 
 		// 5. Receive data from client
 
@@ -349,14 +347,14 @@ int WebServ::run()
 		{
 			int curFD = this->pollFds[i].fd;
 
-      if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-      {
-        close(curFD);
-        removePollfd(curFD);
-        this->clients.erase(curFD);
-        i--;
-        continue;
-      }
+			if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+			{
+				close(curFD);
+				removePollfd(curFD);
+				this->clients.erase(curFD);
+				i--;
+				continue;
+			}
 
 			Client& curClient = clients.at(curFD);
 			if (this->pollFds[i].revents & POLLIN)
@@ -368,7 +366,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					clients.erase(curFD);
-          i--;
+					i--;
 					continue;
 				}
 
@@ -388,7 +386,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					clients.erase(curFD);
-          i--;
+					i--;
 					continue;
 				}
 
@@ -404,8 +402,8 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					clients.erase(curFD);
-          i--;
-          continue;
+					i--;
+					continue;
 				}
 			}
 		}

@@ -348,6 +348,16 @@ int WebServ::run()
 		for (size_t i = 1; i < this->pollFds.size(); i++)
 		{
 			int curFD = this->pollFds[i].fd;
+
+      if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+      {
+        close(curFD);
+        removePollfd(curFD);
+        this->clients.erase(curFD);
+        i--;
+        continue;
+      }
+
 			Client& curClient = clients.at(curFD);
 			if (this->pollFds[i].revents & POLLIN)
 			{

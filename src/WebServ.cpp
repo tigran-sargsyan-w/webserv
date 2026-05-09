@@ -405,6 +405,7 @@ int WebServ::run()
 					removePollfd(curFD);
 					clients.erase(curFD);
           i--;
+          continue;
 				}
 			}
 		}

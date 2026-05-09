@@ -358,6 +358,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					_clients.erase(curFD);
+          i--;
 					continue;
 				}
 
@@ -377,6 +378,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					_clients.erase(curFD);
+          i--;
 					continue;
 				}
 
@@ -392,6 +394,7 @@ int WebServ::run()
 					close(curFD);
 					removePollfd(curFD);
 					_clients.erase(curFD);
+          i--;
 				}
 			}
 		}

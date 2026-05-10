@@ -15,6 +15,9 @@
 
 #include <cctype>
 
+static bool headerNameEquals(const std::string &left, const std::string &right);
+static std::string trimHeaderValue(const std::string &value);
+
 RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
@@ -42,44 +45,71 @@ Response RequestHandler::handleStatic(const Request &request)
     return res;
 }
 
+static void addCgiHeaderToResponse(Response &response,
+    const std::string &line)
+{
+    size_t      colon;
+    std::string name;
+    std::string value;
+
+    colon = line.find(':');
+    if (colon == std::string::npos)
+        return ;
+    name = line.substr(0, colon);
+    value = trimHeaderValue(line.substr(colon + 1));
+    if (name.empty())
+        return ;
+    response.addHeader(name, value);
+}
+
+static void addCgiHeadersToResponse(Response &response,
+    const std::string &headers)
+{
+    std::istringstream stream;
+    std::string        line;
+
+    stream.str(headers);
+    while (std::getline(stream, line))
+    {
+        if (!line.empty() && line[line.length() - 1] == '\r')
+            line.erase(line.length() - 1);
+        if (!line.empty())
+            addCgiHeaderToResponse(response, line);
+    }
+}
+
 static Response buildCgiResponse(const std::string &cgiOutput)
 {
-    Response response;
+    Response    response;
+    std::string separator;
+    size_t      bodyStart;
+    std::string cgiHeaders;
+    std::string cgiBody;
 
-    std::string separator = "\r\n\r\n";
-    size_t bodyStart = cgiOutput.find(separator);
-
+    separator = "\r\n\r\n";
+    bodyStart = cgiOutput.find(separator);
     if (bodyStart == std::string::npos)
     {
         separator = "\n\n";
         bodyStart = cgiOutput.find(separator);
     }
-
+    response.setStatusCode(200);
     if (bodyStart != std::string::npos)
     {
-        std::string cgiHeaders = cgiOutput.substr(0, bodyStart);
-        std::string cgiBody = cgiOutput.substr(bodyStart + separator.length());
-
-        response.setStatusCode(200);
+        cgiHeaders = cgiOutput.substr(0, bodyStart);
+        cgiBody = cgiOutput.substr(bodyStart + separator.length());
         response.setBody(cgiBody);
-
-        if (cgiHeaders.find("Content-Type:") != std::string::npos)
-            response.addHeader("Content-Type", "text/html");
-        else
-            response.addHeader("Content-Type", "text/plain");
+        addCgiHeadersToResponse(response, cgiHeaders);
     }
     else
     {
-        response.setStatusCode(200);
         response.setBody(cgiOutput);
         response.addHeader("Content-Type", "text/plain");
     }
-
     response.addHeader("Content-Length", intToString(response.getBody().length()));
     response.addHeader("Connection", "close");
-
     return (response);
-}
+}   
 
 static std::string getQueryString(const std::string &path)
 {
@@ -204,10 +234,14 @@ static std::string getHeaderValue(const Request &request, const std::string &nam
 {
     std::map<std::string, std::string>::const_iterator it;
 
-    it = request.getHeaders().find(name);
-    if (it != request.getHeaders().end())
-        return (trimHeaderValue(it->second));
-    return ("");
+	it = request.getHeaders().begin();
+	while (it != request.getHeaders().end())
+	{
+		if (headerNameEquals(it->first, name))
+			return (trimHeaderValue(it->second));
+		it++;
+	}
+	return ("");
 }
 
 static std::string getContentLength(const Request &request)

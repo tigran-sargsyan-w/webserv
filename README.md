@@ -316,7 +316,61 @@ PATH_TRANSLATED
 
 ---
 
-### 12. Optional debug mode
+### 12. Test request `CONTENT_TYPE` and CGI response `Content-Type`
+
+Before running this test, temporarily change the CGI response content type in
+`www/cgi-bin/env.py`:
+
+```python
+print("Content-Type: text/test")
+```
+
+Then send a POST request with a different request content type:
+
+```bash
+curl -i -X POST \
+  -H "content-type: text/otherTest" \
+  -H "content-length: 11" \
+  -d "name=tigran" \
+  "http://localhost:8080/cgi-bin/env.py"
+```
+
+Expected response header:
+
+```http
+Content-Type: text/test
+```
+
+Expected important values inside the CGI output body:
+
+```txt
+CONTENT_LENGTH=11
+CONTENT_TYPE=text/otherTest
+```
+
+This test checks that:
+
+* the HTTP response `Content-Type` comes from the CGI script output header;
+* the CGI environment variable `CONTENT_TYPE` comes from the client request header;
+* request headers are handled case-insensitively;
+* `Content-Type` and `Content-Length` are not duplicated as `HTTP_CONTENT_TYPE` or `HTTP_CONTENT_LENGTH`.
+
+These two values are allowed to be different because they describe different message bodies:
+
+```txt
+Content-Type: text/test       -> response body returned by CGI
+CONTENT_TYPE=text/otherTest   -> request body received by CGI
+```
+
+After this test, restore `env.py` back to:
+
+```python
+print("Content-Type: text/plain")
+```
+
+---
+
+### 13. Optional debug mode
 
 During development, CGI environment variables can be printed on the server side before `execve()`.
 
@@ -367,6 +421,7 @@ Example `env.py` script used for testing:
 ```python
 #!/usr/bin/env python3
 import os
+import sys
 
 print("Content-Type: text/plain")
 print()
@@ -393,6 +448,15 @@ keys = [
 
 for key in keys:
     print(f"{key}={os.environ.get(key, '<missing>')}")
+
+http_keys = sorted(key for key in os.environ if key.startswith("HTTP_"))
+
+for key in http_keys:
+    print(f"{key}={os.environ.get(key, '<missing>')}")
+
+print()
+print("BODY:")
+print(sys.stdin.read())
 ```
 
 Make it executable:

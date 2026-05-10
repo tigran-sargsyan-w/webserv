@@ -2,7 +2,7 @@
 import os
 import sys
 
-print("Content-Type: text/plain")
+print("Content-Type: text/test")
 print()
 
 keys = [

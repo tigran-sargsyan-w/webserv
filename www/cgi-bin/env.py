@@ -2,7 +2,7 @@
 import os
 import sys
 
-print("Content-Type: text/plain")
+print("Content-Type: text/test")
 print()
 
 keys = [
@@ -26,6 +26,11 @@ keys = [
 ]
 
 for key in keys:
+    print(f"{key}={os.environ.get(key, '<missing>')}")
+
+http_keys = sorted(key for key in os.environ if key.startswith("HTTP_"))
+
+for key in http_keys:
     print(f"{key}={os.environ.get(key, '<missing>')}")
 
 print()

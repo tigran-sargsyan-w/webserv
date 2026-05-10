@@ -12,6 +12,11 @@ struct CgiStandardMetaVariables
 	CgiEnv values;
 };
 
+struct CgiHttpHeaderVariables
+{
+	CgiEnv values;
+};
+
 struct CgiResolvedPath
 {
 	bool isCgi;
@@ -30,6 +35,7 @@ struct CgiContext
 	std::string scriptPath;
 	std::string requestBody;
 	CgiStandardMetaVariables standard;
+	CgiHttpHeaderVariables httpHeaders;
 };
 
 class CgiHandler
@@ -42,6 +48,7 @@ public:
 
 private:
 	static void addEnv(CgiEnv &env, const std::string &key, const std::string &value);
+	static void mergeEnvironment(CgiEnv &dst, const CgiEnv &src);
 	static CgiEnv buildEnvironment(const CgiContext &context);
 	static std::vector<std::string> buildEnvironmentStrings(const CgiEnv &env);
 	static std::vector<char *> buildEnvironmentPointers(std::vector<std::string> &envStrings);

@@ -13,6 +13,8 @@
 #include <vector>
 #include <map>
 
+#include <cctype>
+
 RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
@@ -241,6 +243,64 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
     context.standard.values["SERVER_SOFTWARE"] = "webserv/1.0";
 }
 
+static bool headerNameEquals(const std::string &left, const std::string &right)
+{
+	size_t i;
+
+	if (left.length() != right.length())
+		return (false);
+	i = 0;
+	while (i < left.length())
+	{
+		if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
+			return (false);
+		i++;
+	}
+	return (true);
+}
+
+static bool isContentHeader(const std::string &name)
+{
+	if (headerNameEquals(name, "Content-Length"))
+		return (true);
+	if (headerNameEquals(name, "Content-Type"))
+		return (true);
+	return (false);
+}
+
+static std::string buildCgiHttpHeaderName(const std::string &name)
+{
+	std::string result;
+	size_t i;
+
+	result = "HTTP_";
+	i = 0;
+	while (i < name.length())
+	{
+		if (name[i] == '-')
+			result += '_';
+		else
+			result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
+		i++;
+	}
+	return (result);
+}
+
+static void addHttpHeaderVariables(CgiContext &context, const Request &request)
+{
+	std::map<std::string, std::string>::const_iterator it;
+
+	it = request.getHeaders().begin();
+	while (it != request.getHeaders().end())
+	{
+		if (!isContentHeader(it->first))
+		{
+			context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
+		}
+		it++;
+	}
+}
+
 static CgiContext buildCgiContext(const Request &request, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
 {
     CgiContext context;
@@ -250,6 +310,7 @@ static CgiContext buildCgiContext(const Request &request, const ServerConfig &se
     context.requestBody = request.getBody();
     std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
     addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
+    addHttpHeaderVariables(context, request);
     return (context);
 }
 

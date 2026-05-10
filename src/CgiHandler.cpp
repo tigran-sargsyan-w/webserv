@@ -6,6 +6,8 @@
 #include <cerrno>
 #include <cstring>
 
+static void debugPrintEnv(const CgiEnv &env);
+
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
 
@@ -14,11 +16,30 @@ void CgiHandler::addEnv(CgiEnv &env, const std::string &key, const std::string &
 	env[key] = value;
 }
 
+void CgiHandler::mergeEnvironment(CgiEnv &dst, const CgiEnv &src)
+{
+	CgiEnv::const_iterator it;
+
+	it = src.begin();
+	while (it != src.end())
+	{
+		dst[it->first] = it->second;
+		it++;
+	}
+}
+
 CgiEnv CgiHandler::buildEnvironment(const CgiContext &context)
 {
 	CgiEnv env;
+	CgiEnv envStandard;
+	CgiEnv envHttp;
 
-	env = context.standard.values;
+	envStandard = context.standard.values;
+	envHttp = context.httpHeaders.values;
+	debugPrintEnv(context.standard.values);
+	debugPrintEnv(context.httpHeaders.values);
+	mergeEnvironment(env, envStandard);
+	mergeEnvironment(env, envHttp);
 	return (env);
 }
 
@@ -91,7 +112,6 @@ std::string CgiHandler::runCgi(const CgiContext &context)
 	}
 
 	env = buildEnvironment(context);
-	debugPrintEnv(env);
 	envStrings = buildEnvironmentStrings(env);
 	envp = buildEnvironmentPointers(envStrings);
 

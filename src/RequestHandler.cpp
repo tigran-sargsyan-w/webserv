@@ -320,19 +320,19 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
 
 static void addImplementationCgiVariables(CgiContext &context, const Request &request, const RouteConfig &route, const CgiResolvedPath &cgiPath)
 {
-    context.standard.values["SCRIPT_FILENAME"] = cgiPath.scriptPath;
-    context.standard.values["DOCUMENT_ROOT"] = route.root;
-    context.standard.values["REQUEST_URI"] = request.getPath();
-    context.standard.values["REQUEST_SCHEME"] = "http";
-    context.standard.values["HTTPS"] = "off";
-    context.standard.values["SERVER_ADMIN"] = "admin@localhost";
-    context.standard.values["REDIRECT_STATUS"] = "200";
-    context.standard.values["FCGI_ROLE"] = "RESPONDER";
-    context.standard.values["PHP_SELF"] = cgiPath.scriptName + cgiPath.pathInfo;
-    context.standard.values["PATH"] = "/usr/bin:/bin";
-    context.standard.values["PWD"] = getDirectoryName(cgiPath.scriptPath);
-    context.standard.values["REQUEST_TIME"] = getRequestTime();
-    context.standard.values["REQUEST_TIME_FLOAT"] = getRequestTimeFloat();
+    context.implementation.values["SCRIPT_FILENAME"] = cgiPath.scriptPath;
+    context.implementation.values["DOCUMENT_ROOT"] = route.root;
+    context.implementation.values["REQUEST_URI"] = request.getPath();
+    context.implementation.values["REQUEST_SCHEME"] = "http";
+    context.implementation.values["HTTPS"] = "off";
+    context.implementation.values["SERVER_ADMIN"] = "admin@localhost";
+    context.implementation.values["REDIRECT_STATUS"] = "200";
+    context.implementation.values["FCGI_ROLE"] = "RESPONDER";
+    context.implementation.values["PHP_SELF"] = cgiPath.scriptName + cgiPath.pathInfo;
+    context.implementation.values["PATH"] = "/usr/bin:/bin";
+    context.implementation.values["PWD"] = getDirectoryName(cgiPath.scriptPath);
+    context.implementation.values["REQUEST_TIME"] = getRequestTime();
+    context.implementation.values["REQUEST_TIME_FLOAT"] = getRequestTimeFloat();
 }
 
 static bool headerNameEquals(const std::string &left, const std::string &right)

@@ -33,13 +33,17 @@ CgiEnv CgiHandler::buildEnvironment(const CgiContext &context)
 	CgiEnv env;
 	CgiEnv envStandard;
 	CgiEnv envHttp;
+	CgiEnv envImplementation;
 
 	envStandard = context.standard.values;
 	envHttp = context.httpHeaders.values;
+	envImplementation = context.implementation.values;
 	debugPrintEnv(context.standard.values);
 	debugPrintEnv(context.httpHeaders.values);
+	debugPrintEnv(context.implementation.values);
 	mergeEnvironment(env, envStandard);
 	mergeEnvironment(env, envHttp);
+	mergeEnvironment(env, envImplementation);
 	return (env);
 }
 

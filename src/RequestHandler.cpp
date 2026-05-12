@@ -15,6 +15,10 @@
 
 #include <cctype>
 
+#include <ctime>
+#include <iomanip>
+#include <sys/time.h>
+
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
 
@@ -156,6 +160,43 @@ static std::string joinPaths(const std::string &left, const std::string &right)
     return (left + right);
 }
 
+static std::string longToString(long value)
+{
+    std::ostringstream stream;
+
+    stream << value;
+    return (stream.str());
+}
+
+static std::string getDirectoryName(const std::string &path)
+{
+    size_t slash;
+
+    slash = path.find_last_of('/');
+    if (slash == std::string::npos)
+        return (".");
+    if (slash == 0)
+        return ("/");
+    return (path.substr(0, slash));
+}
+
+static std::string getRequestTime(void)
+{
+    return (longToString(static_cast<long>(std::time(NULL))));
+}
+
+static std::string getRequestTimeFloat(void)
+{
+    struct timeval time;
+    std::ostringstream stream;
+
+    if (gettimeofday(&time, NULL) == -1)
+        return (getRequestTime() + ".000000");
+    stream << time.tv_sec << "."
+           << std::setw(6) << std::setfill('0') << time.tv_usec;
+    return (stream.str());
+}
+
 static bool isCgiExtensionBoundary(const std::string &path, size_t position, const std::string &extension)
 {
     size_t end;
@@ -277,6 +318,23 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
     context.standard.values["SERVER_SOFTWARE"] = "webserv/1.0";
 }
 
+static void addImplementationCgiVariables(CgiContext &context, const Request &request, const RouteConfig &route, const CgiResolvedPath &cgiPath)
+{
+    context.implementation.values["SCRIPT_FILENAME"] = cgiPath.scriptPath;
+    context.implementation.values["DOCUMENT_ROOT"] = route.root;
+    context.implementation.values["REQUEST_URI"] = request.getPath();
+    context.implementation.values["REQUEST_SCHEME"] = "http";
+    context.implementation.values["HTTPS"] = "off";
+    context.implementation.values["SERVER_ADMIN"] = "admin@localhost";
+    context.implementation.values["REDIRECT_STATUS"] = "200";
+    context.implementation.values["FCGI_ROLE"] = "RESPONDER";
+    context.implementation.values["PHP_SELF"] = cgiPath.scriptName + cgiPath.pathInfo;
+    context.implementation.values["PATH"] = "/usr/bin:/bin";
+    context.implementation.values["PWD"] = getDirectoryName(cgiPath.scriptPath);
+    context.implementation.values["REQUEST_TIME"] = getRequestTime();
+    context.implementation.values["REQUEST_TIME_FLOAT"] = getRequestTimeFloat();
+}
+
 static bool headerNameEquals(const std::string &left, const std::string &right)
 {
 	size_t i;
@@ -335,7 +393,7 @@ static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 	}
 }
 
-static CgiContext buildCgiContext(const Request &request, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
+static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
 {
     CgiContext context;
 
@@ -345,6 +403,7 @@ static CgiContext buildCgiContext(const Request &request, const ServerConfig &se
     std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
     addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
     addHttpHeaderVariables(context, request);
+    addImplementationCgiVariables(context, request, route, cgiPath);
     return (context);
 }
 
@@ -358,7 +417,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     cgiPath = resolveCgiPath(request, route);
     if (cgiPath.isCgi)
     {
-        CgiContext context = buildCgiContext(request, server, remoteAddr, cgiPath);
+        CgiContext context = buildCgiContext(request, route, server, remoteAddr, cgiPath);
         std::cout << "CGI script path: " << context.scriptPath << std::endl;
         std::string cgiOutput = CgiHandler::runCgi(context);
         return (buildCgiResponse(cgiOutput));

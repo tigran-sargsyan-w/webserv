@@ -17,6 +17,11 @@ struct CgiHttpHeaderVariables
 	CgiEnv values;
 };
 
+struct CgiImplementationVariables
+{
+	CgiEnv values;
+};
+
 struct CgiResolvedPath
 {
 	bool isCgi;
@@ -36,6 +41,7 @@ struct CgiContext
 	std::string requestBody;
 	CgiStandardMetaVariables standard;
 	CgiHttpHeaderVariables httpHeaders;
+	CgiImplementationVariables implementation;
 };
 
 class CgiHandler

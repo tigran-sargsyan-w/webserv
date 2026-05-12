@@ -6,7 +6,7 @@
 #include <cerrno>
 #include <cstring>
 
-static void debugPrintEnv(const CgiEnv &env);
+static void debugPrintEnv(const std::string &title, const CgiEnv &env);
 
 CgiHandler::CgiHandler() {}
 CgiHandler::~CgiHandler() {}
@@ -33,13 +33,17 @@ CgiEnv CgiHandler::buildEnvironment(const CgiContext &context)
 	CgiEnv env;
 	CgiEnv envStandard;
 	CgiEnv envHttp;
+	CgiEnv envImplementation;
 
 	envStandard = context.standard.values;
 	envHttp = context.httpHeaders.values;
-	debugPrintEnv(context.standard.values);
-	debugPrintEnv(context.httpHeaders.values);
+	envImplementation = context.implementation.values;
+	debugPrintEnv("CGI ENV - STANDARD VARS", context.standard.values);
+	debugPrintEnv("CGI ENV - HTTP HEADERS", context.httpHeaders.values);
+	debugPrintEnv("CGI ENV - IMPLEMENTATION VARS", context.implementation.values);
 	mergeEnvironment(env, envStandard);
 	mergeEnvironment(env, envHttp);
+	mergeEnvironment(env, envImplementation);
 	return (env);
 }
 
@@ -72,19 +76,18 @@ std::vector<char *> CgiHandler::buildEnvironmentPointers(std::vector<std::string
 	return (envp);
 }
 
-static void debugPrintEnv(const CgiEnv &env)
+static void debugPrintEnv(const std::string &title, const CgiEnv &env)
 {
 	CgiEnv::const_iterator it;
 
-	std::cout << "\n===== CGI ENV DEBUG =====" << std::endl;
+	std::cout << "\n===== " << title << " =====" << std::endl;
 	it = env.begin();
 	while (it != env.end())
 	{
 		std::cout << it->first << "=" << it->second << std::endl;
 		it++;
 	}
-	std::cout << "=========================\n"
-			  << std::endl;
+	std::cout << "===================================\n" << std::endl;
 }
 
 std::string CgiHandler::runCgi(const CgiContext &context)

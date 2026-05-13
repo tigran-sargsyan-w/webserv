@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   bool stop = true;
   for (size_t i = 0; i < config.servers.size(); i++)
   {
-    if (serv.setup(config.servers[i]) != 0) {
+    if (serv.setup(config.servers) != 0) {
       std::cerr << "Server Block " << i << " setup failed!\n";
       continue;
     }

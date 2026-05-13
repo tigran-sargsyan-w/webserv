@@ -21,7 +21,7 @@ public:
 	int readFromClient(Client& client);
 	int SendToClient(Client& client);
 
-	int setup(const ServerConfig& serverConfig);
+	int setup(std::vector<ServerConfig> servers);
 	int run();
 	int initListeningSocket();
 	int bindSockAddress();

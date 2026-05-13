@@ -229,34 +229,37 @@ int WebServ::bindSockAddress()
 	return (0);
 }
 
-int WebServ::setup(const ServerConfig& serverConfig)
+int WebServ::setup(std::vector<ServerConfig> servers)
 {
 	std::cout << "WebServ setup called!\n";
 
-	this->serverConfig = serverConfig;
-	// 1. Create socket
-	if (initListeningSocket())
-		return (1);
+  for (size_t i = 0; i < servers.size(); ++i)
+  {
+    this->serverConfig = servers[i];
+    // 1. Create socket
+    if (initListeningSocket())
+      return (1);
 
-	// 2. Setup address for socket
-	if (bindSockAddress())
-		return (1);
+    // 2. Setup address for socket
+    if (bindSockAddress())
+      return (1);
 
-	// 3. Socket listening
+    // 3. Socket listening
 
-	if (listen(this->serverSocket, 10) == -1)
-	{
-		std::cerr << "Error on socket listening\n";
-		close(this->serverSocket);
-		return (1);
-	}
-	if (setNonBlocking(this->serverSocket))
-	{
-		return (1);
-	}
+    if (listen(this->serverSocket, 10) == -1)
+    {
+      std::cerr << "Error on socket listening\n";
+      close(this->serverSocket);
+      return (1);
+    }
+    if (setNonBlocking(this->serverSocket))
+    {
+      return (1);
+    }
 
-	std::cout << "Listening on " << serverConfig.listen.host << ":"
-	          << serverConfig.listen.port << "\n";
+    std::cout << "Listening on " << serverConfig.listen.host << ":"
+              << serverConfig.listen.port << "\n";
+  }
 	return (0);
 }
 

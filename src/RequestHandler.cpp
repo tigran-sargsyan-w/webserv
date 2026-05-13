@@ -18,6 +18,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sys/time.h>
+
 #include <sys/stat.h>
 
 static bool headerNameEquals(const std::string &left, const std::string &right);
@@ -449,7 +450,7 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     file.close();
 
     // 5. Success response
-    res.setStatusCode(201); // 200 or 201 ??
+    res.setStatusCode(201);
     res.addHeader("Content-Type", "text/html");
     res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
 
@@ -460,7 +461,29 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
 {
     Response res;
 
+    // 1. Create the complete route
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    // 2. Check if the ressource exists
+    struct stat pathStat;
+    if (stat(fullPath.c_str(), &pathStat) != 0)
+        return buildErrorResponse(404, "Not Found: Resource does not exist");
+
+    // 4. Forbid the deletion of folders
+    if (S_ISDIR(pathStat.st_mode))
+        return buildErrorResponse(403, "Forbidden: Cannot delete a directory");
+
+    // 5. Try to delete
+    if (std::remove(fullPath.c_str()) == 0)
+    {
+        Response res;
+        res.setStatusCode(200);
+        res.addHeader("Content-Type", "text/html");
+        res.setBody("<html><body><h1>File deleted successfully</h1></body></html>");
+        return res;
+    }
+    else
+        return buildErrorResponse(500, "Internal Server Error: Failed to delete the file");
 
     return res;
 }
@@ -506,10 +529,10 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     }
     else
     {
-        response.setStatusCode(405);
-        response.setBody(
-            "<html><body><h1>405 Method Not Allowed</h1></body></html>");
+        std::cout << "Test else" << std::endl;
+        return buildErrorResponse(405, "Method Not Allowed");
     }
+
     std::ostringstream oss;
     oss << response.getBody().length();
     response.addHeader("Content-Type", "text/html");

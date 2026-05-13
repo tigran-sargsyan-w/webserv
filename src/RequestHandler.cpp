@@ -408,9 +408,25 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
+static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
+{
+    Response res;
+
+    res.setStatusCode(errorCode);
+    std::stringstream ss;
+    ss << "<html><body><h1>" << errorCode << " " << errorMessage << "</h1></body></html>";
+    res.setBody(ss.str());
+
+    // TODO: add the appropriate headers
+
+    return res;
+}
+
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
 {
     Response res;
+
+    // TODO: check that the body size isn't bigger than the route's client max body size
 
     // 1. Create the complete route
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
@@ -418,28 +434,16 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     // 2. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
-    {
-        res.setStatusCode(403);
-        res.setBody("<html><body><h1>403 : Forbidden: Is a directory</h1></body></html>");
-        return res;
-    }
+        return buildErrorResponse(403, "Forbidden: Is a directory");
 
     // 3. Check the body
     if (request.getBody().empty())
-    {
-        res.setStatusCode(400);
-        res.setBody("<html><body><h1>400 : Bad request</h1></body></html>");
-        return res;
-    }
+        return buildErrorResponse(400, "Bad request");
 
     // 4. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
     if (!file.is_open())
-    {
-        res.setStatusCode(500);
-        res.setBody("<html><body><h1>500 Internal Server Error: Could not open file</h1></body></html>");
-        return res;
-    }
+        return buildErrorResponse(500, "Internal Server Error: Could not open file");
 
     file << request.getBody();
     file.close();

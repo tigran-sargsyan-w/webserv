@@ -416,9 +416,17 @@ static Response buildErrorResponse(int errorCode, const std::string &errorMessag
     res.setStatusCode(errorCode);
     std::stringstream ss;
     ss << "<html><body><h1>" << errorCode << " " << errorMessage << "</h1></body></html>";
-    res.setBody(ss.str());
+    std::string errorBody = ss.str();
 
-    // TODO: add the appropriate headers
+    res.setBody(errorBody);
+
+    res.addHeader("Content-Type", "text/html");
+
+    std::stringstream lengthSs;
+    lengthSs << errorBody.length();
+    res.addHeader("Content-Length", lengthSs.str());
+
+    res.addHeader("Connection", "close");
 
     return res;
 }

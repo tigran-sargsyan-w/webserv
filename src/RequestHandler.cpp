@@ -18,6 +18,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
@@ -50,27 +51,27 @@ Response RequestHandler::handleStatic(const Request &request)
 }
 
 static void addCgiHeaderToResponse(Response &response,
-    const std::string &line)
+                                   const std::string &line)
 {
-    size_t      colon;
+    size_t colon;
     std::string name;
     std::string value;
 
     colon = line.find(':');
     if (colon == std::string::npos)
-        return ;
+        return;
     name = line.substr(0, colon);
     value = trimHeaderValue(line.substr(colon + 1));
     if (name.empty())
-        return ;
+        return;
     response.addHeader(name, value);
 }
 
 static void addCgiHeadersToResponse(Response &response,
-    const std::string &headers)
+                                    const std::string &headers)
 {
     std::istringstream stream;
-    std::string        line;
+    std::string line;
 
     stream.str(headers);
     while (std::getline(stream, line))
@@ -84,9 +85,9 @@ static void addCgiHeadersToResponse(Response &response,
 
 static Response buildCgiResponse(const std::string &cgiOutput)
 {
-    Response    response;
+    Response response;
     std::string separator;
-    size_t      bodyStart;
+    size_t bodyStart;
     std::string cgiHeaders;
     std::string cgiBody;
 
@@ -113,7 +114,7 @@ static Response buildCgiResponse(const std::string &cgiOutput)
     response.addHeader("Content-Length", intToString(response.getBody().length()));
     response.addHeader("Connection", "close");
     return (response);
-}   
+}
 
 static std::string getQueryString(const std::string &path)
 {
@@ -275,14 +276,14 @@ static std::string getHeaderValue(const Request &request, const std::string &nam
 {
     std::map<std::string, std::string>::const_iterator it;
 
-	it = request.getHeaders().begin();
-	while (it != request.getHeaders().end())
-	{
-		if (headerNameEquals(it->first, name))
-			return (trimHeaderValue(it->second));
-		it++;
-	}
-	return ("");
+    it = request.getHeaders().begin();
+    while (it != request.getHeaders().end())
+    {
+        if (headerNameEquals(it->first, name))
+            return (trimHeaderValue(it->second));
+        it++;
+    }
+    return ("");
 }
 
 static std::string getContentLength(const Request &request)
@@ -337,60 +338,60 @@ static void addImplementationCgiVariables(CgiContext &context, const Request &re
 
 static bool headerNameEquals(const std::string &left, const std::string &right)
 {
-	size_t i;
+    size_t i;
 
-	if (left.length() != right.length())
-		return (false);
-	i = 0;
-	while (i < left.length())
-	{
-		if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
-			return (false);
-		i++;
-	}
-	return (true);
+    if (left.length() != right.length())
+        return (false);
+    i = 0;
+    while (i < left.length())
+    {
+        if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
+            return (false);
+        i++;
+    }
+    return (true);
 }
 
 static bool isContentHeader(const std::string &name)
 {
-	if (headerNameEquals(name, "Content-Length"))
-		return (true);
-	if (headerNameEquals(name, "Content-Type"))
-		return (true);
-	return (false);
+    if (headerNameEquals(name, "Content-Length"))
+        return (true);
+    if (headerNameEquals(name, "Content-Type"))
+        return (true);
+    return (false);
 }
 
 static std::string buildCgiHttpHeaderName(const std::string &name)
 {
-	std::string result;
-	size_t i;
+    std::string result;
+    size_t i;
 
-	result = "HTTP_";
-	i = 0;
-	while (i < name.length())
-	{
-		if (name[i] == '-')
-			result += '_';
-		else
-			result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
-		i++;
-	}
-	return (result);
+    result = "HTTP_";
+    i = 0;
+    while (i < name.length())
+    {
+        if (name[i] == '-')
+            result += '_';
+        else
+            result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
+        i++;
+    }
+    return (result);
 }
 
 static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 {
-	std::map<std::string, std::string>::const_iterator it;
+    std::map<std::string, std::string>::const_iterator it;
 
-	it = request.getHeaders().begin();
-	while (it != request.getHeaders().end())
-	{
-		if (!isContentHeader(it->first))
-		{
-			context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
-		}
-		it++;
-	}
+    it = request.getHeaders().begin();
+    while (it != request.getHeaders().end())
+    {
+        if (!isContentHeader(it->first))
+        {
+            context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
+        }
+        it++;
+    }
 }
 
 static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
@@ -414,7 +415,16 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     // 1. Create the complete route
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
-    //2. Check the body
+    // 2. Check if it's a folder
+    struct stat pathStat;
+    if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
+    {
+        res.setStatusCode(403);
+        res.setBody("<html><body><h1>403 : Forbidden: Is a directory</h1></body></html>");
+        return res;
+    }
+
+    // 3. Check the body
     if (request.getBody().empty())
     {
         res.setStatusCode(400);
@@ -422,9 +432,10 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
         return res;
     }
 
-    //3. Try to write the file
+    // 4. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         res.setStatusCode(500);
         res.setBody("<html><body><h1>500 Internal Server Error: Could not open file</h1></body></html>");
         return res;
@@ -433,10 +444,11 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     file << request.getBody();
     file.close();
 
-    //4. Success response
+    // 5. Success response
     res.setStatusCode(201); // 200 or 201 ??
     res.addHeader("Content-Type", "text/html");
     res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
+
     return res;
 }
 
@@ -447,7 +459,6 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
     return res;
-
 }
 
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)

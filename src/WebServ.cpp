@@ -231,6 +231,7 @@ int WebServ::bindSockAddress()
 
 int WebServ::setup(std::vector<ServerConfig> servers)
 {
+  //TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
   for (size_t i = 0; i < servers.size(); ++i)

@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <sys/time.h>
 
+#include <sys/stat.h>
+
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
 
@@ -50,27 +52,27 @@ Response RequestHandler::handleStatic(const Request &request)
 }
 
 static void addCgiHeaderToResponse(Response &response,
-    const std::string &line)
+                                   const std::string &line)
 {
-    size_t      colon;
+    size_t colon;
     std::string name;
     std::string value;
 
     colon = line.find(':');
     if (colon == std::string::npos)
-        return ;
+        return;
     name = line.substr(0, colon);
     value = trimHeaderValue(line.substr(colon + 1));
     if (name.empty())
-        return ;
+        return;
     response.addHeader(name, value);
 }
 
 static void addCgiHeadersToResponse(Response &response,
-    const std::string &headers)
+                                    const std::string &headers)
 {
     std::istringstream stream;
-    std::string        line;
+    std::string line;
 
     stream.str(headers);
     while (std::getline(stream, line))
@@ -84,9 +86,9 @@ static void addCgiHeadersToResponse(Response &response,
 
 static Response buildCgiResponse(const std::string &cgiOutput)
 {
-    Response    response;
+    Response response;
     std::string separator;
-    size_t      bodyStart;
+    size_t bodyStart;
     std::string cgiHeaders;
     std::string cgiBody;
 
@@ -113,7 +115,7 @@ static Response buildCgiResponse(const std::string &cgiOutput)
     response.addHeader("Content-Length", intToString(response.getBody().length()));
     response.addHeader("Connection", "close");
     return (response);
-}   
+}
 
 static std::string getQueryString(const std::string &path)
 {
@@ -275,14 +277,14 @@ static std::string getHeaderValue(const Request &request, const std::string &nam
 {
     std::map<std::string, std::string>::const_iterator it;
 
-	it = request.getHeaders().begin();
-	while (it != request.getHeaders().end())
-	{
-		if (headerNameEquals(it->first, name))
-			return (trimHeaderValue(it->second));
-		it++;
-	}
-	return ("");
+    it = request.getHeaders().begin();
+    while (it != request.getHeaders().end())
+    {
+        if (headerNameEquals(it->first, name))
+            return (trimHeaderValue(it->second));
+        it++;
+    }
+    return ("");
 }
 
 static std::string getContentLength(const Request &request)
@@ -337,60 +339,60 @@ static void addImplementationCgiVariables(CgiContext &context, const Request &re
 
 static bool headerNameEquals(const std::string &left, const std::string &right)
 {
-	size_t i;
+    size_t i;
 
-	if (left.length() != right.length())
-		return (false);
-	i = 0;
-	while (i < left.length())
-	{
-		if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
-			return (false);
-		i++;
-	}
-	return (true);
+    if (left.length() != right.length())
+        return (false);
+    i = 0;
+    while (i < left.length())
+    {
+        if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
+            return (false);
+        i++;
+    }
+    return (true);
 }
 
 static bool isContentHeader(const std::string &name)
 {
-	if (headerNameEquals(name, "Content-Length"))
-		return (true);
-	if (headerNameEquals(name, "Content-Type"))
-		return (true);
-	return (false);
+    if (headerNameEquals(name, "Content-Length"))
+        return (true);
+    if (headerNameEquals(name, "Content-Type"))
+        return (true);
+    return (false);
 }
 
 static std::string buildCgiHttpHeaderName(const std::string &name)
 {
-	std::string result;
-	size_t i;
+    std::string result;
+    size_t i;
 
-	result = "HTTP_";
-	i = 0;
-	while (i < name.length())
-	{
-		if (name[i] == '-')
-			result += '_';
-		else
-			result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
-		i++;
-	}
-	return (result);
+    result = "HTTP_";
+    i = 0;
+    while (i < name.length())
+    {
+        if (name[i] == '-')
+            result += '_';
+        else
+            result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
+        i++;
+    }
+    return (result);
 }
 
 static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 {
-	std::map<std::string, std::string>::const_iterator it;
+    std::map<std::string, std::string>::const_iterator it;
 
-	it = request.getHeaders().begin();
-	while (it != request.getHeaders().end())
-	{
-		if (!isContentHeader(it->first))
-		{
-			context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
-		}
-		it++;
-	}
+    it = request.getHeaders().begin();
+    while (it != request.getHeaders().end())
+    {
+        if (!isContentHeader(it->first))
+        {
+            context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
+        }
+        it++;
+    }
 }
 
 static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
@@ -405,6 +407,93 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     addHttpHeaderVariables(context, request);
     addImplementationCgiVariables(context, request, route, cgiPath);
     return (context);
+}
+
+static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
+{
+    Response res;
+
+    res.setStatusCode(errorCode);
+    std::stringstream ss;
+    ss << "<html><body><h1>" << errorCode << " " << errorMessage << "</h1></body></html>";
+    std::string errorBody = ss.str();
+
+    res.setBody(errorBody);
+
+    res.addHeader("Content-Type", "text/html");
+
+    std::stringstream lengthSs;
+    lengthSs << errorBody.length();
+    res.addHeader("Content-Length", lengthSs.str());
+
+    res.addHeader("Connection", "close");
+
+    return res;
+}
+
+Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
+{
+    Response res;
+
+    // TODO: check that the body size isn't bigger than the route's client max body size
+
+    // 1. Create the complete route
+    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    // 2. Check if it's a folder
+    struct stat pathStat;
+    if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
+        return buildErrorResponse(403, "Forbidden: Is a directory");
+
+    // 3. Check the body
+    if (request.getBody().empty())
+        return buildErrorResponse(400, "Bad request");
+
+    // 4. Try to write the file
+    std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
+    if (!file.is_open())
+        return buildErrorResponse(500, "Internal Server Error: Could not open file");
+
+    file << request.getBody();
+    file.close();
+
+    // 5. Success response
+    res.setStatusCode(201);
+    res.addHeader("Content-Type", "text/html");
+    res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
+
+    return res;
+}
+
+Response RequestHandler::handleHttpDelete(const Request &request, const RouteConfig &route)
+{
+    Response res;
+
+    // 1. Create the complete route
+    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    // 2. Check if the ressource exists
+    struct stat pathStat;
+    if (stat(fullPath.c_str(), &pathStat) != 0)
+        return buildErrorResponse(404, "Not Found: Resource does not exist");
+
+    // 4. Forbid the deletion of folders
+    if (S_ISDIR(pathStat.st_mode))
+        return buildErrorResponse(403, "Forbidden: Cannot delete a directory");
+
+    // 5. Try to delete
+    if (std::remove(fullPath.c_str()) == 0)
+    {
+        Response res;
+        res.setStatusCode(200);
+        res.addHeader("Content-Type", "text/html");
+        res.setBody("<html><body><h1>File deleted successfully</h1></body></html>");
+        return res;
+    }
+    else
+        return buildErrorResponse(500, "Internal Server Error: Failed to delete the file");
+
+    return res;
 }
 
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
@@ -438,12 +527,20 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     {
         response = RequestHandler::handleStatic(request);
     }
+    else if (request.getMethod() == "POST")
+    {
+        response = RequestHandler::handlePost(request, route);
+    }
+    else if (request.getMethod() == "DELETE")
+    {
+        response = RequestHandler::handleHttpDelete(request, route);
+    }
     else
     {
-        response.setStatusCode(405);
-        response.setBody(
-            "<html><body><h1>405 Method Not Allowed</h1></body></html>");
+        std::cout << "Test else" << std::endl;
+        return buildErrorResponse(405, "Method Not Allowed");
     }
+
     std::ostringstream oss;
     oss << response.getBody().length();
     response.addHeader("Content-Type", "text/html");

@@ -234,33 +234,45 @@ int WebServ::setup(std::vector<ServerConfig> servers)
   //TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
+  bool stop = true;
   for (size_t i = 0; i < servers.size(); ++i)
   {
     this->serverConfig = servers[i];
     // 1. Create socket
     if (initListeningSocket())
-      return (1);
+    {
+      std::cerr << "Server Block " << i << " setup failed!\n";
+      continue;
+    }
+
 
     // 2. Setup address for socket
     if (bindSockAddress())
-      return (1);
+    {
+      std::cerr << "Server Block " << i << " setup failed!\n";
+      continue;
+    }
 
     // 3. Socket listening
 
     if (listen(this->serverSocket, 10) == -1)
     {
-      std::cerr << "Error on socket listening\n";
+      std::cerr << "Error on socket " << i << " listening\n";
       close(this->serverSocket);
-      return (1);
+      continue;
     }
     if (setNonBlocking(this->serverSocket))
     {
-      return (1);
+      std::cerr << "Error setting socket " << i << " as Non blocking\n";
+      continue;
     }
 
     std::cout << "Listening on " << serverConfig.listen.host << ":"
               << serverConfig.listen.port << "\n";
+    stop = false;
   }
+  if (stop)
+    return (1);
 	return (0);
 }
 

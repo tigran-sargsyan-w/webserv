@@ -31,5 +31,10 @@ int main(int argc, char **argv) {
     }
     stop = false;
   }
+  if (stop == true)
+  {
+    std::cerr << "All server blocks failed, error setting up WebServ!\n";
+    return (1);
+  }
   return (serv.run());
 }

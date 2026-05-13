@@ -407,6 +407,49 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
+Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
+{
+    Response res;
+
+    // 1. Create the complete route
+    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    //2. Check the body
+    if (request.getBody().empty())
+    {
+        res.setStatusCode(400);
+        res.setBody("<html><body><h1>400 : Bad request</h1></body></html>");
+        return res;
+    }
+
+    //3. Try to write the file
+    std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
+    if (!file.is_open()) {
+        res.setStatusCode(500);
+        res.setBody("<html><body><h1>500 Internal Server Error: Could not open file</h1></body></html>");
+        return res;
+    }
+
+    file << request.getBody();
+    file.close();
+
+    //4. Success response
+    res.setStatusCode(201); // 200 or 201 ??
+    res.addHeader("Content-Type", "text/html");
+    res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
+    return res;
+}
+
+Response RequestHandler::handleHttpDelete(const Request &request, const RouteConfig &route)
+{
+    Response res;
+
+    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    return res;
+
+}
+
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     // Generate a response
@@ -437,6 +480,14 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     if (request.getMethod() == "GET")
     {
         response = RequestHandler::handleStatic(request);
+    }
+    else if (request.getMethod() == "POST")
+    {
+        response = RequestHandler::handlePost(request, route);
+    }
+    else if (request.getMethod() == "DELETE")
+    {
+        response = RequestHandler::handleHttpDelete(request, route);
     }
     else
     {

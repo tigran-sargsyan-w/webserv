@@ -496,12 +496,45 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     return res;
 }
 
+static bool isRedirectStatusCode(int code)
+{
+    return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
+}
+
+static Response buildRedirectResponse(const RouteConfig &route)
+{
+    Response response;
+    std::string body;
+
+    if (!isRedirectStatusCode(route.returnCode))
+        return (buildErrorResponse(500, "Internal Server Error"));
+
+    response.setStatusCode(route.returnCode);
+    response.addHeader("Location", route.returnPath);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Connection", "close");
+
+    body = "<html><body><h1>"
+        + intToString(route.returnCode)
+        + " Redirect</h1><p>Redirecting to "
+        + route.returnPath
+        + "</p></body></html>";
+
+    response.setBody(body);
+    response.addHeader("Content-Length", intToString(body.length()));
+
+    return (response);
+}
+
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     // Generate a response
     Response response;
 
     CgiResolvedPath cgiPath;
+
+    if (route.hasReturn)
+        return (buildRedirectResponse(route));
 
     cgiPath = resolveCgiPath(request, route);
     if (cgiPath.isCgi)

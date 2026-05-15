@@ -500,21 +500,35 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     if (check.getStatusCode() != 0)
         return check;
 
-    // TODO: check that the body size isn't bigger than the route's client max body size
+    // 2. Check the activation of the upload
+    if (!route.uploadEnable)
+        return buildErrorResponse(403, "Forbidden: Upload is disabled for this route");
 
-    // 2. Check that the path is safe and create the complete route
-    if (!isPathSafe(request.getPath()))
-        return buildErrorResponse(403, "Forbidden: Invalid path sequence");
-    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+    // 3. Check the presence of a storage folder
+    if (route.uploadStore.empty())
+        return buildErrorResponse(500, "Internal Server Error: Upload store not configured");
+
+    // 4. Check the body
+    if (request.getBody().empty())
+        return buildErrorResponse(400, "Bad request: Empty body");
+
+    // 4. Extraction and safety check of the filename
+    std::string fileName = request.getPath();
+    size_t lastSlash = fileName.find_last_of('/');
+    if (lastSlash != std::string::npos)
+        fileName = fileName.substr(lastSlash + 1);
+    if (fileName.empty() || !isPathSafe(fileName))
+        return buildErrorResponse(400, "Bad Request: Invalid file name");
+
+    // 2. Create the complete route
+    std::string fullPath = joinPaths(route.uploadStore, fileName);
 
     // 3. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Forbidden: Is a directory");
+        return buildErrorResponse(403, "Conflict: A directory with this name already exists");
 
-    // 4. Check the body
-    if (request.getBody().empty())
-        return buildErrorResponse(400, "Bad request");
+    // TODO: check that the body size isn't bigger than the route's client max body size
 
     // 5. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);

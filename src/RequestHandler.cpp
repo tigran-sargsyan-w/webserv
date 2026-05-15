@@ -409,6 +409,43 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
+static std::string methodToString(HttpMethod method)
+{
+    switch (method)
+    {
+    case HTTP_GET:
+        return "GET";
+    case HTTP_POST:
+        return "POST";
+    case HTTP_DELETE:
+        return "DELETE";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+static Response validateMethod(const RouteConfig &route, HttpMethod method)
+{
+    if (route.methods.find(method) == route.methods.end())
+    {
+        Response errorRes = buildErrorResponse(405, "Method Not Allowed");
+
+        std::string allowedStr;
+        for (std::set<HttpMethod>::iterator it = route.methods.begin(); it != route.methods.end(); ++it)
+        {
+            if (it != route.methods.begin())
+                allowedStr += ", ";
+            allowedStr += methodToString(*it);
+        }
+        errorRes.addHeader("Allow", allowedStr);
+        return errorRes;
+    }
+
+    Response ok;
+    ok.setStatusCode(0);
+    return ok;
+}
+
 static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
 {
     Response res;
@@ -435,21 +472,26 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
 {
     Response res;
 
+    // 1. Check that the method is valid
+    Response check = validateMethod(route, HTTP_POST);
+    if (check.getStatusCode() != 0)
+        return check;
+
     // TODO: check that the body size isn't bigger than the route's client max body size
 
-    // 1. Create the complete route
+    // 2. Create the complete route
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
-    // 2. Check if it's a folder
+    // 3. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
         return buildErrorResponse(403, "Forbidden: Is a directory");
 
-    // 3. Check the body
+    // 4. Check the body
     if (request.getBody().empty())
         return buildErrorResponse(400, "Bad request");
 
-    // 4. Try to write the file
+    // 5. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
     if (!file.is_open())
         return buildErrorResponse(500, "Internal Server Error: Could not open file");
@@ -457,7 +499,7 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     file << request.getBody();
     file.close();
 
-    // 5. Success response
+    // 6. Success response
     res.setStatusCode(201);
     res.addHeader("Content-Type", "text/html");
     res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
@@ -469,10 +511,15 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
 {
     Response res;
 
-    // 1. Create the complete route
+    // 1. Check that the method is valid
+    Response check = validateMethod(route, HTTP_DELETE);
+    if (check.getStatusCode() != 0)
+        return check;
+
+    // 2. Create the complete route
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
-    // 2. Check if the ressource exists
+    // 3. Check if the ressource exists
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) != 0)
         return buildErrorResponse(404, "Not Found: Resource does not exist");
@@ -537,7 +584,6 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     }
     else
     {
-        std::cout << "Test else" << std::endl;
         return buildErrorResponse(405, "Method Not Allowed");
     }
 

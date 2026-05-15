@@ -457,6 +457,17 @@ static Response buildErrorResponse(int errorCode, const std::string &errorMessag
     return res;
 }
 
+static Response buildSuccessResponse(int successCode, const std::string &successMessage)
+{
+    Response res;
+
+    res.setStatusCode(successCode);
+    res.addHeader("Content-Type", "text/html");
+    res.setBody("<html><body><h1>" + successMessage + "</h1></body></html>");
+
+    return res;
+}
+
 static Response validateMethod(const RouteConfig &route, HttpMethod method)
 {
     if (route.methods.find(method) == route.methods.end())
@@ -502,7 +513,8 @@ static std::string getSafeUploadPath(const Request &request, const RouteConfig &
     if (fileName.empty() || !isPathSafe(fileName))
         return "";
 
-    // possibly put check of route.uploadStore here ???
+    if (route.uploadStore.empty())
+        return "";
 
     return joinPaths(route.uploadStore, fileName);
 }
@@ -536,7 +548,7 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     // 6. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Conflict: A directory with this name already exists");
+        return buildErrorResponse(409, "Conflict: A directory with this name already exists");
 
     // TODO: check that the body size isn't bigger than the route's client max body size
 
@@ -549,9 +561,7 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     file.close();
 
     // 9. Success response
-    res.setStatusCode(201);
-    res.addHeader("Content-Type", "text/html");
-    res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
+    res = buildSuccessResponse(201, "Created: File uploaded");
 
     return res;
 }
@@ -581,12 +591,7 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
 
     // 5. Try to delete
     if (std::remove(fullPath.c_str()) == 0)
-    {
-        res.setStatusCode(200);
-        res.addHeader("Content-Type", "text/html");
-        res.setBody("<html><body><h1>File deleted successfully</h1></body></html>");
-        return res;
-    }
+        res = buildSuccessResponse(200, "File deleted successfully");
     else
         return buildErrorResponse(500, "Internal Server Error: Failed to delete the file");
 

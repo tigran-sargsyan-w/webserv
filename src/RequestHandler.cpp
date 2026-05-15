@@ -446,14 +446,6 @@ static Response buildErrorResponse(int errorCode, const std::string &errorMessag
 
     res.setBody(errorBody);
 
-    res.addHeader("Content-Type", "text/html");
-
-    std::stringstream lengthSs;
-    lengthSs << errorBody.length();
-    res.addHeader("Content-Length", lengthSs.str());
-
-    res.addHeader("Connection", "close");
-
     return res;
 }
 
@@ -462,7 +454,6 @@ static Response buildSuccessResponse(int successCode, const std::string &success
     Response res;
 
     res.setStatusCode(successCode);
-    res.addHeader("Content-Type", "text/html");
     res.setBody("<html><body><h1>" + successMessage + "</h1></body></html>");
 
     return res;
@@ -648,8 +639,12 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     std::ostringstream oss;
     oss << response.getBody().length();
-    response.addHeader("Content-Type", "text/html");
-    response.addHeader("Connection", "close");
     response.addHeader("Content-Length", oss.str());
+
+    if (response.getHeader("Content-Type").empty())
+        response.addHeader("Content-Type", "text/html");
+    if (response.getHeader("Connection").empty())
+        response.addHeader("Connection", "close");
+
     return response;
 }

@@ -479,6 +479,18 @@ static Response validateMethod(const RouteConfig &route, HttpMethod method)
     return ok;
 }
 
+static bool isPathSafe(const std::string &path)
+{
+    std::stringstream ss(path);
+    std::string segment;
+    while (std::getline(ss, segment, '/'))
+    {
+        if (segment == "..")
+            return false;
+    }
+    return true;
+}
+
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
 {
     Response res;
@@ -490,7 +502,9 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
 
     // TODO: check that the body size isn't bigger than the route's client max body size
 
-    // 2. Create the complete route
+    // 2. Check that the path is safe and create the complete route
+    if (!isPathSafe(request.getPath()))
+        return buildErrorResponse(403, "Forbidden: Invalid path sequence");
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
     // 3. Check if it's a folder
@@ -527,7 +541,9 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     if (check.getStatusCode() != 0)
         return check;
 
-    // 2. Create the complete route
+    // 2. Check that the path is safe and create the complete route
+    if (!isPathSafe(request.getPath()))
+        return buildErrorResponse(403, "Forbidden: Invalid path sequence");
     std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
     // 3. Check if the ressource exists
@@ -591,10 +607,13 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     {
     case HTTP_GET:
         response = RequestHandler::handleStatic(request);
+        break;
     case HTTP_POST:
         response = RequestHandler::handlePost(request, route);
+        break;
     case HTTP_DELETE:
         response = RequestHandler::handleHttpDelete(request, route);
+        break;
     default:
         return buildErrorResponse(500, "Internal Server Error");
     }

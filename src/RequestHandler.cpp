@@ -491,6 +491,22 @@ static bool isPathSafe(const std::string &path)
     return true;
 }
 
+static std::string getSafeUploadPath(const Request &request, const RouteConfig &route)
+{
+    // Extraction and safety check of the filename
+
+    std::string fileName = request.getPath();
+    size_t lastSlash = fileName.find_last_of('/');
+    if (lastSlash != std::string::npos)
+        fileName = fileName.substr(lastSlash + 1);
+    if (fileName.empty() || !isPathSafe(fileName))
+        return "";
+
+    // possibly put check of route.uploadStore here ???
+
+    return joinPaths(route.uploadStore, fileName);
+}
+
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
 {
     Response res;
@@ -512,25 +528,19 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     if (request.getBody().empty())
         return buildErrorResponse(400, "Bad request: Empty body");
 
-    // 4. Extraction and safety check of the filename
-    std::string fileName = request.getPath();
-    size_t lastSlash = fileName.find_last_of('/');
-    if (lastSlash != std::string::npos)
-        fileName = fileName.substr(lastSlash + 1);
-    if (fileName.empty() || !isPathSafe(fileName))
+    // 5. Extraction and safety check of the filename
+    std::string fullPath = getSafeUploadPath(request, route);
+    if (fullPath.empty())
         return buildErrorResponse(400, "Bad Request: Invalid file name");
 
-    // 2. Create the complete route
-    std::string fullPath = joinPaths(route.uploadStore, fileName);
-
-    // 3. Check if it's a folder
+    // 6. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
         return buildErrorResponse(403, "Conflict: A directory with this name already exists");
 
     // TODO: check that the body size isn't bigger than the route's client max body size
 
-    // 5. Try to write the file
+    // 8. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
     if (!file.is_open())
         return buildErrorResponse(500, "Internal Server Error: Could not open file");
@@ -538,7 +548,7 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     file << request.getBody();
     file.close();
 
-    // 6. Success response
+    // 9. Success response
     res.setStatusCode(201);
     res.addHeader("Content-Type", "text/html");
     res.setBody("<html><body><h1>201 Created: File uploaded</h1></body></html>");
@@ -556,9 +566,9 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
         return check;
 
     // 2. Check that the path is safe and create the complete route
-    if (!isPathSafe(request.getPath()))
+    std::string fullPath = getSafeUploadPath(request, route);
+    if (fullPath.empty())
         return buildErrorResponse(403, "Forbidden: Invalid path sequence");
-    std::string fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
 
     // 3. Check if the ressource exists
     struct stat pathStat;
@@ -572,7 +582,6 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     // 5. Try to delete
     if (std::remove(fullPath.c_str()) == 0)
     {
-        Response res;
         res.setStatusCode(200);
         res.addHeader("Content-Type", "text/html");
         res.setBody("<html><body><h1>File deleted successfully</h1></body></html>");

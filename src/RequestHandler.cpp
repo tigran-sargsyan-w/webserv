@@ -409,7 +409,7 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
-static std::string methodToString(HttpMethod method)
+static std::string methodToString(const HttpMethod &method)
 {
     switch (method)
     {
@@ -424,26 +424,15 @@ static std::string methodToString(HttpMethod method)
     }
 }
 
-static Response validateMethod(const RouteConfig &route, HttpMethod method)
+static HttpMethod stringToMethod(const std::string &method)
 {
-    if (route.methods.find(method) == route.methods.end())
-    {
-        Response errorRes = buildErrorResponse(405, "Method Not Allowed");
-
-        std::string allowedStr;
-        for (std::set<HttpMethod>::iterator it = route.methods.begin(); it != route.methods.end(); ++it)
-        {
-            if (it != route.methods.begin())
-                allowedStr += ", ";
-            allowedStr += methodToString(*it);
-        }
-        errorRes.addHeader("Allow", allowedStr);
-        return errorRes;
-    }
-
-    Response ok;
-    ok.setStatusCode(0);
-    return ok;
+    if (method == "GET")
+        return HTTP_GET;
+    else if (method == "POST")
+        return HTTP_POST;
+    else if (method == "DELETE")
+        return HTTP_DELETE;
+    return HTTP_UNKNOWN;
 }
 
 static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
@@ -466,6 +455,28 @@ static Response buildErrorResponse(int errorCode, const std::string &errorMessag
     res.addHeader("Connection", "close");
 
     return res;
+}
+
+static Response validateMethod(const RouteConfig &route, HttpMethod method)
+{
+    if (route.methods.find(method) == route.methods.end())
+    {
+        Response errorRes = buildErrorResponse(405, "Method Not Allowed");
+
+        std::string allowedStr;
+        for (std::set<HttpMethod>::iterator it = route.methods.begin(); it != route.methods.end(); ++it)
+        {
+            if (it != route.methods.begin())
+                allowedStr += ", ";
+            allowedStr += methodToString(*it);
+        }
+        errorRes.addHeader("Allow", allowedStr);
+        return errorRes;
+    }
+
+    Response ok;
+    ok.setStatusCode(0);
+    return ok;
 }
 
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
@@ -570,21 +581,22 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
         return (response);
     }
 
-    if (request.getMethod() == "GET")
+    HttpMethod method = stringToMethod(request.getMethod());
+    if (method == HTTP_UNKNOWN)
+        return buildErrorResponse(501, "Not Implemented");
+    Response check;
+    if (check.getStatusCode() != 0)
+        return check;
+    switch (method)
     {
+    case HTTP_GET:
         response = RequestHandler::handleStatic(request);
-    }
-    else if (request.getMethod() == "POST")
-    {
+    case HTTP_POST:
         response = RequestHandler::handlePost(request, route);
-    }
-    else if (request.getMethod() == "DELETE")
-    {
+    case HTTP_DELETE:
         response = RequestHandler::handleHttpDelete(request, route);
-    }
-    else
-    {
-        return buildErrorResponse(405, "Method Not Allowed");
+    default:
+        return buildErrorResponse(500, "Internal Server Error");
     }
 
     std::ostringstream oss;

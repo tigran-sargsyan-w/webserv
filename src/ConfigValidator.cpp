@@ -25,7 +25,13 @@ static bool isRedirectStatusCode(int code)
 
 static bool isValidRedirectTarget(const std::string &target)
 {
-    return (!target.empty() && target[0] == '/');
+    if (target.empty())
+        return (false);
+    if (target[0] != '/')
+        return (false);
+    if (target.length() > 1 && target[1] == '/')
+        return (false);
+    return (true);
 }
 
 void ConfigValidator::validate(const Config &config)

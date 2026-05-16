@@ -23,6 +23,11 @@ static bool isRedirectStatusCode(int code)
     return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
 }
 
+static bool isValidRedirectTarget(const std::string &target)
+{
+    return (!target.empty() && target[0] == '/');
+}
+
 void ConfigValidator::validate(const Config &config)
 {
 	if (config.servers.empty())
@@ -49,6 +54,8 @@ void ConfigValidator::validate(const Config &config)
 				throw configError("location " + route.path + " has upload_enable on but upload_store is missing");
 			if (route.hasReturn && !isRedirectStatusCode(route.returnCode))
     			throw configError("location " + route.path + " has invalid redirect status code");
+			if (route.hasReturn && !isValidRedirectTarget(route.returnPath))
+    			throw configError("location " + route.path + " has invalid redirect target");
 		}
 	}
 }

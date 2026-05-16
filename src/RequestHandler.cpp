@@ -533,6 +533,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     CgiResolvedPath cgiPath;
 
+    // TODO: Move redirect after route method validation when method enforcement is implemented.
     if (route.hasReturn)
         return (buildRedirectResponse(route));
 

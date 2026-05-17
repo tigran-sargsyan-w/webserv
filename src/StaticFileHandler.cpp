@@ -1,3 +1,4 @@
+#include "ErrorResponseBuilder.hpp"
 #include "StaticFileHandler.hpp"
 #include "MimeTypes.hpp"
 #include "utils.hpp"
@@ -22,26 +23,6 @@ StaticFileHandler &StaticFileHandler::operator=(const StaticFileHandler &other)
 }
 
 StaticFileHandler::~StaticFileHandler() {}
-
-static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
-{
-    Response response;
-    std::stringstream stream;
-    std::string body;
-
-    response.setStatusCode(errorCode);
-    stream << "<html><body><h1>"
-           << errorCode
-           << " "
-           << errorMessage
-           << "</h1></body></html>";
-    body = stream.str();
-    response.setBody(body);
-    response.addHeader("Content-Type", "text/html");
-    response.addHeader("Content-Length", intToString(body.length()));
-    response.addHeader("Connection", "close");
-    return (response);
-}
 
 static std::string getPathWithoutQuery(const std::string &path)
 {
@@ -261,7 +242,7 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 
     dir = opendir(directoryPath.c_str());
     if (dir == NULL)
-        return (buildErrorResponse(403, "Forbidden"));
+        return (ErrorResponseBuilder::build(403, "Forbidden"));
 
     entries = getSortedDirectoryEntries(dir, directoryPath);
     closedir(dir);
@@ -316,7 +297,7 @@ static Response handleDirectoryRequest(const std::string &requestPath, const std
     }
     if (route.autoindex)
         return (buildAutoindexResponse(requestPath, fullPath));
-    return (buildErrorResponse(403, "Forbidden"));
+    return (ErrorResponseBuilder::build(403, "Forbidden"));
 }
 
 static bool hasPathTraversal(const std::string &path)
@@ -353,11 +334,11 @@ Response StaticFileHandler::handle(const Request &request, const RouteConfig &ro
     cleanPath = getPathWithoutQuery(request.getPath());
     decodedPath = urlDecodePath(cleanPath);
     if (hasPathTraversal(decodedPath))
-        return (buildErrorResponse(403, "Forbidden"));
+        return (ErrorResponseBuilder::build(403, "Forbidden"));
     fullPath = joinPaths(route.root, getCleanPathInsideRoute(decodedPath, route));
 
     if (!pathExists(fullPath))
-        return (buildErrorResponse(404, "Not Found"));
+        return (ErrorResponseBuilder::build(404, "Not Found"));
 
     if (isDirectory(fullPath))
         return (handleDirectoryRequest(cleanPath, fullPath, route));
@@ -365,5 +346,5 @@ Response StaticFileHandler::handle(const Request &request, const RouteConfig &ro
     if (isRegularFile(fullPath))
         return (buildFileResponse(fullPath));
 
-    return (buildErrorResponse(403, "Forbidden"));
+    return (ErrorResponseBuilder::build(403, "Forbidden"));
 }

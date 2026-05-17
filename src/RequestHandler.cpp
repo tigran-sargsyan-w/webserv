@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include <dirent.h>
+#include <algorithm>
 
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
@@ -73,17 +74,42 @@ static Response buildFileResponse(const std::string &path)
     return (response);
 }
 
+static std::vector<std::string> getSortedDirectoryEntries(DIR *dir)
+{
+    std::vector<std::string> entries;
+    struct dirent *entry;
+    std::string name;
+
+    entry = readdir(dir);
+    while (entry != NULL)
+    {
+        name = entry->d_name;
+        if (name != "." && name != "..")
+            entries.push_back(name);
+        entry = readdir(dir);
+    }
+    std::sort(entries.begin(), entries.end());
+    return (entries);
+}
+
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath)
 {
     Response response;
     DIR *dir;
-    struct dirent *entry;
+    std::vector<std::string> entries;
+    std::vector<std::string>::const_iterator it;
     std::string body;
     std::string baseUrl;
+    std::string name;
+    std::string entryPath;
+    bool entryIsDirectory;
 
     dir = opendir(directoryPath.c_str());
     if (dir == NULL)
         return (buildErrorResponse(403, "Forbidden"));
+
+    entries = getSortedDirectoryEntries(dir);
+    closedir(dir);
 
     baseUrl = requestPath;
     if (baseUrl.empty() || baseUrl[baseUrl.length() - 1] != '/')
@@ -93,15 +119,10 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
     body += "<h1>Index of " + requestPath + "</h1>";
     body += "<ul>";
 
-    while ((entry = readdir(dir)) != NULL)
+    it = entries.begin();
+    while (it != entries.end())
     {
-        std::string name = entry->d_name;
-        std::string entryPath;
-        bool entryIsDirectory;
-
-        if (name == "." || name == "..")
-            continue;
-
+        name = *it;
         entryPath = joinPaths(directoryPath, name);
         entryIsDirectory = isDirectory(entryPath);
 
@@ -115,9 +136,9 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
         if (entryIsDirectory)
             body += "/";
         body += "</a></li>";
-    }
 
-    closedir(dir);
+        ++it;
+    }
 
     body += "</ul>";
     body += "</body></html>";
@@ -130,7 +151,6 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 
     return (response);
 }
-
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route)
 {
     std::string indexPath;

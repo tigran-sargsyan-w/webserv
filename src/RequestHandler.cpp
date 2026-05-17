@@ -21,34 +21,149 @@
 
 #include <sys/stat.h>
 
+#include <dirent.h>
+
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
+
+static Response buildErrorResponse(int errorCode, const std::string &errorMessage);
+static std::string getPathWithoutQuery(const std::string &path);
+static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
+static std::string joinPaths(const std::string &left, const std::string &right);
 
 RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
 
-Response RequestHandler::handleStatic(const Request &request)
+static bool pathExists(const std::string &path)
 {
-    Response res;
+    struct stat pathStat;
 
-    std::string fullPath = "www" + request.getPath();
-    if (fullPath == "www/")
-        fullPath = "www/index.html";
-    std::ifstream file(fullPath.c_str());
-    if (!file)
+    return (stat(path.c_str(), &pathStat) == 0);
+}
+
+static bool isDirectory(const std::string &path)
+{
+    struct stat pathStat;
+
+    if (stat(path.c_str(), &pathStat) != 0)
+        return (false);
+    return (S_ISDIR(pathStat.st_mode));
+}
+
+static bool isRegularFile(const std::string &path)
+{
+    struct stat pathStat;
+
+    if (stat(path.c_str(), &pathStat) != 0)
+        return (false);
+    return (S_ISREG(pathStat.st_mode));
+}
+
+static Response buildFileResponse(const std::string &path)
+{
+    Response response;
+
+    response.setStatusCode(200);
+    response.setBodyFromFile(path);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Content-Length", intToString(response.getBody().length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+}
+
+static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath)
+{
+    Response response;
+    DIR *dir;
+    struct dirent *entry;
+    std::string body;
+    std::string baseUrl;
+
+    dir = opendir(directoryPath.c_str());
+    if (dir == NULL)
+        return (buildErrorResponse(403, "Forbidden"));
+
+    baseUrl = requestPath;
+    if (baseUrl.empty() || baseUrl[baseUrl.length() - 1] != '/')
+        baseUrl += "/";
+
+    body = "<html><body>";
+    body += "<h1>Index of " + requestPath + "</h1>";
+    body += "<ul>";
+
+    while ((entry = readdir(dir)) != NULL)
     {
-        res.setStatusCode(404);
-        res.setBodyFromFile("www/error.html");
-        std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
-                                                         // response
+        std::string name = entry->d_name;
+        std::string entryPath;
+        bool entryIsDirectory;
+
+        if (name == "." || name == "..")
+            continue;
+
+        entryPath = joinPaths(directoryPath, name);
+        entryIsDirectory = isDirectory(entryPath);
+
+        body += "<li><a href=\"";
+        body += baseUrl + name;
+        if (entryIsDirectory)
+            body += "/";
+        body += "\">";
+
+        body += name;
+        if (entryIsDirectory)
+            body += "/";
+        body += "</a></li>";
     }
-    if (file)
+
+    closedir(dir);
+
+    body += "</ul>";
+    body += "</body></html>";
+
+    response.setStatusCode(200);
+    response.setBody(body);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Content-Length", intToString(body.length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+}
+
+static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route)
+{
+    std::string indexPath;
+
+    if (!route.index.empty())
     {
-        res.setStatusCode(200);
-        res.setBodyFromFile(fullPath);
+        indexPath = joinPaths(fullPath, route.index);
+        if (isRegularFile(indexPath))
+            return (buildFileResponse(indexPath));
     }
-    return res;
+
+    if (route.autoindex)
+        return (buildAutoindexResponse(requestPath, fullPath));
+
+    return (buildErrorResponse(403, "Forbidden"));
+}
+
+Response RequestHandler::handleStatic(const Request &request, const RouteConfig &route)
+{
+    std::string fullPath;
+
+    fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+
+    if (!pathExists(fullPath))
+        return (buildErrorResponse(404, "Not Found"));
+
+    if (isDirectory(fullPath))
+        return (handleDirectoryRequest(getPathWithoutQuery(request.getPath()), fullPath, route));
+
+    if (isRegularFile(fullPath))
+        return (buildFileResponse(fullPath));
+
+    return (buildErrorResponse(403, "Forbidden"));
 }
 
 static void addCgiHeaderToResponse(Response &response,
@@ -559,7 +674,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     if (request.getMethod() == "GET")
     {
-        response = RequestHandler::handleStatic(request);
+        response = RequestHandler::handleStatic(request, route);
     }
     else if (request.getMethod() == "POST")
     {

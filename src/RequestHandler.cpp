@@ -106,6 +106,31 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
     return (entries);
 }
 
+static std::string htmlEscape(const std::string &text)
+{
+    std::string result;
+    size_t i;
+
+    i = 0;
+    while (i < text.length())
+    {
+        if (text[i] == '&')
+            result += "&amp;";
+        else if (text[i] == '<')
+            result += "&lt;";
+        else if (text[i] == '>')
+            result += "&gt;";
+        else if (text[i] == '"')
+            result += "&quot;";
+        else if (text[i] == '\'')
+            result += "&#39;";
+        else
+            result += text[i];
+        i++;
+    }
+    return (result);
+}
+
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath)
 {
     Response response;
@@ -128,7 +153,7 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
         baseUrl += "/";
 
     body = "<html><body>";
-    body += "<h1>Index of " + requestPath + "</h1>";
+    body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
     body += "<ul>";
 
     it = entries.begin();
@@ -137,12 +162,12 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
         name = it->name;
 
         body += "<li><a href=\"";
-        body += baseUrl + name;
+        body += htmlEscape(baseUrl + name);
         if (it->isDirectory)
             body += "/";
         body += "\">";
 
-        body += name;
+        body += htmlEscape(name);
         if (it->isDirectory)
             body += "/";
         body += "</a></li>";

@@ -5,6 +5,12 @@
 #include "Response.hpp"
 #include "Config.hpp"
 
+struct AutoindexEntry
+{
+    std::string name;
+    bool isDirectory;
+};
+
 class RequestHandler
 {
 public:

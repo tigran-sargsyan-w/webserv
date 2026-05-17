@@ -11,14 +11,9 @@
 #include <sys/stat.h>
 #include <vector>
 
-StaticFileHandler::StaticFileHandler()
-{
-}
+StaticFileHandler::StaticFileHandler() {}
 
-StaticFileHandler::StaticFileHandler(const StaticFileHandler &other)
-{
-    (void)other;
-}
+StaticFileHandler::StaticFileHandler(const StaticFileHandler &other) {(void)other;}
 
 StaticFileHandler &StaticFileHandler::operator=(const StaticFileHandler &other)
 {
@@ -26,9 +21,7 @@ StaticFileHandler &StaticFileHandler::operator=(const StaticFileHandler &other)
     return (*this);
 }
 
-StaticFileHandler::~StaticFileHandler()
-{
-}
+StaticFileHandler::~StaticFileHandler() {}
 
 static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
 {

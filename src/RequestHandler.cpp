@@ -1,3 +1,4 @@
+#include "MimeTypes.hpp"
 #include "RequestHandler.hpp"
 #include "CgiHandler.hpp"
 #include "Request.hpp"
@@ -63,64 +64,13 @@ static bool isRegularFile(const std::string &path)
     return (S_ISREG(pathStat.st_mode));
 }
 
-static std::string getFileExtension(const std::string &path)
-{
-    size_t dot;
-    size_t slash;
-
-    dot = path.find_last_of('.');
-    slash = path.find_last_of('/');
-
-    if (dot == std::string::npos)
-        return ("");
-    if (slash != std::string::npos && dot < slash)
-        return ("");
-    return (path.substr(dot));
-}
-
-static std::string getMimeType(const std::string &path)
-{
-    std::string extension;
-
-    extension = getFileExtension(path);
-
-    if (extension == ".html" || extension == ".htm")
-        return ("text/html");
-    if (extension == ".css")
-        return ("text/css");
-    if (extension == ".js")
-        return ("application/javascript");
-    if (extension == ".json")
-        return ("application/json");
-    if (extension == ".txt")
-        return ("text/plain");
-
-    if (extension == ".png")
-        return ("image/png");
-    if (extension == ".jpg" || extension == ".jpeg")
-        return ("image/jpeg");
-    if (extension == ".gif")
-        return ("image/gif");
-    if (extension == ".svg")
-        return ("image/svg+xml");
-    if (extension == ".ico")
-        return ("image/x-icon");
-    if (extension == ".webp")
-        return ("image/webp");
-
-    if (extension == ".pdf")
-        return ("application/pdf");
-
-    return ("application/octet-stream");
-}
-
 static Response buildFileResponse(const std::string &path)
 {
     Response response;
 
     response.setStatusCode(200);
     response.setBodyFromFile(path);
-    response.addHeader("Content-Type", getMimeType(path));
+    response.addHeader("Content-Type", MimeTypes::getMimeType(path));
     response.addHeader("Content-Length", intToString(response.getBody().length()));
     response.addHeader("Connection", "close");
 

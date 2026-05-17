@@ -453,7 +453,42 @@ Note: do not use `curl -I` for this test unless `HEAD` is implemented. `curl -I`
 
 ---
 
-## 18. Test: directory without trailing slash
+## 18. Test: path traversal protection
+
+Use `--path-as-is` so that `curl` does not normalize `../` before sending the request to the server.
+
+```bash
+curl --path-as-is -i http://localhost:8080/static/../index.html
+curl --path-as-is -i http://localhost:8080/static/../../../../etc/passwd
+curl --path-as-is -i http://localhost:8080/static/%2E%2E/index.html
+curl --path-as-is -i http://localhost:8080/static/%2E%2E/%2E%2E/etc/passwd
+```
+
+Expected for each request:
+
+```http
+HTTP/1.1 403 Forbidden
+```
+
+Purpose: raw `../` and encoded `%2E%2E` path traversal attempts must be rejected before building the filesystem path.
+
+Regression check: file names that contain dots but are not a `..` path segment should still work.
+
+```bash
+printf "dots
+" > www/static/listing-test/file..name.txt
+curl -i http://localhost:8080/static/listing-test/file..name.txt
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+```
+
+---
+
+## 19. Test: directory without trailing slash
 
 ```bash
 curl -i http://localhost:8080/static/listing-test
@@ -489,7 +524,7 @@ This is the next planned improvement.
 
 ---
 
-## 19. Quick regression checklist
+## 20. Quick regression checklist
 
 Before opening or merging the PR, run:
 
@@ -504,6 +539,8 @@ curl -i http://localhost:8080/uploads/
 curl -i http://localhost:8080/static/not-found/
 curl -i http://localhost:8080/static/not-found.txt
 curl -i http://localhost:8080/static/listing-test
+curl --path-as-is -i http://localhost:8080/static/../index.html
+curl --path-as-is -i http://localhost:8080/static/%2E%2E/index.html
 curl -s http://localhost:8080/static/sort-test/
 curl -s http://localhost:8080/static/escape-test/
 curl -s http://localhost:8080/static/url-test/
@@ -525,6 +562,8 @@ Expected summary:
 | `/static/not-found/`                | `404 Not Found` | Missing directory                                           |
 | `/static/not-found.txt`             | `404 Not Found` | Missing file                                                |
 | `/static/listing-test`              |        `200 OK` | Directory without trailing slash, current accepted behavior |
+| `/static/../index.html`             | `403 Forbidden` | Raw path traversal blocked                                  |
+| `/static/%2E%2E/index.html`         | `403 Forbidden` | Encoded path traversal blocked                              |
 | `/static/sort-test/`                |        `200 OK` | Sorted listing                                              |
 | `/static/escape-test/`              |        `200 OK` | HTML escaping                                               |
 | `/static/url-test/`                 |        `200 OK` | URL encoded links                                           |
@@ -533,11 +572,11 @@ Expected summary:
 
 ---
 
-## 20. Current accepted limitations
+## 21. Current accepted limitations
 
 These are not blockers for the current autoindex task, but can be improved later:
 
 * Directory without trailing slash returns listing directly instead of redirecting to `/dir/`.
-* Path traversal protection should be handled as a separate security improvement.
+* Basic `../` path traversal protection is implemented for raw and encoded paths. Symlink escape protection with `realpath()` is not covered yet.
 * `HEAD` requests are not covered by these tests unless the server implements `HEAD`.
 * Autoindex output is intentionally simple HTML and does not show file size or modification date.

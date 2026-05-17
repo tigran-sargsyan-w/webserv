@@ -74,21 +74,35 @@ static Response buildFileResponse(const std::string &path)
     return (response);
 }
 
-static std::vector<std::string> getSortedDirectoryEntries(DIR *dir)
+static bool compareAutoindexEntries(const AutoindexEntry &left, const AutoindexEntry &right)
 {
-    std::vector<std::string> entries;
+    if (left.isDirectory != right.isDirectory)
+        return (left.isDirectory);
+    return (left.name < right.name);
+}
+
+static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std::string &directoryPath)
+{
+    std::vector<AutoindexEntry> entries;
     struct dirent *entry;
+    AutoindexEntry autoindexEntry;
     std::string name;
+    std::string entryPath;
 
     entry = readdir(dir);
     while (entry != NULL)
     {
         name = entry->d_name;
         if (name != "." && name != "..")
-            entries.push_back(name);
+        {
+            entryPath = joinPaths(directoryPath, name);
+            autoindexEntry.name = name;
+            autoindexEntry.isDirectory = isDirectory(entryPath);
+            entries.push_back(autoindexEntry);
+        }
         entry = readdir(dir);
     }
-    std::sort(entries.begin(), entries.end());
+    std::sort(entries.begin(), entries.end(), compareAutoindexEntries);
     return (entries);
 }
 
@@ -96,19 +110,17 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 {
     Response response;
     DIR *dir;
-    std::vector<std::string> entries;
-    std::vector<std::string>::const_iterator it;
+    std::vector<AutoindexEntry> entries;
+    std::vector<AutoindexEntry>::const_iterator it;
     std::string body;
     std::string baseUrl;
     std::string name;
-    std::string entryPath;
-    bool entryIsDirectory;
 
     dir = opendir(directoryPath.c_str());
     if (dir == NULL)
         return (buildErrorResponse(403, "Forbidden"));
 
-    entries = getSortedDirectoryEntries(dir);
+    entries = getSortedDirectoryEntries(dir, directoryPath);
     closedir(dir);
 
     baseUrl = requestPath;
@@ -122,18 +134,16 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
     it = entries.begin();
     while (it != entries.end())
     {
-        name = *it;
-        entryPath = joinPaths(directoryPath, name);
-        entryIsDirectory = isDirectory(entryPath);
+        name = it->name;
 
         body += "<li><a href=\"";
         body += baseUrl + name;
-        if (entryIsDirectory)
+        if (it->isDirectory)
             body += "/";
         body += "\">";
 
         body += name;
-        if (entryIsDirectory)
+        if (it->isDirectory)
             body += "/";
         body += "</a></li>";
 
@@ -151,6 +161,7 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 
     return (response);
 }
+
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route)
 {
     std::string indexPath;

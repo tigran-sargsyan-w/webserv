@@ -243,7 +243,6 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
         name = it->name;
 
         body += "<li><a href=\"";
-        // body += htmlEscape(baseUrl + name);
         body += htmlEscape(baseUrl + urlEncodePathSegment(name));
         if (it->isDirectory)
             body += "/";

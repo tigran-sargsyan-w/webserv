@@ -31,6 +31,7 @@ static Response buildErrorResponse(int errorCode, const std::string &errorMessag
 static std::string getPathWithoutQuery(const std::string &path);
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
 static std::string joinPaths(const std::string &left, const std::string &right);
+static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route);
 
 RequestHandler::RequestHandler() {}
 
@@ -131,6 +132,86 @@ static std::string htmlEscape(const std::string &text)
     return (result);
 }
 
+static bool isUrlSafeChar(unsigned char c)
+{
+    if (std::isalnum(c))
+        return (true);
+    if (c == '-' || c == '_' || c == '.' || c == '~')
+        return (true);
+    return (false);
+}
+
+static bool isHexDigit(char c)
+{
+    return ((c >= '0' && c <= '9')
+        || (c >= 'a' && c <= 'f')
+        || (c >= 'A' && c <= 'F'));
+}
+
+static int hexToInt(char c)
+{
+    if (c >= '0' && c <= '9')
+        return (c - '0');
+    if (c >= 'a' && c <= 'f')
+        return (c - 'a' + 10);
+    if (c >= 'A' && c <= 'F')
+        return (c - 'A' + 10);
+    return (0);
+}
+
+static std::string urlDecodePath(const std::string &path)
+{
+    std::string result;
+    size_t i;
+    int value;
+
+    i = 0;
+    while (i < path.length())
+    {
+        if (path[i] == '%' && i + 2 < path.length()
+            && isHexDigit(path[i + 1]) && isHexDigit(path[i + 2]))
+        {
+            value = hexToInt(path[i + 1]) * 16 + hexToInt(path[i + 2]);
+            result += static_cast<char>(value);
+            i += 3;
+        }
+        else
+        {
+            result += path[i];
+            i++;
+        }
+    }
+    return (result);
+}
+
+static std::string urlEncodePathSegment(const std::string &text)
+{
+    std::ostringstream stream;
+    size_t i;
+    unsigned char c;
+
+    i = 0;
+    while (i < text.length())
+    {
+        c = static_cast<unsigned char>(text[i]);
+        if (isUrlSafeChar(c))
+            stream << text[i];
+        else
+        {
+            stream << '%';
+            stream << std::uppercase;
+            stream << std::hex;
+            stream << std::setw(2);
+            stream << std::setfill('0');
+            stream << static_cast<int>(c);
+            stream << std::nouppercase;
+            stream << std::dec;
+        }
+        ++i;
+    }
+    return (stream.str());
+}
+
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath)
 {
     Response response;
@@ -162,7 +243,8 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
         name = it->name;
 
         body += "<li><a href=\"";
-        body += htmlEscape(baseUrl + name);
+        // body += htmlEscape(baseUrl + name);
+        body += htmlEscape(baseUrl + urlEncodePathSegment(name));
         if (it->isDirectory)
             body += "/";
         body += "\">";
@@ -206,15 +288,19 @@ static Response handleDirectoryRequest(const std::string &requestPath, const std
 
 Response RequestHandler::handleStatic(const Request &request, const RouteConfig &route)
 {
+    std::string cleanPath;
+    std::string decodedPath;
     std::string fullPath;
 
-    fullPath = joinPaths(route.root, getPathInsideRoute(request.getPath(), route));
+    cleanPath = getPathWithoutQuery(request.getPath());
+    decodedPath = urlDecodePath(cleanPath);
+    fullPath = joinPaths(route.root, getCleanPathInsideRoute(decodedPath, route));
 
     if (!pathExists(fullPath))
         return (buildErrorResponse(404, "Not Found"));
 
     if (isDirectory(fullPath))
-        return (handleDirectoryRequest(getPathWithoutQuery(request.getPath()), fullPath, route));
+        return (handleDirectoryRequest(cleanPath, fullPath, route));
 
     if (isRegularFile(fullPath))
         return (buildFileResponse(fullPath));
@@ -304,6 +390,15 @@ static std::string getPathWithoutQuery(const std::string &path)
     if (questionMark == std::string::npos)
         return (path);
     return (path.substr(0, questionMark));
+}
+
+static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route)
+{
+    if (route.path == "/")
+        return (cleanPath);
+    if (cleanPath.find(route.path) != 0)
+        return (cleanPath);
+    return (cleanPath.substr(route.path.length()));
 }
 
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route)

@@ -32,6 +32,7 @@ static std::string getPathWithoutQuery(const std::string &path);
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
 static std::string joinPaths(const std::string &left, const std::string &right);
 static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route);
+static bool hasPathTraversal(const std::string &path);
 
 RequestHandler::RequestHandler() {}
 
@@ -336,6 +337,31 @@ static Response handleDirectoryRequest(const std::string &requestPath, const std
     return (buildErrorResponse(403, "Forbidden"));
 }
 
+static bool hasPathTraversal(const std::string &path)
+{
+    size_t start;
+    size_t slash;
+    std::string segment;
+
+    start = 0;
+    while (start <= path.length())
+    {
+        slash = path.find('/', start);
+        if (slash == std::string::npos)
+            segment = path.substr(start);
+        else
+            segment = path.substr(start, slash - start);
+
+        if (segment == "..")
+            return (true);
+
+        if (slash == std::string::npos)
+            break;
+        start = slash + 1;
+    }
+    return (false);
+}
+
 Response RequestHandler::handleStatic(const Request &request, const RouteConfig &route)
 {
     std::string cleanPath;
@@ -344,6 +370,8 @@ Response RequestHandler::handleStatic(const Request &request, const RouteConfig 
 
     cleanPath = getPathWithoutQuery(request.getPath());
     decodedPath = urlDecodePath(cleanPath);
+    if (hasPathTraversal(decodedPath))
+        return (buildErrorResponse(403, "Forbidden"));
     fullPath = joinPaths(route.root, getCleanPathInsideRoute(decodedPath, route));
 
     if (!pathExists(fullPath))

@@ -1,3 +1,4 @@
+#include "ErrorResponseBuilder.hpp"
 #include "StaticFileHandler.hpp"
 #include "RequestHandler.hpp"
 #include "CgiHandler.hpp"
@@ -25,7 +26,6 @@
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
 
-static Response buildErrorResponse(int errorCode, const std::string &errorMessage);
 static std::string getPathWithoutQuery(const std::string &path);
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
 static std::string joinPaths(const std::string &left, const std::string &right);
@@ -397,28 +397,6 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
-static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
-{
-    Response res;
-
-    res.setStatusCode(errorCode);
-    std::stringstream ss;
-    ss << "<html><body><h1>" << errorCode << " " << errorMessage << "</h1></body></html>";
-    std::string errorBody = ss.str();
-
-    res.setBody(errorBody);
-
-    res.addHeader("Content-Type", "text/html");
-
-    std::stringstream lengthSs;
-    lengthSs << errorBody.length();
-    res.addHeader("Content-Length", lengthSs.str());
-
-    res.addHeader("Connection", "close");
-
-    return res;
-}
-
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
 {
     Response res;
@@ -431,16 +409,16 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     // 2. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Forbidden: Is a directory");
+        return ErrorResponseBuilder::build(403, "Forbidden: Is a directory");
 
     // 3. Check the body
     if (request.getBody().empty())
-        return buildErrorResponse(400, "Bad request");
+        return ErrorResponseBuilder::build(400, "Bad request");
 
     // 4. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
     if (!file.is_open())
-        return buildErrorResponse(500, "Internal Server Error: Could not open file");
+        return ErrorResponseBuilder::build(500, "Internal Server Error: Could not open file");
 
     file << request.getBody();
     file.close();
@@ -463,11 +441,11 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     // 2. Check if the ressource exists
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) != 0)
-        return buildErrorResponse(404, "Not Found: Resource does not exist");
+        return ErrorResponseBuilder::build(404, "Not Found: Resource does not exist");
 
     // 4. Forbid the deletion of folders
     if (S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Forbidden: Cannot delete a directory");
+        return ErrorResponseBuilder::build(403, "Forbidden: Cannot delete a directory");
 
     // 5. Try to delete
     if (std::remove(fullPath.c_str()) == 0)
@@ -479,7 +457,7 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
         return res;
     }
     else
-        return buildErrorResponse(500, "Internal Server Error: Failed to delete the file");
+        return ErrorResponseBuilder::build(500, "Internal Server Error: Failed to delete the file");
 
     return res;
 }
@@ -495,7 +473,7 @@ static Response buildRedirectResponse(const RouteConfig &route)
     std::string body;
 
     if (!isRedirectStatusCode(route.returnCode))
-        return (buildErrorResponse(500, "Internal Server Error"));
+        return (ErrorResponseBuilder::build(500, "Internal Server Error"));
 
     response.setStatusCode(route.returnCode);
     response.addHeader("Location", route.returnPath);
@@ -568,7 +546,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     else
     {
         std::cout << "Test else" << std::endl;
-        return buildErrorResponse(405, "Method Not Allowed");
+        return ErrorResponseBuilder::build(405, "Method Not Allowed");
     }
 
     std::ostringstream oss;

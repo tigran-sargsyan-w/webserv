@@ -21,34 +21,369 @@
 
 #include <sys/stat.h>
 
+#include <dirent.h>
+#include <algorithm>
+
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
+
+static Response buildErrorResponse(int errorCode, const std::string &errorMessage);
+static std::string getPathWithoutQuery(const std::string &path);
+static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
+static std::string joinPaths(const std::string &left, const std::string &right);
+static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route);
+static bool hasPathTraversal(const std::string &path);
 
 RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
 
-Response RequestHandler::handleStatic(const Request &request)
+static bool pathExists(const std::string &path)
 {
-    Response res;
+    struct stat pathStat;
 
-    std::string fullPath = "www" + request.getPath();
-    if (fullPath == "www/")
-        fullPath = "www/index.html";
-    std::ifstream file(fullPath.c_str());
-    if (!file)
+    return (stat(path.c_str(), &pathStat) == 0);
+}
+
+static bool isDirectory(const std::string &path)
+{
+    struct stat pathStat;
+
+    if (stat(path.c_str(), &pathStat) != 0)
+        return (false);
+    return (S_ISDIR(pathStat.st_mode));
+}
+
+static bool isRegularFile(const std::string &path)
+{
+    struct stat pathStat;
+
+    if (stat(path.c_str(), &pathStat) != 0)
+        return (false);
+    return (S_ISREG(pathStat.st_mode));
+}
+
+static std::string getFileExtension(const std::string &path)
+{
+    size_t dot;
+    size_t slash;
+
+    dot = path.find_last_of('.');
+    slash = path.find_last_of('/');
+
+    if (dot == std::string::npos)
+        return ("");
+    if (slash != std::string::npos && dot < slash)
+        return ("");
+    return (path.substr(dot));
+}
+
+static std::string getMimeType(const std::string &path)
+{
+    std::string extension;
+
+    extension = getFileExtension(path);
+
+    if (extension == ".html" || extension == ".htm")
+        return ("text/html");
+    if (extension == ".css")
+        return ("text/css");
+    if (extension == ".js")
+        return ("application/javascript");
+    if (extension == ".json")
+        return ("application/json");
+    if (extension == ".txt")
+        return ("text/plain");
+
+    if (extension == ".png")
+        return ("image/png");
+    if (extension == ".jpg" || extension == ".jpeg")
+        return ("image/jpeg");
+    if (extension == ".gif")
+        return ("image/gif");
+    if (extension == ".svg")
+        return ("image/svg+xml");
+    if (extension == ".ico")
+        return ("image/x-icon");
+    if (extension == ".webp")
+        return ("image/webp");
+
+    if (extension == ".pdf")
+        return ("application/pdf");
+
+    return ("application/octet-stream");
+}
+
+static Response buildFileResponse(const std::string &path)
+{
+    Response response;
+
+    response.setStatusCode(200);
+    response.setBodyFromFile(path);
+    response.addHeader("Content-Type", getMimeType(path));
+    response.addHeader("Content-Length", intToString(response.getBody().length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+}
+
+static bool compareAutoindexEntries(const AutoindexEntry &left, const AutoindexEntry &right)
+{
+    if (left.isDirectory != right.isDirectory)
+        return (left.isDirectory);
+    return (left.name < right.name);
+}
+
+static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std::string &directoryPath)
+{
+    std::vector<AutoindexEntry> entries;
+    struct dirent *entry;
+    AutoindexEntry autoindexEntry;
+    std::string name;
+    std::string entryPath;
+
+    entry = readdir(dir);
+    while (entry != NULL)
     {
-        res.setStatusCode(404);
-        res.setBodyFromFile("www/error.html");
-        std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
-                                                         // response
+        name = entry->d_name;
+        if (name != "." && name != "..")
+        {
+            entryPath = joinPaths(directoryPath, name);
+            autoindexEntry.name = name;
+            autoindexEntry.isDirectory = isDirectory(entryPath);
+            entries.push_back(autoindexEntry);
+        }
+        entry = readdir(dir);
     }
-    if (file)
+    std::sort(entries.begin(), entries.end(), compareAutoindexEntries);
+    return (entries);
+}
+
+static std::string htmlEscape(const std::string &text)
+{
+    std::string result;
+    size_t i;
+
+    i = 0;
+    while (i < text.length())
     {
-        res.setStatusCode(200);
-        res.setBodyFromFile(fullPath);
+        if (text[i] == '&')
+            result += "&amp;";
+        else if (text[i] == '<')
+            result += "&lt;";
+        else if (text[i] == '>')
+            result += "&gt;";
+        else if (text[i] == '"')
+            result += "&quot;";
+        else if (text[i] == '\'')
+            result += "&#39;";
+        else
+            result += text[i];
+        i++;
     }
-    return res;
+    return (result);
+}
+
+static bool isUrlSafeChar(unsigned char c)
+{
+    if (std::isalnum(c))
+        return (true);
+    if (c == '-' || c == '_' || c == '.' || c == '~')
+        return (true);
+    return (false);
+}
+
+static bool isHexDigit(char c)
+{
+    return ((c >= '0' && c <= '9')
+        || (c >= 'a' && c <= 'f')
+        || (c >= 'A' && c <= 'F'));
+}
+
+static int hexToInt(char c)
+{
+    if (c >= '0' && c <= '9')
+        return (c - '0');
+    if (c >= 'a' && c <= 'f')
+        return (c - 'a' + 10);
+    if (c >= 'A' && c <= 'F')
+        return (c - 'A' + 10);
+    return (0);
+}
+
+static std::string urlDecodePath(const std::string &path)
+{
+    std::string result;
+    size_t i;
+    int value;
+
+    i = 0;
+    while (i < path.length())
+    {
+        if (path[i] == '%' && i + 2 < path.length()
+            && isHexDigit(path[i + 1]) && isHexDigit(path[i + 2]))
+        {
+            value = hexToInt(path[i + 1]) * 16 + hexToInt(path[i + 2]);
+            result += static_cast<char>(value);
+            i += 3;
+        }
+        else
+        {
+            result += path[i];
+            i++;
+        }
+    }
+    return (result);
+}
+
+static std::string urlEncodePathSegment(const std::string &text)
+{
+    std::ostringstream stream;
+    size_t i;
+    unsigned char c;
+
+    i = 0;
+    while (i < text.length())
+    {
+        c = static_cast<unsigned char>(text[i]);
+        if (isUrlSafeChar(c))
+            stream << text[i];
+        else
+        {
+            stream << '%';
+            stream << std::uppercase;
+            stream << std::hex;
+            stream << std::setw(2);
+            stream << std::setfill('0');
+            stream << static_cast<int>(c);
+            stream << std::nouppercase;
+            stream << std::dec;
+        }
+        ++i;
+    }
+    return (stream.str());
+}
+
+static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath)
+{
+    Response response;
+    DIR *dir;
+    std::vector<AutoindexEntry> entries;
+    std::vector<AutoindexEntry>::const_iterator it;
+    std::string body;
+    std::string baseUrl;
+    std::string name;
+
+    dir = opendir(directoryPath.c_str());
+    if (dir == NULL)
+        return (buildErrorResponse(403, "Forbidden"));
+
+    entries = getSortedDirectoryEntries(dir, directoryPath);
+    closedir(dir);
+
+    baseUrl = requestPath;
+    if (baseUrl.empty() || baseUrl[baseUrl.length() - 1] != '/')
+        baseUrl += "/";
+
+    body = "<html><body>";
+    body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
+    body += "<ul>";
+
+    it = entries.begin();
+    while (it != entries.end())
+    {
+        name = it->name;
+
+        body += "<li><a href=\"";
+        body += htmlEscape(baseUrl + urlEncodePathSegment(name));
+        if (it->isDirectory)
+            body += "/";
+        body += "\">";
+
+        body += htmlEscape(name);
+        if (it->isDirectory)
+            body += "/";
+        body += "</a></li>";
+
+        ++it;
+    }
+
+    body += "</ul>";
+    body += "</body></html>";
+
+    response.setStatusCode(200);
+    response.setBody(body);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Content-Length", intToString(body.length()));
+    response.addHeader("Connection", "close");
+
+    return (response);
+}
+
+static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route)
+{
+    std::string indexPath;
+
+    if (!route.index.empty())
+    {
+        indexPath = joinPaths(fullPath, route.index);
+        if (isRegularFile(indexPath))
+            return (buildFileResponse(indexPath));
+    }
+
+    if (route.autoindex)
+        return (buildAutoindexResponse(requestPath, fullPath));
+
+    return (buildErrorResponse(403, "Forbidden"));
+}
+
+static bool hasPathTraversal(const std::string &path)
+{
+    size_t start;
+    size_t slash;
+    std::string segment;
+
+    start = 0;
+    while (start <= path.length())
+    {
+        slash = path.find('/', start);
+        if (slash == std::string::npos)
+            segment = path.substr(start);
+        else
+            segment = path.substr(start, slash - start);
+
+        if (segment == "..")
+            return (true);
+
+        if (slash == std::string::npos)
+            break;
+        start = slash + 1;
+    }
+    return (false);
+}
+
+Response RequestHandler::handleStatic(const Request &request, const RouteConfig &route)
+{
+    std::string cleanPath;
+    std::string decodedPath;
+    std::string fullPath;
+
+    cleanPath = getPathWithoutQuery(request.getPath());
+    decodedPath = urlDecodePath(cleanPath);
+    if (hasPathTraversal(decodedPath))
+        return (buildErrorResponse(403, "Forbidden"));
+    fullPath = joinPaths(route.root, getCleanPathInsideRoute(decodedPath, route));
+
+    if (!pathExists(fullPath))
+        return (buildErrorResponse(404, "Not Found"));
+
+    if (isDirectory(fullPath))
+        return (handleDirectoryRequest(cleanPath, fullPath, route));
+
+    if (isRegularFile(fullPath))
+        return (buildFileResponse(fullPath));
+
+    return (buildErrorResponse(403, "Forbidden"));
 }
 
 static void addCgiHeaderToResponse(Response &response,
@@ -133,6 +468,15 @@ static std::string getPathWithoutQuery(const std::string &path)
     if (questionMark == std::string::npos)
         return (path);
     return (path.substr(0, questionMark));
+}
+
+static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route)
+{
+    if (route.path == "/")
+        return (cleanPath);
+    if (cleanPath.find(route.path) != 0)
+        return (cleanPath);
+    return (cleanPath.substr(route.path.length()));
 }
 
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route)
@@ -526,6 +870,14 @@ static Response buildRedirectResponse(const RouteConfig &route)
     return (response);
 }
 
+static bool hasHeader(const Response &response, const std::string &name)
+{
+    std::map<std::string, std::string> headers;
+
+    headers = response.getHeaders();
+    return (headers.find(name) != headers.end());
+}
+
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     // Generate a response
@@ -559,7 +911,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     if (request.getMethod() == "GET")
     {
-        response = RequestHandler::handleStatic(request);
+        response = RequestHandler::handleStatic(request, route);
     }
     else if (request.getMethod() == "POST")
     {
@@ -577,8 +929,12 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     std::ostringstream oss;
     oss << response.getBody().length();
-    response.addHeader("Content-Type", "text/html");
+
+    if (!hasHeader(response, "Content-Type"))
+        response.addHeader("Content-Type", "text/html");
+
     response.addHeader("Connection", "close");
     response.addHeader("Content-Length", oss.str());
+
     return response;
 }

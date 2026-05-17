@@ -521,15 +521,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     }
 
     if (routeHasCgiConfig(route))
-    {
-        Response response;
-        response.setStatusCode(403);
-        response.setBody("<html><body><h1>403 Forbidden</h1></body></html>");
-        response.addHeader("Content-Type", "text/html");
-        response.addHeader("Content-Length", intToString(response.getBody().length()));
-        response.addHeader("Connection", "close");
-        return (response);
-    }
+        return (ErrorResponseBuilder::build(403, "Forbidden"));
 
     if (request.getMethod() == "GET")
     {

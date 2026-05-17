@@ -13,7 +13,8 @@ Covered features:
 * HTML escaping in generated listings;
 * URL encoding in autoindex links;
 * URL decoding for static file requests;
-* MIME types for static files.
+* MIME types for static files;
+* fallback MIME type for unknown file extensions.
 
 ---
 
@@ -79,8 +80,19 @@ mkdir -p www/static/mime-test
 printf "<h1>Hello</h1>\n" > www/static/mime-test/index.html
 printf "body { color: red; }\n" > www/static/mime-test/style.css
 printf "console.log('hello');\n" > www/static/mime-test/script.js
-printf "plain text\n" > www/static/mime-test/file.txt
 printf '{"ok": true}\n' > www/static/mime-test/data.json
+printf "plain text\n" > www/static/mime-test/file.txt
+printf "a,b,c\n" > www/static/mime-test/test.csv
+printf "<root></root>\n" > www/static/mime-test/test.xml
+printf "fake wasm\n" > www/static/mime-test/test.wasm
+printf "fake mp3\n" > www/static/mime-test/test.mp3
+printf "fake wav\n" > www/static/mime-test/test.wav
+printf "fake mp4\n" > www/static/mime-test/test.mp4
+printf "fake webm\n" > www/static/mime-test/test.webm
+printf "fake woff\n" > www/static/mime-test/test.woff
+printf "fake woff2\n" > www/static/mime-test/test.woff2
+printf "fake ttf\n" > www/static/mime-test/test.ttf
+printf "unknown content\n" > www/static/mime-test/unknown.abc
 
 mkdir -p www/uploads
 ```
@@ -431,25 +443,65 @@ Purpose: raw query strings are removed before filesystem resolution, while encod
 
 ## 17. Test: MIME types for static files
 
+Use normal `GET` requests with `curl -i`.
+
+Do not use `curl -I` for this test unless `HEAD` is implemented.  
+`curl -I` sends a `HEAD` request, not a normal `GET` request.
+
 ```bash
 curl -i http://localhost:8080/static/mime-test/index.html
 curl -i http://localhost:8080/static/mime-test/style.css
 curl -i http://localhost:8080/static/mime-test/script.js
-curl -i http://localhost:8080/static/mime-test/file.txt
 curl -i http://localhost:8080/static/mime-test/data.json
+curl -i http://localhost:8080/static/mime-test/file.txt
+curl -i http://localhost:8080/static/mime-test/test.csv
+curl -i http://localhost:8080/static/mime-test/test.xml
+curl -i http://localhost:8080/static/mime-test/test.wasm
+curl -i http://localhost:8080/static/mime-test/test.mp3
+curl -i http://localhost:8080/static/mime-test/test.wav
+curl -i http://localhost:8080/static/mime-test/test.mp4
+curl -i http://localhost:8080/static/mime-test/test.webm
+curl -i http://localhost:8080/static/mime-test/test.woff
+curl -i http://localhost:8080/static/mime-test/test.woff2
+curl -i http://localhost:8080/static/mime-test/test.ttf
+curl -i http://localhost:8080/static/mime-test/unknown.abc
 ```
 
 Expected:
 
-| File         | Expected `Content-Type`  |
-| ------------ | ------------------------ |
-| `index.html` | `text/html`              |
-| `style.css`  | `text/css`               |
-| `script.js`  | `application/javascript` |
-| `file.txt`   | `text/plain`             |
-| `data.json`  | `application/json`       |
+| File          | Expected `Content-Type`    |
+| ------------- | -------------------------- |
+| `index.html`  | `text/html`                |
+| `style.css`   | `text/css`                 |
+| `script.js`   | `application/javascript`   |
+| `data.json`   | `application/json`         |
+| `file.txt`    | `text/plain`               |
+| `test.csv`    | `text/csv`                 |
+| `test.xml`    | `application/xml`          |
+| `test.wasm`   | `application/wasm`         |
+| `test.mp3`    | `audio/mpeg`               |
+| `test.wav`    | `audio/wav`                |
+| `test.mp4`    | `video/mp4`                |
+| `test.webm`   | `video/webm`               |
+| `test.woff`   | `font/woff`                |
+| `test.woff2`  | `font/woff2`               |
+| `test.ttf`    | `font/ttf`                 |
+| `unknown.abc` | `application/octet-stream` |
 
-Note: do not use `curl -I` for this test unless `HEAD` is implemented. `curl -I` sends a `HEAD` request, not a normal `GET` request.
+Example expected response for `unknown.abc`:
+
+```http
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: application/octet-stream
+```
+
+Purpose:
+
+* verifies MIME mapping for common web assets;
+* verifies additional useful static file types;
+* verifies fallback behavior for unknown extensions;
+* verifies that MIME detection is integrated into normal static file responses.
 
 ---
 
@@ -475,8 +527,7 @@ Purpose: raw `../` and encoded `%2E%2E` path traversal attempts must be rejected
 Regression check: file names that contain dots but are not a `..` path segment should still work.
 
 ```bash
-printf "dots
-" > www/static/listing-test/file..name.txt
+printf "dots\n" > www/static/listing-test/file..name.txt
 curl -i http://localhost:8080/static/listing-test/file..name.txt
 ```
 
@@ -545,7 +596,22 @@ curl -s http://localhost:8080/static/sort-test/
 curl -s http://localhost:8080/static/escape-test/
 curl -s http://localhost:8080/static/url-test/
 curl -i 'http://localhost:8080/static/url-test/query%3Ffile.txt'
+curl -i http://localhost:8080/static/mime-test/index.html
 curl -i http://localhost:8080/static/mime-test/style.css
+curl -i http://localhost:8080/static/mime-test/script.js
+curl -i http://localhost:8080/static/mime-test/data.json
+curl -i http://localhost:8080/static/mime-test/file.txt
+curl -i http://localhost:8080/static/mime-test/test.csv
+curl -i http://localhost:8080/static/mime-test/test.xml
+curl -i http://localhost:8080/static/mime-test/test.wasm
+curl -i http://localhost:8080/static/mime-test/test.mp3
+curl -i http://localhost:8080/static/mime-test/test.wav
+curl -i http://localhost:8080/static/mime-test/test.mp4
+curl -i http://localhost:8080/static/mime-test/test.webm
+curl -i http://localhost:8080/static/mime-test/test.woff
+curl -i http://localhost:8080/static/mime-test/test.woff2
+curl -i http://localhost:8080/static/mime-test/test.ttf
+curl -i http://localhost:8080/static/mime-test/unknown.abc
 ```
 
 Expected summary:
@@ -568,7 +634,22 @@ Expected summary:
 | `/static/escape-test/`              |        `200 OK` | HTML escaping                                               |
 | `/static/url-test/`                 |        `200 OK` | URL encoded links                                           |
 | `/static/url-test/query%3Ffile.txt` |        `200 OK` | URL decoding                                                |
+| `/static/mime-test/index.html`      |        `200 OK` | MIME type: `text/html`                                      |
 | `/static/mime-test/style.css`       |        `200 OK` | MIME type: `text/css`                                       |
+| `/static/mime-test/script.js`       |        `200 OK` | MIME type: `application/javascript`                         |
+| `/static/mime-test/data.json`       |        `200 OK` | MIME type: `application/json`                               |
+| `/static/mime-test/file.txt`        |        `200 OK` | MIME type: `text/plain`                                     |
+| `/static/mime-test/test.csv`        |        `200 OK` | MIME type: `text/csv`                                       |
+| `/static/mime-test/test.xml`        |        `200 OK` | MIME type: `application/xml`                                |
+| `/static/mime-test/test.wasm`       |        `200 OK` | MIME type: `application/wasm`                               |
+| `/static/mime-test/test.mp3`        |        `200 OK` | MIME type: `audio/mpeg`                                     |
+| `/static/mime-test/test.wav`        |        `200 OK` | MIME type: `audio/wav`                                      |
+| `/static/mime-test/test.mp4`        |        `200 OK` | MIME type: `video/mp4`                                      |
+| `/static/mime-test/test.webm`       |        `200 OK` | MIME type: `video/webm`                                     |
+| `/static/mime-test/test.woff`       |        `200 OK` | MIME type: `font/woff`                                      |
+| `/static/mime-test/test.woff2`      |        `200 OK` | MIME type: `font/woff2`                                     |
+| `/static/mime-test/test.ttf`        |        `200 OK` | MIME type: `font/ttf`                                       |
+| `/static/mime-test/unknown.abc`     |        `200 OK` | MIME fallback: `application/octet-stream`                   |
 
 ---
 

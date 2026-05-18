@@ -1,5 +1,6 @@
 #include "ErrorResponseBuilder.hpp"
 #include "StaticFileHandler.hpp"
+#include "RedirectHandler.hpp"
 #include "RequestHandler.hpp"
 #include "CgiHandler.hpp"
 #include "Request.hpp"
@@ -462,36 +463,6 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     return res;
 }
 
-static bool isRedirectStatusCode(int code)
-{
-    return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
-}
-
-static Response buildRedirectResponse(const RouteConfig &route)
-{
-    Response response;
-    std::string body;
-
-    if (!isRedirectStatusCode(route.returnCode))
-        return (ErrorResponseBuilder::build(500, "Internal Server Error"));
-
-    response.setStatusCode(route.returnCode);
-    response.addHeader("Location", route.returnPath);
-    response.addHeader("Content-Type", "text/html");
-    response.addHeader("Connection", "close");
-
-    body = "<html><body><h1>"
-        + intToString(route.returnCode)
-        + " Redirect</h1><p>Redirecting to "
-        + route.returnPath
-        + "</p></body></html>";
-
-    response.setBody(body);
-    response.addHeader("Content-Length", intToString(body.length()));
-
-    return (response);
-}
-
 static bool hasHeader(const Response &response, const std::string &name)
 {
     std::map<std::string, std::string> headers;
@@ -509,7 +480,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
     // TODO: Move redirect after route method validation when method enforcement is implemented.
     if (route.hasReturn)
-        return (buildRedirectResponse(route));
+        return (RedirectHandler::handle(route));
 
     cgiPath = resolveCgiPath(request, route);
     if (cgiPath.isCgi)

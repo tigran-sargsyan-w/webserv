@@ -3,26 +3,14 @@
 #include "CgiRequestHandler.hpp"
 #include "RedirectHandler.hpp"
 #include "RequestHandler.hpp"
-#include "CgiHandler.hpp"
-#include "Request.hpp"
-#include "Response.hpp"
 #include <fstream>
 #include <iostream>
+#include <cstdio>
 #include <sstream>
 #include <string>
 
-#include <string>
 #include <utils.hpp>
-#include "Config.hpp"
-#include <vector>
 #include <map>
-
-#include <cctype>
-
-#include <ctime>
-#include <iomanip>
-#include <sys/time.h>
-
 #include <sys/stat.h>
 
 static std::string getPathWithoutQuery(const std::string &path);

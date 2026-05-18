@@ -1,3 +1,5 @@
+#include "ErrorResponseBuilder.hpp"
+#include "StaticFileHandler.hpp"
 #include "RequestHandler.hpp"
 #include "CgiHandler.hpp"
 #include "Request.hpp"
@@ -24,31 +26,17 @@
 static bool headerNameEquals(const std::string &left, const std::string &right);
 static std::string trimHeaderValue(const std::string &value);
 
+static std::string getPathWithoutQuery(const std::string &path);
+static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route);
+static std::string joinPaths(const std::string &left, const std::string &right);
+
 RequestHandler::RequestHandler() {}
 
 RequestHandler::~RequestHandler() {}
 
-Response RequestHandler::handleStatic(const Request &request)
+Response RequestHandler::handleStatic(const Request &request, const RouteConfig &route)
 {
-    Response res;
-
-    std::string fullPath = "www" + request.getPath();
-    if (fullPath == "www/")
-        fullPath = "www/index.html";
-    std::ifstream file(fullPath.c_str());
-    if (!file)
-    {
-        res.setStatusCode(404);
-        res.setBodyFromFile("www/error.html");
-        std::cerr << "Resourse not found!" << std::endl; // TODO: return 404
-                                                         // response
-    }
-    if (file)
-    {
-        res.setStatusCode(200);
-        res.setBodyFromFile(fullPath);
-    }
-    return res;
+    return (StaticFileHandler::handle(request, route));
 }
 
 static void addCgiHeaderToResponse(Response &response,
@@ -409,28 +397,6 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
     return (context);
 }
 
-static Response buildErrorResponse(int errorCode, const std::string &errorMessage)
-{
-    Response res;
-
-    res.setStatusCode(errorCode);
-    std::stringstream ss;
-    ss << "<html><body><h1>" << errorCode << " " << errorMessage << "</h1></body></html>";
-    std::string errorBody = ss.str();
-
-    res.setBody(errorBody);
-
-    res.addHeader("Content-Type", "text/html");
-
-    std::stringstream lengthSs;
-    lengthSs << errorBody.length();
-    res.addHeader("Content-Length", lengthSs.str());
-
-    res.addHeader("Connection", "close");
-
-    return res;
-}
-
 Response RequestHandler::handlePost(const Request &request, const RouteConfig &route)
 {
     Response res;
@@ -443,16 +409,16 @@ Response RequestHandler::handlePost(const Request &request, const RouteConfig &r
     // 2. Check if it's a folder
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) == 0 && S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Forbidden: Is a directory");
+        return ErrorResponseBuilder::build(403, "Forbidden: Is a directory");
 
     // 3. Check the body
     if (request.getBody().empty())
-        return buildErrorResponse(400, "Bad request");
+        return ErrorResponseBuilder::build(400, "Bad request");
 
     // 4. Try to write the file
     std::ofstream file(fullPath.c_str(), std::ios::out | std::ios::binary);
     if (!file.is_open())
-        return buildErrorResponse(500, "Internal Server Error: Could not open file");
+        return ErrorResponseBuilder::build(500, "Internal Server Error: Could not open file");
 
     file << request.getBody();
     file.close();
@@ -475,11 +441,11 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
     // 2. Check if the ressource exists
     struct stat pathStat;
     if (stat(fullPath.c_str(), &pathStat) != 0)
-        return buildErrorResponse(404, "Not Found: Resource does not exist");
+        return ErrorResponseBuilder::build(404, "Not Found: Resource does not exist");
 
     // 4. Forbid the deletion of folders
     if (S_ISDIR(pathStat.st_mode))
-        return buildErrorResponse(403, "Forbidden: Cannot delete a directory");
+        return ErrorResponseBuilder::build(403, "Forbidden: Cannot delete a directory");
 
     // 5. Try to delete
     if (std::remove(fullPath.c_str()) == 0)
@@ -491,9 +457,47 @@ Response RequestHandler::handleHttpDelete(const Request &request, const RouteCon
         return res;
     }
     else
-        return buildErrorResponse(500, "Internal Server Error: Failed to delete the file");
+        return ErrorResponseBuilder::build(500, "Internal Server Error: Failed to delete the file");
 
     return res;
+}
+
+static bool isRedirectStatusCode(int code)
+{
+    return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
+}
+
+static Response buildRedirectResponse(const RouteConfig &route)
+{
+    Response response;
+    std::string body;
+
+    if (!isRedirectStatusCode(route.returnCode))
+        return (ErrorResponseBuilder::build(500, "Internal Server Error"));
+
+    response.setStatusCode(route.returnCode);
+    response.addHeader("Location", route.returnPath);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Connection", "close");
+
+    body = "<html><body><h1>"
+        + intToString(route.returnCode)
+        + " Redirect</h1><p>Redirecting to "
+        + route.returnPath
+        + "</p></body></html>";
+
+    response.setBody(body);
+    response.addHeader("Content-Length", intToString(body.length()));
+
+    return (response);
+}
+
+static bool hasHeader(const Response &response, const std::string &name)
+{
+    std::map<std::string, std::string> headers;
+
+    headers = response.getHeaders();
+    return (headers.find(name) != headers.end());
 }
 
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
@@ -502,6 +506,10 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     Response response;
 
     CgiResolvedPath cgiPath;
+
+    // TODO: Move redirect after route method validation when method enforcement is implemented.
+    if (route.hasReturn)
+        return (buildRedirectResponse(route));
 
     cgiPath = resolveCgiPath(request, route);
     if (cgiPath.isCgi)
@@ -513,19 +521,11 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     }
 
     if (routeHasCgiConfig(route))
-    {
-        Response response;
-        response.setStatusCode(403);
-        response.setBody("<html><body><h1>403 Forbidden</h1></body></html>");
-        response.addHeader("Content-Type", "text/html");
-        response.addHeader("Content-Length", intToString(response.getBody().length()));
-        response.addHeader("Connection", "close");
-        return (response);
-    }
+        return (ErrorResponseBuilder::build(403, "Forbidden"));
 
     if (request.getMethod() == "GET")
     {
-        response = RequestHandler::handleStatic(request);
+        response = RequestHandler::handleStatic(request, route);
     }
     else if (request.getMethod() == "POST")
     {
@@ -538,13 +538,17 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
     else
     {
         std::cout << "Test else" << std::endl;
-        return buildErrorResponse(405, "Method Not Allowed");
+        return ErrorResponseBuilder::build(405, "Method Not Allowed");
     }
 
     std::ostringstream oss;
     oss << response.getBody().length();
-    response.addHeader("Content-Type", "text/html");
+
+    if (!hasHeader(response, "Content-Type"))
+        response.addHeader("Content-Type", "text/html");
+
     response.addHeader("Connection", "close");
     response.addHeader("Content-Length", oss.str());
+
     return response;
 }

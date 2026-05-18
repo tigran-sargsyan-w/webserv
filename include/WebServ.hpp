@@ -24,14 +24,14 @@ public:
 	int setup(std::vector<ServerConfig> servers);
 	int run();
 	int initListeningSocket();
-	int bindSockAddress();
-	int acceptConnection();
+	int bindSockAddress(int listeningSocket, const ServerConfig& serverConfig);
+	int acceptConnection(int listeningSocket);
 	void removePollfd(int fd);
 
 private:
 	int setNonBlocking(int fd);
-	int serverSocket;
-	ServerConfig serverConfig;
+  std::map<int, ServerConfig> serverConfigs;
+  std::map<int, ServerConfig> clientServerConfigs;
 	std::vector<pollfd> pollFds;
 	std::map<int, Client> clients;
 };

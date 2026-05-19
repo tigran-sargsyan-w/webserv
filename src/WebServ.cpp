@@ -138,6 +138,7 @@ static std::string getPathWithoutQuery(const std::string& path)
 int WebServ::SendToClient(Client& client)
 {
 	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+  std::cout << "TEST\n";
 	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 	std::cout << "Matched route: " << route.path << std::endl;
 	Response response = RequestHandler::handleRequest(
@@ -322,8 +323,12 @@ int WebServ::acceptConnection(int listeningSocket)
 	clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
 	clientIt = clients.find(clientSocket);
 	if (clientIt != clients.end())
+  {
+
 		clientIt->second.setRemoteAddr(
 		    ipToString(clientAddress.sin_addr.s_addr));
+    clients.at(clientSocket).serverIndex = listenerFdToIndex[listeningSocket];
+  }
 	return (clientSocket);
 }
 

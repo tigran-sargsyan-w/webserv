@@ -138,7 +138,6 @@ static std::string getPathWithoutQuery(const std::string& path)
 int WebServ::SendToClient(Client& client)
 {
 	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
-  std::cout << "TEST\n";
 	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 	std::cout << "Matched route: " << route.path << std::endl;
 	Response response = RequestHandler::handleRequest(
@@ -377,21 +376,22 @@ int WebServ::run()
 
       if (isListeningFd(curFD))
       {
+                                   //
+        if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+        {
+          close(curFD);
+          removePollfd(curFD);
+          listenerFdToIndex.erase(curFD);
+          i--;
+          continue;
+        }
+
         if (this->pollFds[i].revents & POLLIN)
-          acceptConnection(curFD); //TODO: pass correct sock fd
+          if (acceptConnection(curFD) == -1)
+            continue;
       }
       else
       {
-        
-          if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-          {
-            close(curFD);
-            removePollfd(curFD);
-            this->clients.erase(curFD);
-            i--;
-            continue;
-          }
-
           std::map<int, Client>::iterator clientIt = clients.find(curFD);
           if (clientIt == clients.end())
             continue;

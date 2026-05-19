@@ -349,6 +349,14 @@ bool WebServ::isListeningFd(int fd)
     return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
 }
 
+void WebServ::closeAndRemoveFd(int fd)
+{
+  close(fd);
+  removePollfd(fd);
+  clients.erase(fd);
+  listenerFdToIndex.erase(fd);
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -366,47 +374,46 @@ int WebServ::run()
 		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
 
-		// 5. Receive data from client
+		// PollFds loop
 
-		for (size_t i = 0; i < this->pollFds.size(); i++)
+    size_t i = 0;
+    while (i < pollFds.size())
 		{
-			int curFD = this->pollFds[i].fd;
+			int curFD = pollFds[i].fd;
 
-		// 4. Accept connections
+      if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+      {
+        closeAndRemoveFd(curFD);
+        continue;
+      }
+
+		// Accept connections
 
       if (isListeningFd(curFD))
       {
-                                   //
-        if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-        {
-          close(curFD);
-          removePollfd(curFD);
-          listenerFdToIndex.erase(curFD);
-          i--;
-          continue;
-        }
+        if (pollFds[i].revents & POLLIN)
+          acceptConnection(curFD);
 
-        if (this->pollFds[i].revents & POLLIN)
-          if (acceptConnection(curFD) == -1)
-            continue;
+        ++i;
+        continue;
       }
       else
       {
           std::map<int, Client>::iterator clientIt = clients.find(curFD);
           if (clientIt == clients.end())
+          {
+            ++i;
             continue;
+          }
 
           Client& curClient = clientIt->second;
           if (this->pollFds[i].revents & POLLIN)
           {
             curClient.state = READING;
-            this->readFromClient(curClient);
+            readFromClient(curClient);
             if (curClient.state == CLOSING_CONNECTION)
             {
-              close(curFD);
-              removePollfd(curFD);
-              clients.erase(curFD);
-              i--;
+              closeAndRemoveFd(curFD);
               continue;
             }
 
@@ -419,14 +426,14 @@ int WebServ::run()
               parser.parse(curClient.getRawRequest(), curClient.request);
             }
             else if (inspector.status == NEED_MORE_DATA)
+            {
+              ++i;
               continue;
+            }
             else
             {
               // TODO: RequestHandler for errors and close connection
-              close(curFD);
-              removePollfd(curFD);
-              clients.erase(curFD);
-              i--;
+              closeAndRemoveFd(curFD);
               continue;
             }
 
@@ -436,17 +443,15 @@ int WebServ::run()
           if (this->pollFds[i].revents & POLLOUT)
           {
             curClient.state = WRITING;
-            this->SendToClient(curClient);
+            SendToClient(curClient);
             if (curClient.state == CLOSING_CONNECTION)
             {
-              close(curFD);
-              removePollfd(curFD);
-              clients.erase(curFD);
-              i--;
+              closeAndRemoveFd(curFD);
               continue;
           }
         }
       }
+      ++i;
 		}
 	}
 }

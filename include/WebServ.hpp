@@ -31,6 +31,7 @@ public:
 
 private:
 	int setNonBlocking(int fd);
+  void closeAndRemoveFd(int fd);
   std::vector<ServerConfig> configs;
   std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;

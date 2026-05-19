@@ -179,12 +179,6 @@ int WebServ::initListeningSocket()
 		close(tmpSocket);
 		return (-1);
 	}
-
-	struct pollfd tmpPollfd;
-	tmpPollfd.fd = tmpSocket;
-	tmpPollfd.events = POLLIN;
-	tmpPollfd.revents = 0;
-	this->pollFds.push_back(tmpPollfd);
 	return (tmpSocket);
 }
 
@@ -246,7 +240,6 @@ int WebServ::setup(std::vector<ServerConfig> servers)
       std::cerr << "Server Block " << i << " setup failed!\n";
       continue;
     }
-    listenerFdToIndex[listeningSocket] = i;
 
 
     // 2. Setup address for socket
@@ -270,6 +263,14 @@ int WebServ::setup(std::vector<ServerConfig> servers)
       close(listeningSocket);
       continue;
     }
+
+    listenerFdToIndex[listeningSocket] = i;
+
+    struct pollfd tmpPollfd;
+    tmpPollfd.fd = listeningSocket;
+    tmpPollfd.events = POLLIN;
+    tmpPollfd.revents = 0;
+    this->pollFds.push_back(tmpPollfd);
 
     std::cout << "Listening on " << tmpConfig.listen.host << ":"
               << tmpConfig.listen.port << "\n";

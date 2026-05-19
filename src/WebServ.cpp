@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <utility>
 
-WebServ::WebServ() : serverSocket(-1)
+WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
 }
@@ -29,8 +29,6 @@ WebServ::WebServ(const WebServ& other)
 WebServ::~WebServ()
 {
 	std::cout << "WebServ destroyed!\n";
-	if (this->serverSocket != -1)
-		close(this->serverSocket);
 }
 
 WebServ& WebServ::operator=(const WebServ& other)
@@ -140,10 +138,10 @@ static std::string getPathWithoutQuery(const std::string& path)
 int WebServ::SendToClient(Client& client)
 {
 	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
-	const RouteConfig& route = findMatchingRoute(this->serverConfig, cleanPath);
+	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 	std::cout << "Matched route: " << route.path << std::endl;
 	Response response = RequestHandler::handleRequest(
-	    client.request, route, this->serverConfig, client.getRemoteAddr());
+	    client.request, route, configs[client.serverIndex], client.getRemoteAddr());
 	std::cout << "Response to client:\n\n" << response.toString() << std::endl;
 
 	ssize_t bytesSent = send(
@@ -162,34 +160,28 @@ int WebServ::SendToClient(Client& client)
 
 int WebServ::initListeningSocket()
 {
-	this->serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if (this->serverSocket == -1)
+	int tmpSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (tmpSocket == -1)
 	{
 		std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
-		return (1);
+		return (-1);
 	}
 
-	std::cout << "Server socked created, FD = " << this->serverSocket << "\n";
+	std::cout << "Server socked created, FD = " << tmpSocket << "\n";
 
 	int opt = 1;
 	if (setsockopt(
-	        this->serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
+	        tmpSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
 	    -1)
 	{
 		std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
-		close(this->serverSocket);
-		return (1);
+		close(tmpSocket);
+		return (-1);
 	}
-
-	struct pollfd tmpPollfd;
-	tmpPollfd.fd = this->serverSocket;
-	tmpPollfd.events = POLLIN;
-	tmpPollfd.revents = 0;
-	this->pollFds.push_back(tmpPollfd);
-	return (0);
+	return (tmpSocket);
 }
 
-int WebServ::bindSockAddress()
+int WebServ::bindSockAddress (int listeningSocket, size_t configIndex)
 {
 
 	struct addrinfo hints;
@@ -202,13 +194,13 @@ int WebServ::bindSockAddress()
 	hints.ai_flags = 0;
 
 	std::stringstream ss;
-	ss << this->serverConfig.listen.port;
+	ss << configs[configIndex].listen.port;
 	std::string port_str = ss.str();
 
 	const char *host_cstr = NULL;
-	if (!this->serverConfig.listen.host.empty())
+	if (!configs[configIndex].listen.host.empty())
 	{
-		host_cstr = this->serverConfig.listen.host.c_str();
+		host_cstr = configs[configIndex].listen.host.c_str();
 	}
 
 	int ret = getaddrinfo(host_cstr, port_str.c_str(), &hints, &res);
@@ -218,45 +210,73 @@ int WebServ::bindSockAddress()
 		return (1);
 	}
 
-	if (bind(this->serverSocket, res->ai_addr, res->ai_addrlen) == -1)
+	if (bind(listeningSocket, res->ai_addr, res->ai_addrlen) == -1)
 	{
 		std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
 		freeaddrinfo(res);
-		close(this->serverSocket);
+		close(listeningSocket);
 		return (1);
 	}
 	freeaddrinfo(res);
 	return (0);
 }
 
-int WebServ::setup(const ServerConfig& serverConfig)
+int WebServ::setup(std::vector<ServerConfig> servers)
 {
+  //TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
-	this->serverConfig = serverConfig;
-	// 1. Create socket
-	if (initListeningSocket())
-		return (1);
+  this->configs = servers; // Refactor instead of copying?
+  bool stop = true;
+  for (size_t i = 0; i < servers.size(); ++i)
+  {
+    ServerConfig& tmpConfig = servers[i];
 
-	// 2. Setup address for socket
-	if (bindSockAddress())
-		return (1);
+    // 1. Create socket
+    int listeningSocket = initListeningSocket();
+    if (listeningSocket == -1)
+    {
+      std::cerr << "Server Block " << i << " setup failed!\n";
+      continue;
+    }
 
-	// 3. Socket listening
 
-	if (listen(this->serverSocket, 10) == -1)
-	{
-		std::cerr << "Error on socket listening\n";
-		close(this->serverSocket);
-		return (1);
-	}
-	if (setNonBlocking(this->serverSocket))
-	{
-		return (1);
-	}
+    // 2. Setup address for socket
+    if (bindSockAddress(listeningSocket, i))
+    {
+      std::cerr << "Server Block " << i << " setup failed!\n";
+      continue;
+    }
 
-	std::cout << "Listening on " << serverConfig.listen.host << ":"
-	          << serverConfig.listen.port << "\n";
+    // 3. Socket listening
+
+    if (listen(listeningSocket, 10) == -1)
+    {
+      std::cerr << "Error on socket " << i << " listening\n";
+      close(listeningSocket);
+      continue;
+    }
+    if (setNonBlocking(listeningSocket))
+    {
+      std::cerr << "Error setting socket " << i << " as Non blocking\n";
+      close(listeningSocket);
+      continue;
+    }
+
+    listenerFdToIndex[listeningSocket] = i;
+
+    struct pollfd tmpPollfd;
+    tmpPollfd.fd = listeningSocket;
+    tmpPollfd.events = POLLIN;
+    tmpPollfd.revents = 0;
+    this->pollFds.push_back(tmpPollfd);
+
+    std::cout << "Listening on " << tmpConfig.listen.host << ":"
+              << tmpConfig.listen.port << "\n";
+    stop = false;
+  }
+  if (stop)
+    return (1);
 	return (0);
 }
 
@@ -271,7 +291,7 @@ static std::string ipToString(uint32_t address)
 	return (oss.str());
 }
 
-int WebServ::acceptConnection()
+int WebServ::acceptConnection(int listeningSocket)
 {
 	sockaddr_in clientAddress;
 	socklen_t clientAddressLength;
@@ -281,7 +301,7 @@ int WebServ::acceptConnection()
 
 	clientAddressLength = sizeof(clientAddress);
 	clientSocket = accept(
-	    this->serverSocket, (sockaddr *)&clientAddress, &clientAddressLength);
+	    listeningSocket, (sockaddr *)&clientAddress, &clientAddressLength);
 	if (clientSocket == -1)
 	{
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -304,8 +324,12 @@ int WebServ::acceptConnection()
 	clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
 	clientIt = clients.find(clientSocket);
 	if (clientIt != clients.end())
+  {
+
 		clientIt->second.setRemoteAddr(
 		    ipToString(clientAddress.sin_addr.s_addr));
+    clientIt->second.serverIndex = listenerFdToIndex[listeningSocket];
+  }
 	return (clientSocket);
 }
 
@@ -316,8 +340,22 @@ void WebServ::removePollfd(int fd)
 		if (this->pollFds[i].fd == fd)
 		{
 			this->pollFds.erase(this->pollFds.begin() + i);
+      return;
 		}
 	}
+}
+
+bool WebServ::isListeningFd(int fd)
+{
+    return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
+}
+
+void WebServ::closeAndRemoveFd(int fd)
+{
+  close(fd);
+  removePollfd(fd);
+  clients.erase(fd);
+  listenerFdToIndex.erase(fd);
 }
 
 int WebServ::run()
@@ -326,7 +364,7 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(this->pollFds.data(), this->pollFds.size(), -1);
+		int ready = poll(&this->pollFds[0], this->pollFds.size(), -1);
 		if (ready < 0)
 		{
 			if (errno == EINTR)
@@ -336,76 +374,85 @@ int WebServ::run()
 		}
 		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
-		// 4. Accept connections
 
-		if (this->pollFds.at(0).revents & POLLIN)
-			acceptConnection();
+		// PollFds loop
 
-		// 5. Receive data from client
-
-		for (size_t i = 1; i < this->pollFds.size(); i++)
+    size_t i = 0;
+    while (i < pollFds.size())
 		{
-			int curFD = this->pollFds[i].fd;
+			int curFD = pollFds[i].fd;
 
-			if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-			{
-				close(curFD);
-				removePollfd(curFD);
-				this->clients.erase(curFD);
-				i--;
-				continue;
-			}
+      if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+      {
+        closeAndRemoveFd(curFD);
+        continue;
+      }
 
-			Client& curClient = clients.at(curFD);
-			if (this->pollFds[i].revents & POLLIN)
-			{
-				curClient.state = READING;
-				this->readFromClient(curClient);
-				if (curClient.state == CLOSING_CONNECTION)
-				{
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
+		// Accept connections
 
-				RequestParser parser;
-				RequestInspector inspector;
+      if (isListeningFd(curFD))
+      {
+        if (pollFds[i].revents & POLLIN)
+          acceptConnection(curFD);
 
-				inspector.inspectRequest(curClient.getRawRequest());
-				if (inspector.status == COMPLETED)
-				{
-					parser.parse(curClient.getRawRequest(), curClient.request);
-				}
-				else if (inspector.status == NEED_MORE_DATA)
-					continue;
-				else
-				{
-					// TODO: RequestHandler for errors and close connection
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
+        ++i;
+        continue;
+      }
+      else
+      {
+          std::map<int, Client>::iterator clientIt = clients.find(curFD);
+          if (clientIt == clients.end())
+          {
+            ++i;
+            continue;
+          }
 
-				// TODO: if request is valid set as POLLOUT
-				this->pollFds[i].events = POLLOUT;
-			}
-			if (this->pollFds[i].revents & POLLOUT)
-			{
-				curClient.state = WRITING;
-				this->SendToClient(curClient);
-				if (curClient.state == CLOSING_CONNECTION)
-				{
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
-			}
+          Client& curClient = clientIt->second;
+          if (this->pollFds[i].revents & POLLIN)
+          {
+            curClient.state = READING;
+            readFromClient(curClient);
+            if (curClient.state == CLOSING_CONNECTION)
+            {
+              closeAndRemoveFd(curFD);
+              continue;
+            }
+
+            RequestParser parser;
+            RequestInspector inspector;
+
+            inspector.inspectRequest(curClient.getRawRequest());
+            if (inspector.status == COMPLETED)
+            {
+              parser.parse(curClient.getRawRequest(), curClient.request);
+            }
+            else if (inspector.status == NEED_MORE_DATA)
+            {
+              ++i;
+              continue;
+            }
+            else
+            {
+              // TODO: RequestHandler for errors and close connection
+              closeAndRemoveFd(curFD);
+              continue;
+            }
+
+            // TODO: if request is valid set as POLLOUT
+            this->pollFds[i].events = POLLOUT;
+          }
+          if (this->pollFds[i].revents & POLLOUT)
+          {
+            curClient.state = WRITING;
+            SendToClient(curClient);
+            if (curClient.state == CLOSING_CONNECTION)
+            {
+              closeAndRemoveFd(curFD);
+              continue;
+          }
+        }
+      }
+      ++i;
 		}
 	}
 }

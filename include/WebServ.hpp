@@ -21,19 +21,21 @@ public:
 	int readFromClient(Client& client);
 	int SendToClient(Client& client);
 
-	int setup(const ServerConfig& serverConfig);
+	int setup(std::vector<ServerConfig> servers);
 	int run();
 	int initListeningSocket();
-	int bindSockAddress();
-	int acceptConnection();
+	int bindSockAddress(int listeningSocket, size_t configIndex);
+	int acceptConnection(int listeningSocket);
 	void removePollfd(int fd);
+  bool isListeningFd(int fd);
 
 private:
 	int setNonBlocking(int fd);
-	int serverSocket;
-	ServerConfig serverConfig;
-	std::vector<pollfd> pollFds;
+  void closeAndRemoveFd(int fd);
+  std::vector<ServerConfig> configs;
+  std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
+	std::vector<pollfd> pollFds;
 };
 
 #endif

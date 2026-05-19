@@ -22,8 +22,9 @@ int main(int argc, char **argv) {
   }
 
   WebServ serv;
-  if (serv.setup(config.servers[0]) != 0) {
-    std::cerr << "Webserv setup failed!\n";
+
+  if (serv.setup(config.servers) != 0) {
+    std::cerr << "All server blocks failed, error setting up WebServ!\n";
     return (1);
   }
   return (serv.run());

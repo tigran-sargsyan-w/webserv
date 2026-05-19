@@ -6,7 +6,7 @@ const std::size_t MAX_HEADERS_SIZE = 32768;
 const std::size_t MAX_REQUEST_LINE_SIZE = 8192;
 // const std::size_t MAX_HEADER_FIELD_SIZE = 8192;
 
-void RequestInspector::inspectRequestLine(const std::string& requestLine)
+void RequestInspector::inspectRequestLine(const std::string &requestLine)
 {
   if (requestLine.size() > MAX_REQUEST_LINE_SIZE)
   {
@@ -50,7 +50,7 @@ void RequestInspector::inspectRequestLine(const std::string& requestLine)
   this->status = COMPLETED;
 }
 
-InspectRequestStatus RequestInspector::inspectRequest(const std::string& rawRequest)
+InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequest)
 {
 
   std::string requestLine;

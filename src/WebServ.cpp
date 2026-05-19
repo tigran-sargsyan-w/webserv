@@ -327,7 +327,7 @@ int WebServ::acceptConnection(int listeningSocket)
 
 		clientIt->second.setRemoteAddr(
 		    ipToString(clientAddress.sin_addr.s_addr));
-    clients.at(clientSocket).serverIndex = listenerFdToIndex[listeningSocket];
+    clientIt->second.serverIndex = listenerFdToIndex[listeningSocket];
   }
 	return (clientSocket);
 }
@@ -345,12 +345,7 @@ void WebServ::removePollfd(int fd)
 
 bool WebServ::isListeningFd(int fd)
 {
-  for (size_t i = 0; i < this->listenerFdToIndex.size(); i++)
-  {
-    if (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end())
-      return (true);
-  }
-  return (false);
+    return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
 }
 
 int WebServ::run()

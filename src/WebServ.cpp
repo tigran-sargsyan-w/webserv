@@ -390,7 +390,11 @@ int WebServ::run()
             continue;
           }
 
-          Client& curClient = clients.at(curFD);
+          std::map<int, Client>::iterator clientIt = clients.find(curFD);
+          if (clientIt == clients.end())
+            continue;
+
+          Client& curClient = clientIt->second;
           if (this->pollFds[i].revents & POLLIN)
           {
             curClient.state = READING;

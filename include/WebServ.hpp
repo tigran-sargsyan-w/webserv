@@ -27,6 +27,7 @@ public:
 	int bindSockAddress(int listeningSocket, size_t configIndex);
 	int acceptConnection(int listeningSocket);
 	void removePollfd(int fd);
+  bool isListeningFd(int fd);
 
 private:
 	int setNonBlocking(int fd);

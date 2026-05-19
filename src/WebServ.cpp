@@ -232,7 +232,7 @@ int WebServ::setup(std::vector<ServerConfig> servers)
   //TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
-  ServerConfig tmpConfig;
+  this->configs = servers; // Refactor instead of copying?
   bool stop = true;
   for (size_t i = 0; i < servers.size(); ++i)
   {
@@ -338,6 +338,16 @@ void WebServ::removePollfd(int fd)
 	}
 }
 
+bool WebServ::isListeningFd(int fd)
+{
+  for (size_t i = 0; i < this->listenerFdToIndex.size(); i++)
+  {
+    if (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end())
+      return (true);
+  }
+  return (false);
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -354,76 +364,84 @@ int WebServ::run()
 		}
 		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
-		// 4. Accept connections
-
-		if (this->pollFds.at(0).revents & POLLIN)
-			acceptConnection(); //TODO: pass correct sock fd
 
 		// 5. Receive data from client
 
-		for (size_t i = 1; i < this->pollFds.size(); i++)
+		for (size_t i = 0; i < this->pollFds.size(); i++)
 		{
 			int curFD = this->pollFds[i].fd;
 
-			if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-			{
-				close(curFD);
-				removePollfd(curFD);
-				this->clients.erase(curFD);
-				i--;
-				continue;
-			}
+		// 4. Accept connections
 
-			Client& curClient = clients.at(curFD);
-			if (this->pollFds[i].revents & POLLIN)
-			{
-				curClient.state = READING;
-				this->readFromClient(curClient);
-				if (curClient.state == CLOSING_CONNECTION)
-				{
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
+      if (isListeningFd(curFD))
+      {
+        if (this->pollFds[i].revents & POLLIN)
+          acceptConnection(curFD); //TODO: pass correct sock fd
+      }
+                          //
+      else
+      {
+        
+          if (this->pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+          {
+            close(curFD);
+            removePollfd(curFD);
+            this->clients.erase(curFD);
+            i--;
+            continue;
+          }
 
-				RequestParser parser;
-				RequestInspector inspector;
+          Client& curClient = clients.at(curFD);
+          if (this->pollFds[i].revents & POLLIN)
+          {
+            curClient.state = READING;
+            this->readFromClient(curClient);
+            if (curClient.state == CLOSING_CONNECTION)
+            {
+              close(curFD);
+              removePollfd(curFD);
+              clients.erase(curFD);
+              i--;
+              continue;
+            }
 
-				inspector.inspectRequest(curClient.getRawRequest());
-				if (inspector.status == COMPLETED)
-				{
-					parser.parse(curClient.getRawRequest(), curClient.request);
-				}
-				else if (inspector.status == NEED_MORE_DATA)
-					continue;
-				else
-				{
-					// TODO: RequestHandler for errors and close connection
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
+            RequestParser parser;
+            RequestInspector inspector;
 
-				// TODO: if request is valid set as POLLOUT
-				this->pollFds[i].events = POLLOUT;
-			}
-			if (this->pollFds[i].revents & POLLOUT)
-			{
-				curClient.state = WRITING;
-				this->SendToClient(curClient);
-				if (curClient.state == CLOSING_CONNECTION)
-				{
-					close(curFD);
-					removePollfd(curFD);
-					clients.erase(curFD);
-					i--;
-					continue;
-				}
-			}
+            inspector.inspectRequest(curClient.getRawRequest());
+            if (inspector.status == COMPLETED)
+            {
+              parser.parse(curClient.getRawRequest(), curClient.request);
+            }
+            else if (inspector.status == NEED_MORE_DATA)
+              continue;
+            else
+            {
+              // TODO: RequestHandler for errors and close connection
+              close(curFD);
+              removePollfd(curFD);
+              clients.erase(curFD);
+              i--;
+              continue;
+            }
+
+            // TODO: if request is valid set as POLLOUT
+            this->pollFds[i].events = POLLOUT;
+          }
+          if (this->pollFds[i].revents & POLLOUT)
+          {
+            curClient.state = WRITING;
+            this->SendToClient(curClient);
+            if (curClient.state == CLOSING_CONNECTION)
+            {
+              close(curFD);
+              removePollfd(curFD);
+              clients.erase(curFD);
+              i--;
+              continue;
+          }
+        }
+      }
 		}
 	}
 }

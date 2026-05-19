@@ -359,7 +359,7 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(this->pollFds.data(), this->pollFds.size(), -1);
+		int ready = poll(&this->pollFds[0], this->pollFds.size(), -1);
 		if (ready < 0)
 		{
 			if (errno == EINTR)
@@ -383,7 +383,6 @@ int WebServ::run()
         if (this->pollFds[i].revents & POLLIN)
           acceptConnection(curFD); //TODO: pass correct sock fd
       }
-                          //
       else
       {
         

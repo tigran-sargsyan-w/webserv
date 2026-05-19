@@ -3,6 +3,8 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
+#include <climits>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -23,44 +25,88 @@ RequestHandler::RequestHandler () {}
 
 RequestHandler::~RequestHandler () {}
 
-static std::string joinPaths (const std::string &left, const std::string &right)
+/******************** UTILS ********************/
+
+static std::string getPathWithoutQuery (const std::string &path)
 {
-	if (left.empty ())
-		return (right);
-	if (right.empty ())
-		return (left);
-	if (left[left.length () - 1] == '/' && right[0] == '/')
-		return (left + right.substr (1));
-	if (left[left.length () - 1] != '/' && right[0] != '/')
-		return (left + "/" + right);
-	return (left + right);
+	size_t questionMark;
+
+	questionMark = path.find ('?');
+	if (questionMark == std::string::npos)
+		return (path);
+	return (path.substr (0, questionMark));
 }
 
-static bool isPathSafe (const std::string &path)
-{
-	std::stringstream ss (path);
-	std::string segment;
+/***********************************************/
 
-	while (std::getline (ss, segment, '/'))
+static bool isHexDigit (char c)
+{
+	return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+}
+
+static int hexToInt (char c)
+{
+	if (c >= '0' && c <= '9')
+		return (c - '0');
+	if (c >= 'a' && c <= 'f')
+		return (c - 'a' + 10);
+	return (c - 'A' + 10);
+}
+
+static std::string urlDecodePath (const std::string &path)
+{
+	std::string result;
+	size_t i = 0;
+
+	while (i < path.length ())
 	{
-		if (segment == "..")
-			return false;
+		if (path[i] == '%' && i + 2 < path.length () && isHexDigit (path[i + 1]) && isHexDigit (path[i + 2]))
+		{
+			result += static_cast<char> (hexToInt (path[i + 1]) * 16 + hexToInt (path[i + 2]));
+			i += 3;
+		}
+		else
+		{
+			result += path[i];
+			i++;
+		}
 	}
-	return true;
+	return result;
+}
+
+static std::string getFileName (const std::string &path)
+{
+	size_t lastSlash = path.find_last_of ('/');
+
+	if (lastSlash == std::string::npos)
+		return (path);
+	return (path.substr (lastSlash + 1));
 }
 
 static std::string getSafeUploadPath (const Request &request, const RouteConfig &route)
 {
-	std::string fileName = request.getPath ();
-	size_t lastSlash = fileName.find_last_of ('/');
-
-	if (lastSlash != std::string::npos)
-		fileName = fileName.substr (lastSlash + 1);
-	if (fileName.empty () || !isPathSafe (fileName))
-		return "";
 	if (route.uploadStore.empty ())
 		return "";
-	return joinPaths (route.uploadStore, fileName);
+
+	std::string decoded = urlDecodePath (getPathWithoutQuery (request.getPath ()));
+
+	if (decoded.find ("..") != std::string::npos)
+		return "";
+
+	std::string fileName = getFileName (decoded);
+
+	if (fileName.empty () || fileName.find ('/') != std::string::npos)
+		return "";
+
+	char resolvedStore[PATH_MAX];
+	if (realpath (route.uploadStore.c_str (), resolvedStore) == NULL)
+		return "";
+
+	std::string storePath (resolvedStore);
+	if (storePath[storePath.length () - 1] != '/')
+		storePath += '/';
+
+	return (storePath + fileName);
 }
 
 static Response buildSuccessResponse (int successCode, const std::string &successMessage)

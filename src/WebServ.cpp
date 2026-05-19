@@ -138,10 +138,10 @@ static std::string getPathWithoutQuery(const std::string& path)
 int WebServ::SendToClient(Client& client)
 {
 	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
-	const RouteConfig& route = findMatchingRoute(this->serverConfig, cleanPath);
+	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 	std::cout << "Matched route: " << route.path << std::endl;
 	Response response = RequestHandler::handleRequest(
-	    client.request, route, this->serverConfig, client.getRemoteAddr());
+	    client.request, route, configs[client.serverIndex], client.getRemoteAddr());
 	std::cout << "Response to client:\n\n" << response.toString() << std::endl;
 
 	ssize_t bytesSent = send(
@@ -160,34 +160,34 @@ int WebServ::SendToClient(Client& client)
 
 int WebServ::initListeningSocket()
 {
-	this->serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if (this->serverSocket == -1)
+	int tmpSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (tmpSocket == -1)
 	{
 		std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
-		return (1);
+		return (-1);
 	}
 
-	std::cout << "Server socked created, FD = " << this->serverSocket << "\n";
+	std::cout << "Server socked created, FD = " << tmpSocket << "\n";
 
 	int opt = 1;
 	if (setsockopt(
-	        this->serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
+	        tmpSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
 	    -1)
 	{
 		std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
-		close(this->serverSocket);
-		return (1);
+		close(tmpSocket);
+		return (-1);
 	}
 
 	struct pollfd tmpPollfd;
-	tmpPollfd.fd = this->serverSocket;
+	tmpPollfd.fd = tmpSocket;
 	tmpPollfd.events = POLLIN;
 	tmpPollfd.revents = 0;
 	this->pollFds.push_back(tmpPollfd);
-	return (0);
+	return (tmpSocket);
 }
 
-int WebServ::bindSockAddress()
+int WebServ::bindSockAddress (int listeningSocket, size_t configIndex)
 {
 
 	struct addrinfo hints;
@@ -200,13 +200,13 @@ int WebServ::bindSockAddress()
 	hints.ai_flags = 0;
 
 	std::stringstream ss;
-	ss << this->serverConfig.listen.port;
+	ss << configs[configIndex].listen.port;
 	std::string port_str = ss.str();
 
 	const char *host_cstr = NULL;
-	if (!this->serverConfig.listen.host.empty())
+	if (!configs[configIndex].listen.host.empty())
 	{
-		host_cstr = this->serverConfig.listen.host.c_str();
+		host_cstr = configs[configIndex].listen.host.c_str();
 	}
 
 	int ret = getaddrinfo(host_cstr, port_str.c_str(), &hints, &res);
@@ -216,11 +216,11 @@ int WebServ::bindSockAddress()
 		return (1);
 	}
 
-	if (bind(this->serverSocket, res->ai_addr, res->ai_addrlen) == -1)
+	if (bind(listeningSocket, res->ai_addr, res->ai_addrlen) == -1)
 	{
 		std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
 		freeaddrinfo(res);
-		close(this->serverSocket);
+		close(listeningSocket);
 		return (1);
 	}
 	freeaddrinfo(res);
@@ -232,20 +232,24 @@ int WebServ::setup(std::vector<ServerConfig> servers)
   //TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
+  ServerConfig tmpConfig;
   bool stop = true;
   for (size_t i = 0; i < servers.size(); ++i)
   {
-    this->serverConfig = servers[i];
+    ServerConfig& tmpConfig = servers[i];
+
     // 1. Create socket
-    if (initListeningSocket())
+    int listeningSocket = initListeningSocket();
+    if (listeningSocket == -1)
     {
       std::cerr << "Server Block " << i << " setup failed!\n";
       continue;
     }
+    listenerFdToIndex[listeningSocket] = i;
 
 
     // 2. Setup address for socket
-    if (bindSockAddress())
+    if (bindSockAddress(listeningSocket, i))
     {
       std::cerr << "Server Block " << i << " setup failed!\n";
       continue;
@@ -253,20 +257,20 @@ int WebServ::setup(std::vector<ServerConfig> servers)
 
     // 3. Socket listening
 
-    if (listen(this->serverSocket, 10) == -1)
+    if (listen(listeningSocket, 10) == -1)
     {
       std::cerr << "Error on socket " << i << " listening\n";
-      close(this->serverSocket);
+      close(listeningSocket);
       continue;
     }
-    if (setNonBlocking(this->serverSocket))
+    if (setNonBlocking(listeningSocket))
     {
       std::cerr << "Error setting socket " << i << " as Non blocking\n";
       continue;
     }
 
-    std::cout << "Listening on " << serverConfig.listen.host << ":"
-              << serverConfig.listen.port << "\n";
+    std::cout << "Listening on " << tmpConfig.listen.host << ":"
+              << tmpConfig.listen.port << "\n";
     stop = false;
   }
   if (stop)
@@ -285,7 +289,7 @@ static std::string ipToString(uint32_t address)
 	return (oss.str());
 }
 
-int WebServ::acceptConnection()
+int WebServ::acceptConnection(int listeningSocket)
 {
 	sockaddr_in clientAddress;
 	socklen_t clientAddressLength;
@@ -295,7 +299,7 @@ int WebServ::acceptConnection()
 
 	clientAddressLength = sizeof(clientAddress);
 	clientSocket = accept(
-	    this->serverSocket, (sockaddr *)&clientAddress, &clientAddressLength);
+	    listeningSocket, (sockaddr *)&clientAddress, &clientAddressLength);
 	if (clientSocket == -1)
 	{
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -353,7 +357,7 @@ int WebServ::run()
 		// 4. Accept connections
 
 		if (this->pollFds.at(0).revents & POLLIN)
-			acceptConnection();
+			acceptConnection(); //TODO: pass correct sock fd
 
 		// 5. Receive data from client
 

@@ -24,16 +24,16 @@ public:
 	int setup(std::vector<ServerConfig> servers);
 	int run();
 	int initListeningSocket();
-	int bindSockAddress(int listeningSocket, const ServerConfig& serverConfig);
+	int bindSockAddress(int listeningSocket, size_t configIndex);
 	int acceptConnection(int listeningSocket);
 	void removePollfd(int fd);
 
 private:
 	int setNonBlocking(int fd);
-  std::map<int, ServerConfig> serverConfigs;
-  std::map<int, ServerConfig> clientServerConfigs;
-	std::vector<pollfd> pollFds;
+  std::vector<ServerConfig> configs;
+  std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
+	std::vector<pollfd> pollFds;
 };
 
 #endif

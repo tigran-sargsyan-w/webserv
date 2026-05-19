@@ -340,6 +340,7 @@ void WebServ::removePollfd(int fd)
 		if (this->pollFds[i].fd == fd)
 		{
 			this->pollFds.erase(this->pollFds.begin() + i);
+      return;
 		}
 	}
 }

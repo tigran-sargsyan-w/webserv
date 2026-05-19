@@ -90,6 +90,8 @@ static std::string getSafeUploadPath (const Request &request, const RouteConfig 
 
 	std::string decoded = urlDecodePath (getPathWithoutQuery (request.getPath ()));
 
+	if (decoded.find ('\0') != std::string::npos)
+		return "";
 	if (decoded.find ("..") != std::string::npos)
 		return "";
 

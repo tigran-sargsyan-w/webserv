@@ -267,6 +267,7 @@ int WebServ::setup(std::vector<ServerConfig> servers)
     if (setNonBlocking(listeningSocket))
     {
       std::cerr << "Error setting socket " << i << " as Non blocking\n";
+      close(listeningSocket);
       continue;
     }
 

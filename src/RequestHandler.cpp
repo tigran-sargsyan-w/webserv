@@ -10,6 +10,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <utils.hpp>
 
 #include "CgiRequestHandler.hpp"
@@ -100,11 +101,14 @@ static std::string getSafeUploadPath (const Request &request, const RouteConfig 
 	if (fileName.empty () || fileName.find ('/') != std::string::npos)
 		return "";
 
-	char resolvedStore[PATH_MAX];
-	if (realpath (route.uploadStore.c_str (), resolvedStore) == NULL)
+	struct stat storeStat;
+	if (stat (route.uploadStore.c_str (), &storeStat) != 0 || !S_ISDIR (storeStat.st_mode))
 		return "";
 
-	std::string storePath (resolvedStore);
+	if (access (route.uploadStore.c_str (), W_OK) != 0)
+		return "";
+
+	std::string storePath = route.uploadStore;
 	if (storePath[storePath.length () - 1] != '/')
 		storePath += '/';
 

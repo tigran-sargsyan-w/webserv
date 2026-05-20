@@ -232,40 +232,38 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 {
 	Response response;
 
-	// Handle redirects first
-	if (route.hasReturn)
-		return (RedirectHandler::handle (route));
-
-	// Handle CGI requests
-	if (CgiRequestHandler::isCgiRequest (request, route))
-		return (CgiRequestHandler::handle (request, route, server, remoteAddr));
-
-	// Reject requests that match a CGI route but aren't a valid CGI path
-	if (!route.cgi.empty ())
-		return (ErrorResponseBuilder::build (403, "Forbidden"));
-
-	// Validate HTTP method
 	HttpMethod method = parseHttpMethod (request.getMethod ());
-	if (method == HTTP_UNKNOWN)
-		return ErrorResponseBuilder::build (501, "Not Implemented");
-
 	Response check = validateMethod (route, method);
-	if (check.getStatusCode () != 0)
-		return check;
 
-	switch (method)
+	if (method == HTTP_UNKNOWN)
+		response = ErrorResponseBuilder::build (501, "Not Implemented");
+	else if (check.getStatusCode () != 0)
+		response = check;
+	// Handle redirects first
+	else if (route.hasReturn)
+		response = RedirectHandler::handle (route);
+	// Handle CGI requests
+	else if (CgiRequestHandler::isCgiRequest (request, route))
+		response = CgiRequestHandler::handle (request, route, server, remoteAddr);
+	// Reject requests that match a CGI route but aren't a valid CGI path
+	else if (!route.cgi.empty ())
+		response = ErrorResponseBuilder::build (403, "Forbidden");
+	else
 	{
-		case HTTP_GET:
-			response = RequestHandler::handleStatic (request, route);
-			break;
-		case HTTP_POST:
-			response = RequestHandler::handlePost (request, route, server);
-			break;
-		case HTTP_DELETE:
-			response = RequestHandler::handleHttpDelete (request, route);
-			break;
-		default:
-			return ErrorResponseBuilder::build (500, "Internal Server Error");
+		switch (method)
+		{
+			case HTTP_GET:
+				response = RequestHandler::handleStatic (request, route);
+				break;
+			case HTTP_POST:
+				response = RequestHandler::handlePost (request, route);
+				break;
+			case HTTP_DELETE:
+				response = RequestHandler::handleHttpDelete (request, route);
+				break;
+			default:
+				response = ErrorResponseBuilder::build (500, "Internal Server Error");
+		}
 	}
 
 	std::ostringstream oss;

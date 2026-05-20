@@ -178,9 +178,14 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
 		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
 
-	// TODO: check that the body size isn't bigger than the route's client max body size
+	// 6. Check that the body size isn't bigger than the route's client max body size
+	if (route.clientMaxBodySize > 0)
+	{
+		if (request.getBody ().size () > route.clientMaxBodySize)
+			return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
+	}
 
-	// 6. Try to write the file
+	// 7. Try to write the file
 	std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
 	if (!file.is_open ())
 		return ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
@@ -188,7 +193,7 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	file << request.getBody ();
 	file.close ();
 
-	// 7. Success response
+	// 8. Success response
 	return buildSuccessResponse (201, "Created: File uploaded");
 }
 

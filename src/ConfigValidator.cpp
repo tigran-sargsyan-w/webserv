@@ -1,6 +1,7 @@
 #include "ConfigValidator.hpp"
 #include "ConfigDebug.hpp"
 
+#include <cctype>
 #include <iostream>
 #include <map>
 #include <set>
@@ -29,20 +30,55 @@ static bool isErrorStatusCode(int code)
 	return (code >= 400 && code <= 599);
 }
 
-static bool isValidRedirectTarget(const std::string &target)
+static bool hasNullByte(const std::string &value)
 {
-    if (target.empty())
-        return (false);
-    if (target[0] != '/')
-        return (false);
-    if (target.length() > 1 && target[1] == '/')
-        return (false);
-    return (true);
+	return (value.find('\0') != std::string::npos);
+}
+
+static bool hasWhiteSpace(const std::string &value)
+{
+	for (size_t index = 0; index < value.length(); ++index)
+	{
+		if (std::isspace(static_cast<unsigned char>(value[index])))
+			return (true);
+	}
+	return (false);
 }
 
 static bool isValidConfigPath(const std::string &path)
 {
 	if (path.empty())
+		return (false);
+	if (hasNullByte(path))
+		return (false);
+	return (true);
+}
+
+static bool isValidOptionalConfigPath(const std::string &path)
+{
+	if (path.empty())
+		return (true);
+	if (hasNullByte(path))
+		return (false);
+	return (true);
+}
+
+static bool isValidLocationPath(const std::string &path)
+{
+	if (path.empty())
+		return (false);
+	if (hasNullByte(path))
+		return (false);
+	if (path[0] != '/')
+		return (false);
+	if (path.length() > 1 && path[1] == '/')
+		return (false);
+	return (true);
+}
+
+static bool isValidRedirectTarget(const std::string &target)
+{
+	if (!isValidLocationPath(target))
 		return (false);
 	return (true);
 }
@@ -51,9 +87,56 @@ static bool isValidCgiExtension(const std::string &extension)
 {
 	if (extension.length() < 2)
 		return (false);
+	if (hasNullByte(extension))
+		return (false);
+	if (hasWhiteSpace(extension))
+		return (false);
 	if (extension[0] != '.')
 		return (false);
+	if (extension.find('/') != std::string::npos)
+		return (false);
 	return (true);
+}
+
+static bool isValidCgiExecutablePath(const std::string &path)
+{
+	if (!isValidConfigPath(path))
+		return (false);
+	if (hasWhiteSpace(path))
+		return (false);
+	if (path[0] != '/')
+		return (false);
+	if (path[path.length() - 1] == '/')
+		return (false);
+	return (true);
+}
+
+static std::string buildServerKey(const ServerConfig &server)
+{
+	std::ostringstream oss;
+
+	oss << server.listen.host << ":" << server.listen.port << ":" << server.serverName;
+	return (oss.str());
+}
+
+static void validateServerUniqueness(const Config &config)
+{
+	std::set<std::string> keys;
+
+	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
+	{
+		const ServerConfig &server = config.servers[serverIndex];
+		std::string key = buildServerKey(server);
+
+		if (keys.find(key) != keys.end())
+		{
+			throw configError("duplicate server block for "
+				+ server.listen.host + ":"
+				+ toString(server.listen.port)
+				+ " with server_name '" + server.serverName + "'");
+		}
+		keys.insert(key);
+	}
 }
 
 static void validateErrorPages(const ServerConfig &server, size_t serverIndex)
@@ -65,7 +148,7 @@ static void validateErrorPages(const ServerConfig &server, size_t serverIndex)
 		if (!isErrorStatusCode(it->first))
 			throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid error_page code: " + toString(it->first));
 		if (!isValidConfigPath(it->second))
-			throw configError("server " + toString(static_cast<int>(serverIndex)) + " has empty error_page path for code " + toString(it->first));
+			throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid error_page path for code " + toString(it->first));
 	}
 }
 
@@ -78,18 +161,29 @@ static void validateCgiConfig(const RouteConfig &route)
 	{
 		if (!isValidCgiExtension(it->extension))
 			throw configError("location " + route.path + " has invalid CGI extension");
-		if (it->executable.empty())
-			throw configError("location " + route.path + " has empty CGI executable");
+		if (!isValidCgiExecutablePath(it->executable))
+			throw configError("location " + route.path + " has invalid CGI executable path");
 		if (extensions.find(it->extension) != extensions.end())
 			throw configError("location " + route.path + " has duplicate CGI extension: " + it->extension);
 		extensions.insert(it->extension);
 	}
 }
 
-static void validateRoute(const RouteConfig &route, size_t serverIndex)
+static void validateRoutePaths(const RouteConfig &route)
 {
-	if (route.path.empty() || route.path[0] != '/')
-		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has location with invalid path");
+	if (!isValidLocationPath(route.path))
+		throw configError("location has invalid path: " + route.path);
+	if (!isValidOptionalConfigPath(route.root))
+		throw configError("location " + route.path + " has invalid root path");
+	if (!isValidOptionalConfigPath(route.index))
+		throw configError("location " + route.path + " has invalid index path");
+	if (!isValidOptionalConfigPath(route.uploadStore))
+		throw configError("location " + route.path + " has invalid upload_store path");
+}
+
+static void validateRoute(const RouteConfig &route)
+{
+	validateRoutePaths(route);
 	if (route.methods.empty())
 		throw configError("location " + route.path + " has no allowed methods");
 	if (route.uploadEnable && route.uploadStore.empty())
@@ -107,6 +201,9 @@ static void validateRoutes(const ServerConfig &server, size_t serverIndex)
 {
 	std::set<std::string> paths;
 
+	if (server.routes.empty())
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires at least one location");
+
 	for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)
 	{
 		const RouteConfig &route = server.routes[routeIndex];
@@ -114,8 +211,16 @@ static void validateRoutes(const ServerConfig &server, size_t serverIndex)
 		if (paths.find(route.path) != paths.end())
 			throw configError("server " + toString(static_cast<int>(serverIndex)) + " has duplicate location: " + route.path);
 		paths.insert(route.path);
-		validateRoute(route, serverIndex);
+		validateRoute(route);
 	}
+}
+
+static void validateServerPaths(const ServerConfig &server, size_t serverIndex)
+{
+	if (!isValidConfigPath(server.root))
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid root path");
+	if (!isValidOptionalConfigPath(server.index))
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid index path");
 }
 
 static void validateServer(const ServerConfig &server, size_t serverIndex)
@@ -124,8 +229,7 @@ static void validateServer(const ServerConfig &server, size_t serverIndex)
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid listen port");
 	if (server.listen.host.empty())
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has empty listen host");
-	if (server.root.empty())
-		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires root");
+	validateServerPaths(server, serverIndex);
 	if (server.clientMaxBodySize == 0)
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_max_body_size greater than 0");
 	validateErrorPages(server, serverIndex);
@@ -136,6 +240,7 @@ void ConfigValidator::validate(const Config &config)
 {
 	if (config.servers.empty())
 		throw configError("at least one server block is required");
+	validateServerUniqueness(config);
 	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
 		validateServer(config.servers[serverIndex], serverIndex);
 }

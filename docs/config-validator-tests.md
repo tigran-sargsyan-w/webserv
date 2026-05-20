@@ -1239,36 +1239,60 @@ Checks that incomplete config blocks are rejected.
 
 ## 30. Quick regression checklist
 
-Before opening or merging the PR, run:
+Before opening or merging the PR, run these checks manually from the project root.
+
+First rebuild the project:
 
 ```bash
-./webserv configs/validator-tests/valid_minimal.conf
-./webserv configs/validator-tests/empty.conf
-./webserv configs/validator-tests/unknown_top_level.conf
-./webserv configs/validator-tests/missing_server_root.conf
-./webserv configs/validator-tests/missing_client_max_body_size.conf
-./webserv configs/validator-tests/invalid_client_max_body_size.conf
-./webserv configs/validator-tests/invalid_listen_port.conf
-./webserv configs/validator-tests/invalid_listen_host.conf
-./webserv configs/validator-tests/invalid_location_path.conf
-./webserv configs/validator-tests/duplicate_location.conf
-./webserv configs/validator-tests/location_without_methods.conf
-./webserv configs/validator-tests/unknown_method.conf
-./webserv configs/validator-tests/invalid_autoindex.conf
-./webserv configs/validator-tests/invalid_upload_enable.conf
-./webserv configs/validator-tests/upload_enabled_without_store.conf
-./webserv configs/validator-tests/upload_store_with_upload_disabled.conf
-./webserv configs/validator-tests/invalid_redirect_code.conf
-./webserv configs/validator-tests/invalid_redirect_target.conf
-./webserv configs/validator-tests/invalid_error_page_code.conf
-./webserv configs/validator-tests/valid_error_pages.conf
-./webserv configs/validator-tests/invalid_cgi_extension_without_dot.conf
-./webserv configs/validator-tests/invalid_cgi_extension_only_dot.conf
-./webserv configs/validator-tests/duplicate_cgi_extension.conf
-./webserv configs/validator-tests/valid_cgi.conf
-./webserv configs/validator-tests/missing_semicolon.conf
-./webserv configs/validator-tests/missing_closing_brace.conf
+make re
 ```
+
+Then run each config file:
+
+```bash
+./webserv configs/invalid/valid_minimal.conf
+./webserv configs/invalid/empty.conf
+./webserv configs/invalid/unknown_top_level.conf
+./webserv configs/invalid/missing_server_root.conf
+./webserv configs/invalid/missing_client_max_body_size.conf
+./webserv configs/invalid/invalid_client_max_body_size.conf
+./webserv configs/invalid/invalid_listen_port.conf
+./webserv configs/invalid/invalid_listen_host.conf
+./webserv configs/invalid/invalid_location_path.conf
+./webserv configs/invalid/duplicate_location.conf
+./webserv configs/invalid/location_without_methods.conf
+./webserv configs/invalid/unknown_method.conf
+./webserv configs/invalid/invalid_autoindex.conf
+./webserv configs/invalid/invalid_upload_enable.conf
+./webserv configs/invalid/upload_enabled_without_store.conf
+./webserv configs/invalid/upload_store_with_upload_disabled.conf
+./webserv configs/invalid/invalid_redirect_code.conf
+./webserv configs/invalid/invalid_redirect_target.conf
+./webserv configs/invalid/invalid_error_page_code.conf
+./webserv configs/invalid/valid_error_pages.conf
+./webserv configs/invalid/invalid_cgi_extension_without_dot.conf
+./webserv configs/invalid/invalid_cgi_extension_only_dot.conf
+./webserv configs/invalid/duplicate_cgi_extension.conf
+./webserv configs/invalid/valid_cgi.conf
+./webserv configs/invalid/missing_semicolon.conf
+./webserv configs/invalid/missing_closing_brace.conf
+```
+
+The following configs are valid and should start the server:
+
+```txt
+valid_minimal.conf
+valid_error_pages.conf
+valid_cgi.conf
+```
+
+Stop the server manually with:
+
+```txt
+Ctrl+C
+```
+
+All other configs should fail during parsing or validation.
 
 Expected summary:
 
@@ -1303,43 +1327,76 @@ Expected summary:
 
 ---
 
-## 31. Current accepted limitations
+## 31. Automated quick regression command
 
-These are not blockers for the config validator task, but can be improved later:
+The valid configs start the server and normally keep running.
 
-* The validator may not check whether `root` exists on disk.
-* The validator may not check whether `upload_store` exists on disk.
-* The validator may not check whether the CGI executable exists or has execute permission.
-* The validator may not check whether custom error page files exist.
-* Multiple server blocks and multiple ports may be parsed correctly but runtime support is handled by a separate task.
-* Runtime behavior is not covered here. These tests only check startup-time config parsing and validation.
+For this reason, the command below uses `timeout`.
 
----
+Exit code meaning:
 
-## 32. Suggested PR checklist
+```txt
+124 = the server started and was stopped by timeout
+non-zero and not 124 = parsing or validation failed
+0 = suspicious, because the server should not exit immediately after startup
+```
 
-Before opening the PR:
+Run this from the project root:
 
 ```bash
-make re
-./webserv configs/default.conf
+make re && \
+for file in configs/invalid/*.conf; do
+    name=$(basename "$file")
+
+    case "$name" in
+        valid_minimal.conf|valid_error_pages.conf|valid_cgi.conf)
+            expected="starts"
+            ;;
+        *)
+            expected="fails"
+            ;;
+    esac
+
+    timeout 1s ./webserv "$file" > /tmp/webserv_config_test.out 2>&1
+    code=$?
+
+    if [ "$expected" = "starts" ]; then
+        if [ "$code" -eq 124 ]; then
+            echo "✅ PASS: $name started successfully"
+        else
+            echo "❌ FAIL: $name should start but exited"
+            cat /tmp/webserv_config_test.out
+            echo
+        fi
+    else
+        if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
+            echo "✅ PASS: $name failed as expected"
+        else
+            echo "❌ FAIL: $name should fail but started or exited successfully"
+            cat /tmp/webserv_config_test.out
+            echo
+        fi
+    fi
+done
 ```
 
-Then run the config validator tests above.
+Expected output should contain only `PASS` lines.
 
-PR should mention:
+Example:
 
 ```txt
-Added docs/config-validator-tests.md
+✅ PASS: duplicate_cgi_extension.conf failed as expected
+✅ PASS: duplicate_location.conf failed as expected
+✅ PASS: empty.conf failed as expected
+✅ PASS: invalid_autoindex.conf failed as expected
+✅ PASS: valid_cgi.conf started successfully
+✅ PASS: valid_error_pages.conf started successfully
+✅ PASS: valid_minimal.conf started successfully
 ```
 
-If validator logic was also changed, mention the new validations explicitly:
+If a config prints `FAIL`, this means one of two things:
 
-```txt
-- duplicate locations
-- required client_max_body_size
-- error_page code range
-- CGI extension format
-- duplicate CGI extension
-- stricter upload configuration
-```
+* the validator does not catch this invalid case yet;
+* the test expectation needs to be adjusted because the project intentionally accepts that config.
+
+---

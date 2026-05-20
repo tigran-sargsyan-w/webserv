@@ -20,7 +20,12 @@ Covered features:
 * upload configuration validation;
 * redirect configuration validation;
 * CGI extension and executable validation;
-* duplicate CGI extension detection.
+* duplicate CGI extension detection;
+* duplicate `listen` + `server_name` detection;
+* required `location` block per server;
+* stricter path validation;
+* double-slash `location` path rejection;
+* absolute CGI executable path validation.
 
 ---
 
@@ -505,6 +510,349 @@ Config validation error: server 0 has duplicate location: /
 
 Checks that one server block cannot contain two routes with the same path.
 
+
+---
+
+## Test: duplicate server listen and server_name
+
+Create:
+
+```bash
+cat > configs/invalid/duplicate_server_same_name.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name duplicate_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location / {
+        methods GET;
+    }
+}
+
+server {
+    listen 127.0.0.1:8080;
+    server_name duplicate_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location / {
+        methods GET;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/duplicate_server_same_name.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention a duplicate server block, for example:
+
+```txt
+Config validation error: duplicate server block for 127.0.0.1:8080 with server_name 'duplicate_test'
+```
+
+### Purpose
+
+Checks that two server blocks cannot use the same `listen` host, port and `server_name`.
+
+---
+
+## Test: server without location
+
+Create:
+
+```bash
+cat > configs/invalid/server_without_location.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name no_location_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/server_without_location.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention that the server requires at least one location, for example:
+
+```txt
+Config validation error: server 0 requires at least one location
+```
+
+### Purpose
+
+Checks that a server block is not accepted without any route definition.
+
+---
+
+## Test: double-slash location path
+
+Create:
+
+```bash
+cat > configs/invalid/double_slash_location.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name double_slash_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location //static {
+        methods GET;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/double_slash_location.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention an invalid location path.
+
+### Purpose
+
+Checks that location paths must not start with `//`.
+
+---
+
+## Test: empty root value
+
+Create:
+
+```bash
+cat > configs/invalid/empty_root_value.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name empty_root_test;
+
+    root ;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location / {
+        methods GET;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/empty_root_value.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention a missing or invalid root value.
+
+### Purpose
+
+Checks that empty path values are rejected.
+
+---
+
+## Test: empty error_page path
+
+Create:
+
+```bash
+cat > configs/invalid/empty_error_page_path.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name empty_error_page_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    error_page 404 ;
+
+    location / {
+        methods GET;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/empty_error_page_path.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention a missing or invalid error page path.
+
+### Purpose
+
+Checks that empty error page paths are rejected.
+
+---
+
+## Test: null byte in root path
+
+Create:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+
+content = (
+    b"server {\n"
+    b"    listen 127.0.0.1:8080;\n"
+    b"    server_name null_byte_test;\n"
+    b"\n"
+    b"    root ./www\x00evil;\n"
+    b"    index index.html;\n"
+    b"    client_max_body_size 1048576;\n"
+    b"\n"
+    b"    location / {\n"
+    b"        methods GET;\n"
+    b"    }\n"
+    b"}\n"
+)
+
+Path("configs/invalid/null_byte_root.conf").write_bytes(content)
+PY
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/null_byte_root.conf
+```
+
+### Expected result
+
+The server should not start.
+
+The error can come from either the parser or the validator.
+
+### Purpose
+
+Checks that paths containing a null byte are rejected.
+
+---
+
+## Test: CGI executable with relative path
+
+Create:
+
+```bash
+cat > configs/invalid/invalid_cgi_relative_executable.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name cgi_relative_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location /cgi-bin {
+        methods GET POST;
+        root ./www/cgi-bin;
+        cgi .py python3;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/invalid_cgi_relative_executable.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention an invalid CGI executable path.
+
+### Purpose
+
+Checks that CGI executables must be configured with an absolute path.
+
+---
+
+## Test: CGI executable path ending with slash
+
+Create:
+
+```bash
+cat > configs/invalid/invalid_cgi_executable_directory.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name cgi_dir_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location /cgi-bin {
+        methods GET POST;
+        root ./www/cgi-bin;
+        cgi .py /usr/bin/;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/invalid/invalid_cgi_executable_directory.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention an invalid CGI executable path.
+
+### Purpose
+
+Checks that a CGI executable path cannot point to a directory-like path.
+
+---
 ---
 
 ## 14. Test: location without methods
@@ -1276,6 +1624,12 @@ Then run each config file:
 ./webserv configs/invalid/valid_cgi.conf
 ./webserv configs/invalid/missing_semicolon.conf
 ./webserv configs/invalid/missing_closing_brace.conf
+./webserv configs/invalid/duplicate_server_same_name.conf
+./webserv configs/invalid/server_without_location.conf
+./webserv configs/invalid/double_slash_location.conf
+./webserv configs/invalid/empty_root_value.conf
+./webserv configs/invalid/empty_error_page_path.conf
+./webserv configs/invalid/null_byte_root.conf
 ```
 
 The following configs are valid and should start the server:
@@ -1324,6 +1678,14 @@ Expected summary:
 | `valid_cgi.conf`                         |          starts | valid CGI config                    |
 | `missing_semicolon.conf`                 |           fails | parser syntax error                 |
 | `missing_closing_brace.conf`             |           fails | parser syntax error                 |
+| `duplicate_server_same_name.conf`        |           fails | duplicate listen and server_name    |
+| `server_without_location.conf`           |           fails | server route block required         |
+| `double_slash_location.conf`             |           fails | location must not start with `//`   |
+| `empty_root_value.conf`                  |           fails | empty path value                    |
+| `empty_error_page_path.conf`             |           fails | empty error_page path               |
+| `null_byte_root.conf`                    |           fails | null byte in path                   |
+| `invalid_cgi_relative_executable.conf`   |           fails | CGI executable must be absolute     |
+| `invalid_cgi_executable_directory.conf`  |           fails | CGI executable cannot end with `/`  |
 
 ---
 
@@ -1344,6 +1706,7 @@ non-zero and not 124 = parsing or validation failed
 Run this from the project root:
 
 ```bash
+
 make re && \
 for file in configs/invalid/*.conf; do
     name=$(basename "$file")
@@ -1378,6 +1741,7 @@ for file in configs/invalid/*.conf; do
         fi
     fi
 done
+
 ```
 
 Expected output should contain only `PASS` lines.

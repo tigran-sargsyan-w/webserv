@@ -198,21 +198,21 @@ Response RequestHandler::handleHttpDelete (const Request &request, const RouteCo
 	if (!route.uploadEnable)
 		return ErrorResponseBuilder::build (403, "Forbidden: Delete is disabled for this route");
 
-	// 1. Check that the path is safe and create the complete path
+	// 2. Check that the path is safe and create the complete path
 	std::string fullPath = getSafeUploadPath (request, route);
 	if (fullPath.empty ())
 		return ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
 
-	// 2. Check if the resource exists
+	// 3. Check if the resource exists
 	struct stat pathStat;
 	if (stat (fullPath.c_str (), &pathStat) != 0)
 		return ErrorResponseBuilder::build (404, "Not Found: Resource does not exist");
 
-	// 3. Forbid the deletion of folders
+	// 4. Forbid the deletion of folders
 	if (S_ISDIR (pathStat.st_mode))
 		return ErrorResponseBuilder::build (403, "Forbidden: Cannot delete a directory");
 
-	// 4. Try to delete
+	// 5. Try to delete
 	if (std::remove (fullPath.c_str ()) == 0)
 		return buildSuccessResponse (200, "File deleted successfully");
 

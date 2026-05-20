@@ -194,10 +194,14 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 
 Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route)
 {
+	// 1. Check the activation of the upload
+	if (!route.uploadEnable)
+		return ErrorResponseBuilder::build (403, "Forbidden: Delete is disabled for this route");
+
 	// 1. Check that the path is safe and create the complete path
 	std::string fullPath = getSafeUploadPath (request, route);
 	if (fullPath.empty ())
-		return ErrorResponseBuilder::build (403, "Forbidden: Invalid path sequence");
+		return ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
 
 	// 2. Check if the resource exists
 	struct stat pathStat;

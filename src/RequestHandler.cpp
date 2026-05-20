@@ -190,7 +190,7 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	if (!file.is_open ())
 		return ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
 
-	file << request.getBody ();
+	file.write (request.getBody ().data (), request.getBody ().size ());
 	file.close ();
 
 	// 8. Success response

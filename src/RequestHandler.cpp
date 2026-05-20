@@ -154,7 +154,7 @@ Response RequestHandler::handleStatic (const Request &request, const RouteConfig
 	return (StaticFileHandler::handle (request, route));
 }
 
-Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
+Response RequestHandler::handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
@@ -179,9 +179,9 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
 
 	// 6. Check that the body size isn't bigger than the route's client max body size
-	if (route.clientMaxBodySize > 0)
+	if (server.clientMaxBodySize > 0)
 	{
-		if (request.getBody ().size () > route.clientMaxBodySize)
+		if (request.getBody ().size () > server.clientMaxBodySize)
 			return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
 	}
 
@@ -251,7 +251,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 			response = RequestHandler::handleStatic (request, route);
 			break;
 		case HTTP_POST:
-			response = RequestHandler::handlePost (request, route);
+			response = RequestHandler::handlePost (request, route, server);
 			break;
 		case HTTP_DELETE:
 			response = RequestHandler::handleHttpDelete (request, route);

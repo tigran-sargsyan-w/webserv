@@ -154,7 +154,7 @@ Response RequestHandler::handleStatic (const Request &request, const RouteConfig
 	return (StaticFileHandler::handle (request, route));
 }
 
-Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
+Response RequestHandler::handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
@@ -178,17 +178,22 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
 		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
 
-	// TODO: check that the body size isn't bigger than the route's client max body size
+	// 6. Check that the body size isn't bigger than the route's client max body size
+	if (server.clientMaxBodySize > 0)
+	{
+		if (request.getBody ().size () > server.clientMaxBodySize)
+			return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
+	}
 
-	// 6. Try to write the file
+	// 7. Try to write the file
 	std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
 	if (!file.is_open ())
 		return ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
 
-	file << request.getBody ();
+	file.write (request.getBody ().data (), request.getBody ().size ());
 	file.close ();
 
-	// 7. Success response
+	// 8. Success response
 	return buildSuccessResponse (201, "Created: File uploaded");
 }
 
@@ -250,7 +255,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 			response = RequestHandler::handleStatic (request, route);
 			break;
 		case HTTP_POST:
-			response = RequestHandler::handlePost (request, route);
+			response = RequestHandler::handlePost (request, route, server);
 			break;
 		case HTTP_DELETE:
 			response = RequestHandler::handleHttpDelete (request, route);

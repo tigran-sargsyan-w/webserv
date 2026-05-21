@@ -93,12 +93,10 @@ static std::string getSafeUploadPath (const Request &request, const RouteConfig 
 
 	if (decoded.find ('\0') != std::string::npos)
 		return "";
-	if (decoded.find ("..") != std::string::npos)
-		return "";
 
 	std::string fileName = getFileName (decoded);
 
-	if (fileName.empty () || fileName.find ('/') != std::string::npos)
+	if (fileName.empty () || fileName == ".." || fileName == ".")
 		return "";
 
 	struct stat storeStat;
@@ -183,11 +181,6 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
 
 	// 6. Check that the body size isn't bigger than the route's client max body size
-	if (server.clientMaxBodySize > 0)
-	{
-		if (request.getBody ().size () > server.clientMaxBodySize)
-			return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
-	}
 
 	// 7. Try to write the file
 	std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
@@ -196,6 +189,12 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 
 	file.write (request.getBody ().data (), request.getBody ().size ());
 	file.close ();
+
+	if (file.fail ())
+	{
+		std::remove (fullPath.c_str ());
+		return ErrorResponseBuilder::build (500, "Internal Server Error: Write failed");
+	}
 
 	// 8. Success response
 	return buildSuccessResponse (201, "Created: File uploaded");
@@ -237,11 +236,13 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 
 	if (method == HTTP_UNKNOWN)
 		response = ErrorResponseBuilder::build (501, "Not Implemented");
-	else if (check.getStatusCode () != 0)
-		response = check;
-	// Handle redirects first
+	// Handle redirects
 	else if (route.hasReturn)
 		response = RedirectHandler::handle (route);
+	else if (check.getStatusCode () != 0)
+		response = check;
+	else if (server.clientMaxBodySize > 0 && request.getBody ().size () > server.clientMaxBodySize)
+		return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
 	// Handle CGI requests
 	else if (CgiRequestHandler::isCgiRequest (request, route))
 		response = CgiRequestHandler::handle (request, route, server, remoteAddr);
@@ -256,7 +257,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 				response = RequestHandler::handleStatic (request, route);
 				break;
 			case HTTP_POST:
-				response = RequestHandler::handlePost (request, route);
+				response = RequestHandler::handlePost (request, route, server);
 				break;
 			case HTTP_DELETE:
 				response = RequestHandler::handleHttpDelete (request, route);

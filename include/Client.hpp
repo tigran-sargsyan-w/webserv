@@ -32,6 +32,9 @@ class Client
     bool requestReady;
     ClientState state;
     size_t serverIndex;
+    std::string responseBuffer;
+    size_t bytesSent;
+    bool responseReady;
     //TODO: check if rawRequest is valid and finished before parsing
   private:
     std::string remoteAddr;

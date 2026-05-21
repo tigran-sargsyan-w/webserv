@@ -156,7 +156,7 @@ Response RequestHandler::handleStatic (const Request &request, const RouteConfig
 	return (StaticFileHandler::handle (request, route));
 }
 
-Response RequestHandler::handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server)
+Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
 {
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
@@ -257,7 +257,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 				response = RequestHandler::handleStatic (request, route);
 				break;
 			case HTTP_POST:
-				response = RequestHandler::handlePost (request, route, server);
+				response = RequestHandler::handlePost (request, route);
 				break;
 			case HTTP_DELETE:
 				response = RequestHandler::handleHttpDelete (request, route);

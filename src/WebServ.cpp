@@ -137,25 +137,56 @@ static std::string getPathWithoutQuery(const std::string& path)
 
 int WebServ::SendToClient(Client& client)
 {
-	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
-	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
-	std::cout << "Matched route: " << route.path << std::endl;
-	Response response = RequestHandler::handleRequest(
-	    client.request, route, configs[client.serverIndex], client.getRemoteAddr());
-	std::cout << "Response to client:\n\n" << response.toString() << std::endl;
+    ssize_t bytesSent;
+    size_t remaining;
+    const char *data;
 
-	ssize_t bytesSent = send(
-	    client.fd, response.toString().c_str(), response.toString().size(), 0);
-	if (bytesSent == -1)
-	{
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return (0);
-		std::cout << "send: " << strerror(errno) << std::endl;
-		return (1);
-	}
-	if (bytesSent)
-		client.state = CLOSING_CONNECTION;
-	return (0);
+    if (!client.responseReady)
+    {
+        std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+
+        const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
+
+        std::cout << "Matched route: " << route.path << std::endl;
+
+        Response response = RequestHandler::handleRequest(
+			client.request, route, configs[client.serverIndex], client.getRemoteAddr());
+
+        client.responseBuffer = response.toString();
+        client.bytesSent = 0;
+        client.responseReady = true;
+
+        std::cout << "Response to client:\n\n" << client.responseBuffer << std::endl;
+    }
+    if (client.bytesSent >= client.responseBuffer.size())
+    {
+        client.state = CLOSING_CONNECTION;
+        return (0);
+    }
+
+    remaining = client.responseBuffer.size() - client.bytesSent;
+    data = client.responseBuffer.c_str() + client.bytesSent;
+    bytesSent = send(client.fd, data, remaining, 0);
+
+    if (bytesSent == -1)
+    {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return (0);
+        if (errno == EINTR)
+            return (0);
+        std::cout << "send: " << strerror(errno) << std::endl;
+        return (1);
+    }
+
+    if (bytesSent == 0)
+        return (0);
+
+    client.bytesSent += static_cast<size_t>(bytesSent);
+
+    if (client.bytesSent >= client.responseBuffer.size())
+        client.state = CLOSING_CONNECTION;
+
+    return (0);
 }
 
 int WebServ::initListeningSocket()

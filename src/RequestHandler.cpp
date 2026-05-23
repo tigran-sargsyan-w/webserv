@@ -221,7 +221,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 
 	// Handle redirects first
 	if (route.hasReturn)
-		return (RedirectHandler::handle (route));
+		return (RedirectHandler::handle (route, server));
 
 	// Handle CGI requests
 	if (CgiRequestHandler::isCgiRequest (request, route))

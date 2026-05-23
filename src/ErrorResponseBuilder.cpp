@@ -19,13 +19,34 @@ ErrorResponseBuilder &ErrorResponseBuilder::operator= (const ErrorResponseBuilde
 
 ErrorResponseBuilder::~ErrorResponseBuilder () {}
 
-Response ErrorResponseBuilder::build (int statusCode, const std::string &message)
+std::string ErrorResponseBuilder::buildDefaultBody(int statusCode, const std::string &message)
 {
-	Response res;
-	std::stringstream ss;
+    std::ostringstream body;
 
-	res.setStatusCode (statusCode);
-	ss << "<html><body><h1>" << statusCode << " " << message << "</h1></body></html>";
-	res.setBody (ss.str ());
-	return res;
+    body << "<html>";
+    body << "<head><title>";
+    body << statusCode << " " << message;
+    body << "</title></head>";
+    body << "<body>";
+    body << "<h1>" << statusCode << " " << message << "</h1>";
+    body << "</body>";
+    body << "</html>";
+    return (body.str());
+}
+
+Response ErrorResponseBuilder::buildFromBody(int statusCode, const std::string &body)
+{
+    Response response;
+
+    response.setStatusCode(statusCode);
+    response.setBody(body);
+    response.addHeader("Content-Type", "text/html");
+    response.addHeader("Content-Length", intToString(body.length()));
+    response.addHeader("Connection", "close");
+    return (response);
+}
+
+Response ErrorResponseBuilder::build(int statusCode, const std::string &message)
+{
+    return (buildFromBody(statusCode, buildDefaultBody(statusCode, message)));
 }

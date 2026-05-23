@@ -1,5 +1,5 @@
 #include "RedirectHandler.hpp"
-#include "ErrorResponseBuilder.hpp"
+#include "ErrorResponseHandler.hpp"
 #include "utils.hpp"
 
 #include <string>
@@ -24,13 +24,13 @@ static bool isRedirectStatusCode(int code)
     return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
 }
 
-Response RedirectHandler::handle(const RouteConfig &route)
+Response RedirectHandler::handle(const RouteConfig &route, const ServerConfig &server)
 {
     Response response;
     std::string body;
 
     if (!isRedirectStatusCode(route.returnCode))
-        return (ErrorResponseBuilder::build(500, "Internal Server Error"));
+        return (ErrorResponseHandler::build(500, "Internal Server Error", server));
 
     response.setStatusCode(route.returnCode);
     response.addHeader("Location", route.returnPath);

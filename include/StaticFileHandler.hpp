@@ -16,7 +16,7 @@ struct AutoindexEntry
 class StaticFileHandler
 {
 public:
-    static Response handle(const Request &request, const RouteConfig &route);
+    static Response handle(const Request &request, const RouteConfig &route, const ServerConfig &server);
 
 private:
     StaticFileHandler();

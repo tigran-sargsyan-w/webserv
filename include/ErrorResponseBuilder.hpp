@@ -9,6 +9,8 @@ class ErrorResponseBuilder
 {
 public:
     static Response build(int statusCode, const std::string &message);
+    static std::string buildDefaultBody(int statusCode, const std::string &message);
+    static Response buildFromBody(int statusCode, const std::string &body);
 
 private:
     ErrorResponseBuilder();

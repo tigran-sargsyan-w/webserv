@@ -46,6 +46,8 @@ std::string Response::getReasonPhrase () const
 			return ("Not Found");
 		case 405:
 			return ("Method Not Allowed");
+		case 409:
+    		return ("Conflict");
 		case 413:
 			return ("Payload Too Large");
 		case 500:

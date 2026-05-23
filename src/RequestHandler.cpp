@@ -14,7 +14,7 @@
 
 #include "CgiRequestHandler.hpp"
 #include "Config.hpp"
-#include "ErrorResponseBuilder.hpp"
+#include "ErrorResponseHandler.hpp"
 #include "HttpMethod.hpp"
 #include "RedirectHandler.hpp"
 #include "Request.hpp"
@@ -120,26 +120,26 @@ static Response buildSuccessResponse (int successCode, const std::string &succes
 	return res;
 }
 
-static Response validateMethod (const RouteConfig &route, HttpMethod method)
+static Response validateMethod(const RouteConfig &route, HttpMethod method, const ServerConfig &server)
 {
-	if (route.methods.find (method) == route.methods.end ())
+	if (route.methods.find(method) == route.methods.end())
 	{
-		Response errorRes = ErrorResponseBuilder::build (405, "Method Not Allowed");
+		Response errorRes = ErrorResponseHandler::build(405, "Method Not Allowed", server);
 
 		std::string allowedStr;
-		for (std::set<HttpMethod>::iterator it = route.methods.begin ();
-			 it != route.methods.end (); ++it)
+		for (std::set<HttpMethod>::iterator it = route.methods.begin();
+			 it != route.methods.end(); ++it)
 		{
-			if (it != route.methods.begin ())
+			if (it != route.methods.begin())
 				allowedStr += ", ";
-			allowedStr += httpMethodToString (*it);
+			allowedStr += httpMethodToString(*it);
 		}
-		errorRes.addHeader ("Allow", allowedStr);
+		errorRes.addHeader("Allow", allowedStr);
 		return errorRes;
 	}
 
 	Response ok;
-	ok.setStatusCode (0);
+	ok.setStatusCode(0);
 	return ok;
 }
 
@@ -149,41 +149,41 @@ static bool hasHeader (const Response &response, const std::string &name)
 	return (headers.find (name) != headers.end ());
 }
 
-Response RequestHandler::handleStatic (const Request &request, const RouteConfig &route)
+Response RequestHandler::handleStatic (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
-	return (StaticFileHandler::handle (request, route));
+	return (StaticFileHandler::handle (request, route, server));
 }
 
-Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
+Response RequestHandler::handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
-		return ErrorResponseBuilder::build (403, "Forbidden: Upload is disabled for this route");
+		return ErrorResponseHandler::build (403, "Forbidden: Upload is disabled for this route", server);
 
 	// 2. Check the presence of a storage folder
 	if (route.uploadStore.empty ())
-		return ErrorResponseBuilder::build (500, "Internal Server Error: Upload store not configured");
+		return ErrorResponseHandler::build (500, "Internal Server Error: Upload store not configured", server);
 
 	// 3. Check the body
 	if (request.getBody ().empty ())
-		return ErrorResponseBuilder::build (400, "Bad request: Empty body");
+		return ErrorResponseHandler::build (400, "Bad request: Empty body", server);
 
 	// 4. Extraction and safety check of the filename
 	std::string fullPath = getSafeUploadPath (request, route);
 	if (fullPath.empty ())
-		return ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
+		return ErrorResponseHandler::build (400, "Bad Request: Invalid file name", server);
 
 	// 5. Check if it's a folder
 	struct stat pathStat;
 	if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
-		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
+		return ErrorResponseHandler::build (409, "Conflict: A directory with this name already exists", server);
 
 	// TODO: check that the body size isn't bigger than the route's client max body size
 
 	// 6. Try to write the file
 	std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
 	if (!file.is_open ())
-		return ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
+		return ErrorResponseHandler::build (500, "Internal Server Error: Could not open file", server);
 
 	file << request.getBody ();
 	file.close ();
@@ -192,27 +192,27 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	return buildSuccessResponse (201, "Created: File uploaded");
 }
 
-Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route)
+Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	// 1. Check that the path is safe and create the complete path
 	std::string fullPath = getSafeUploadPath (request, route);
 	if (fullPath.empty ())
-		return ErrorResponseBuilder::build (403, "Forbidden: Invalid path sequence");
+		return ErrorResponseHandler::build (403, "Forbidden: Invalid path sequence", server);
 
 	// 2. Check if the resource exists
 	struct stat pathStat;
 	if (stat (fullPath.c_str (), &pathStat) != 0)
-		return ErrorResponseBuilder::build (404, "Not Found: Resource does not exist");
+		return ErrorResponseHandler::build (404, "Not Found: Resource does not exist", server);
 
 	// 3. Forbid the deletion of folders
 	if (S_ISDIR (pathStat.st_mode))
-		return ErrorResponseBuilder::build (403, "Forbidden: Cannot delete a directory");
+		return ErrorResponseHandler::build (403, "Forbidden: Cannot delete a directory", server);
 
 	// 4. Try to delete
 	if (std::remove (fullPath.c_str ()) == 0)
 		return buildSuccessResponse (200, "File deleted successfully");
 
-	return ErrorResponseBuilder::build (500, "Internal Server Error: Failed to delete the file");
+	return ErrorResponseHandler::build (500, "Internal Server Error: Failed to delete the file", server);
 }
 
 Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
@@ -229,30 +229,30 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 
 	// Reject requests that match a CGI route but aren't a valid CGI path
 	if (!route.cgi.empty ())
-		return (ErrorResponseBuilder::build (403, "Forbidden"));
+		return (ErrorResponseHandler::build (403, "Forbidden", server));
 
 	// Validate HTTP method
 	HttpMethod method = parseHttpMethod (request.getMethod ());
 	if (method == HTTP_UNKNOWN)
-		return ErrorResponseBuilder::build (501, "Not Implemented");
+		return ErrorResponseHandler::build (501, "Not Implemented", server);
 
-	Response check = validateMethod (route, method);
+	Response check = validateMethod (route, method, server);
 	if (check.getStatusCode () != 0)
 		return check;
 
 	switch (method)
 	{
 		case HTTP_GET:
-			response = RequestHandler::handleStatic (request, route);
+			response = RequestHandler::handleStatic (request, route, server);
 			break;
 		case HTTP_POST:
-			response = RequestHandler::handlePost (request, route);
+			response = RequestHandler::handlePost (request, route, server);
 			break;
 		case HTTP_DELETE:
-			response = RequestHandler::handleHttpDelete (request, route);
+			response = RequestHandler::handleHttpDelete (request, route, server);
 			break;
 		default:
-			return ErrorResponseBuilder::build (500, "Internal Server Error");
+			return ErrorResponseHandler::build (500, "Internal Server Error", server);
 	}
 
 	std::ostringstream oss;

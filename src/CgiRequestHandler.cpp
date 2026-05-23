@@ -1,6 +1,6 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
-#include "ErrorResponseBuilder.hpp"
+#include "ErrorResponseHandler.hpp"
 #include "utils.hpp"
 
 #include <cctype>
@@ -399,7 +399,7 @@ Response CgiRequestHandler::handle(const Request &request, const RouteConfig &ro
 
     cgiPath = resolveCgiPath(request, route);
     if (!cgiPath.isCgi)
-        return (ErrorResponseBuilder::build(403, "Forbidden"));
+        return (ErrorResponseHandler::build(403, "Forbidden", server));
 
     context = buildCgiContext(request, route, server, remoteAddr, cgiPath);
     std::cout << "CGI script path: " << context.scriptPath << std::endl;

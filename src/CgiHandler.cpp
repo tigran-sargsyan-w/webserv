@@ -90,113 +90,6 @@ static void debugPrintEnv(const std::string &title, const CgiEnv &env)
 	std::cout << "===================================\n" << std::endl;
 }
 
-std::string CgiHandler::runCgi(const CgiContext &context)
-{
-	int stdinPipe[2];
-	int stdoutPipe[2];
-	pid_t pid;
-	std::string output;
-	char buffer[4096];
-	CgiEnv env;
-	std::vector<std::string> envStrings;
-	std::vector<char *> envp;
-
-	if (pipe(stdinPipe) == -1)
-	{
-		std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
-		return ("");
-	}
-	if (pipe(stdoutPipe) == -1)
-	{
-		std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
-		close(stdinPipe[0]);
-		close(stdinPipe[1]);
-		return ("");
-	}
-
-	env = buildEnvironment(context);
-	envStrings = buildEnvironmentStrings(env);
-	envp = buildEnvironmentPointers(envStrings);
-
-	pid = fork();
-	if (pid == -1)
-	{
-		std::cerr << "fork() failed: " << std::strerror(errno) << std::endl;
-		close(stdinPipe[0]);
-		close(stdinPipe[1]);
-		close(stdoutPipe[0]);
-		close(stdoutPipe[1]);
-		return ("");
-	}
-
-	if (pid == 0)
-	{
-		close(stdinPipe[1]);
-		close(stdoutPipe[0]);
-
-		if (dup2(stdinPipe[0], STDIN_FILENO) == -1)
-		{
-			close(stdinPipe[0]);
-			close(stdoutPipe[1]);
-			_exit(1);
-		}
-		if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1)
-		{
-			close(stdinPipe[0]);
-			close(stdoutPipe[1]);
-			_exit(1);
-		}
-
-		close(stdinPipe[0]);
-		close(stdoutPipe[1]);
-
-		char *argv[] = {
-			const_cast<char *>(context.executable.c_str()),
-			const_cast<char *>(context.scriptPath.c_str()),
-			NULL};
-
-		execve(context.executable.c_str(), argv, &envp[0]);
-		_exit(1);
-	}
-
-	close(stdinPipe[0]);
-	close(stdoutPipe[1]);
-
-	if (!context.requestBody.empty())
-	{
-		ssize_t bytesWritten;
-		size_t totalWritten;
-
-		totalWritten = 0;
-		while (totalWritten < context.requestBody.length())
-		{
-			bytesWritten = write(stdinPipe[1],
-								 context.requestBody.c_str() + totalWritten,
-								 context.requestBody.length() - totalWritten);
-			if (bytesWritten <= 0)
-				break;
-			totalWritten += bytesWritten;
-		}
-	}
-	close(stdinPipe[1]);
-
-	ssize_t bytesRead = 0;
-	while ((bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0)
-	{
-		output.append(buffer, bytesRead);
-	}
-	close(stdoutPipe[0]);
-
-	int status = 0;
-	waitpid(pid, &status, 0);
-	if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
-	{
-		std::cerr << "CGI exited with status "
-				  << WEXITSTATUS(status) << std::endl;
-	}
-	return (output);
-}
-
 int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
 {
     int stdinPipe[2];
@@ -251,7 +144,7 @@ int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
 			close(stdoutPipe[1]);
 			_exit(1);
 		}
-		
+
         close(stdinPipe[0]);
         close(stdoutPipe[1]);
 

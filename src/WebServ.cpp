@@ -157,7 +157,8 @@ int WebServ::SendToClient(Client &client)
 
 		if (CgiRequestHandler::isCgiRequest(client.request, route))
 		{
-			startCgiForClient(client, route);
+			if (startCgiForClient(client, route) != 0)
+				return (1);
 			return (0);
 		}
 

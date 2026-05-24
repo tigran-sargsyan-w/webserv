@@ -15,6 +15,14 @@
 #include <sys/socket.h>
 #include <utility>
 
+#include "CgiHandler.hpp"
+#include "CgiRequestHandler.hpp"
+#include "ErrorResponseHandler.hpp"
+
+#include <ctime>
+#include <signal.h>
+#include <sys/wait.h>
+
 WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
@@ -148,6 +156,12 @@ int WebServ::SendToClient(Client& client)
         const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 
         std::cout << "Matched route: " << route.path << std::endl;
+
+		if (CgiRequestHandler::isCgiRequest(client.request, route))
+		{
+			startCgiForClient(client, route);
+			return (0);
+		}
 
         Response response = RequestHandler::handleRequest(
 			client.request, route, configs[client.serverIndex], client.getRemoteAddr());
@@ -364,6 +378,34 @@ int WebServ::acceptConnection(int listeningSocket)
 	return (clientSocket);
 }
 
+void WebServ::registerPollFd(int fd, short events)
+{
+    struct pollfd tmpPollfd;
+
+    tmpPollfd.fd = fd;
+    tmpPollfd.events = events;
+    tmpPollfd.revents = 0;
+    pollFds.push_back(tmpPollfd);
+}
+
+void WebServ::setPollEvents(int fd, short events)
+{
+    for (size_t i = 0; i < pollFds.size(); ++i)
+    {
+        if (pollFds[i].fd == fd)
+        {
+            pollFds[i].events = events;
+            pollFds[i].revents = 0;
+            return;
+        }
+    }
+}
+
+bool WebServ::isCgiFd(int fd) const
+{
+    return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
+}
+
 void WebServ::removePollfd(int fd)
 {
 	for (size_t i = 0; i < this->pollFds.size(); i++)
@@ -389,6 +431,289 @@ void WebServ::closeAndRemoveFd(int fd)
   listenerFdToIndex.erase(fd);
 }
 
+int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
+{
+    CgiContext context;
+    CgiProcess process;
+    const ServerConfig &server = configs[client.serverIndex];
+
+    context = CgiRequestHandler::buildContext(client.request, route, server, client.getRemoteAddr());
+
+    if (context.executable.empty() || context.scriptPath.empty())
+    {
+        Response error = ErrorResponseHandler::build(403, "Forbidden", server);
+        client.responseBuffer = error.toString();
+        client.bytesSent = 0;
+        client.responseReady = true;
+        client.state = WRITING;
+        setPollEvents(client.fd, POLLOUT);
+        return (0);
+    }
+
+    if (CgiHandler::startCgi(context, process) != 0)
+    {
+        Response error = ErrorResponseHandler::build(502, "Bad Gateway", server);
+        client.responseBuffer = error.toString();
+        client.bytesSent = 0;
+        client.responseReady = true;
+        client.state = WRITING;
+        setPollEvents(client.fd, POLLOUT);
+        return (1);
+    }
+
+    if (setNonBlocking(process.stdinFd) || setNonBlocking(process.stdoutFd))
+    {
+        close(process.stdinFd);
+        close(process.stdoutFd);
+        kill(process.pid, SIGKILL);
+        waitpid(process.pid, NULL, 0);
+
+        Response error = ErrorResponseHandler::build(500, "Internal Server Error", server);
+        client.responseBuffer = error.toString();
+        client.bytesSent = 0;
+        client.responseReady = true;
+        client.state = WRITING;
+        setPollEvents(client.fd, POLLOUT);
+        return (1);
+    }
+
+    client.cgiPid = process.pid;
+    client.cgiStdinFd = process.stdinFd;
+    client.cgiStdoutFd = process.stdoutFd;
+    client.cgiInputBuffer = context.requestBody;
+    client.cgiInputSent = 0;
+    client.cgiOutputBuffer.clear();
+    client.cgiStdinClosed = false;
+    client.cgiStdoutClosed = false;
+    client.cgiFinished = false;
+    client.cgiStartTime = std::time(NULL);
+
+    cgiFdToClientFd[client.cgiStdoutFd] = client.fd;
+    registerPollFd(client.cgiStdoutFd, POLLIN);
+
+    if (client.cgiInputBuffer.empty())
+    {
+        close(client.cgiStdinFd);
+        client.cgiStdinFd = -1;
+        client.cgiStdinClosed = true;
+    }
+    else
+    {
+        cgiFdToClientFd[client.cgiStdinFd] = client.fd;
+        registerPollFd(client.cgiStdinFd, POLLOUT);
+        client.state = CGI_WRITING;
+    }
+
+    setPollEvents(client.fd, 0);
+    client.state = CGI_READING;
+
+    return (0);
+}
+
+int WebServ::writeToCgi(Client &client)
+{
+    size_t remaining;
+    ssize_t bytesWritten;
+
+    if (client.cgiStdinFd == -1 || client.cgiStdinClosed)
+        return (0);
+
+    remaining = client.cgiInputBuffer.size() - client.cgiInputSent;
+    if (remaining == 0)
+    {
+        closeCgiFd(client, client.cgiStdinFd);
+        client.cgiStdinFd = -1;
+        client.cgiStdinClosed = true;
+        return (0);
+    }
+
+    bytesWritten = write(client.cgiStdinFd, client.cgiInputBuffer.c_str() + client.cgiInputSent, remaining);
+
+    if (bytesWritten == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+            return (0);
+        return (1);
+    }
+
+    if (bytesWritten == 0)
+        return (0);
+
+    client.cgiInputSent += static_cast<size_t>(bytesWritten);
+
+    if (client.cgiInputSent >= client.cgiInputBuffer.size())
+    {
+        closeCgiFd(client, client.cgiStdinFd);
+        client.cgiStdinFd = -1;
+        client.cgiStdinClosed = true;
+    }
+
+    return (0);
+}
+
+int WebServ::readFromCgi(Client &client)
+{
+    char buffer[4096];
+    ssize_t bytesRead;
+
+    if (client.cgiStdoutFd == -1 || client.cgiStdoutClosed)
+        return (0);
+
+    bytesRead = read(client.cgiStdoutFd, buffer, sizeof(buffer));
+    if (bytesRead == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+            return (0);
+        return (1);
+    }
+
+    if (bytesRead == 0)
+    {
+        closeCgiFd(client, client.cgiStdoutFd);
+        client.cgiStdoutFd = -1;
+        client.cgiStdoutClosed = true;
+        return (0);
+    }
+
+    client.cgiOutputBuffer.append(buffer, bytesRead);
+    return (0);
+}
+
+void WebServ::closeCgiFd(Client &client, int fd)
+{
+    (void)client;
+
+    if (fd == -1)
+        return;
+
+    close(fd);
+    removePollfd(fd);
+    cgiFdToClientFd.erase(fd);
+}
+
+int WebServ::checkCgiFinished(Client &client)
+{
+    int status;
+    pid_t result;
+
+    if (client.cgiPid <= 0)
+        return (0);
+
+    result = waitpid(client.cgiPid, &status, WNOHANG);
+    if (result == 0)
+        return (0);
+
+    if (result == client.cgiPid)
+    {
+        client.cgiPid = -1;
+        client.cgiFinished = true;
+
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+            return (1);
+        if (WIFSIGNALED(status))
+            return (1);
+
+        return (0);
+    }
+
+    return (1);
+}
+
+void WebServ::finishCgiResponse(Client &client)
+{
+    Response response;
+
+    response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
+
+    client.responseBuffer = response.toString();
+    client.bytesSent = 0;
+    client.responseReady = true;
+    client.state = WRITING;
+
+    setPollEvents(client.fd, POLLOUT);
+}
+
+void WebServ::cleanupCgi(Client &client)
+{
+    if (client.cgiStdinFd != -1)
+    {
+        closeCgiFd(client, client.cgiStdinFd);
+        client.cgiStdinFd = -1;
+    }
+
+    if (client.cgiStdoutFd != -1)
+    {
+        closeCgiFd(client, client.cgiStdoutFd);
+        client.cgiStdoutFd = -1;
+    }
+
+    if (client.cgiPid > 0)
+    {
+        kill(client.cgiPid, SIGKILL);
+        waitpid(client.cgiPid, NULL, 0);
+        client.cgiPid = -1;
+    }
+
+    client.cgiStdinClosed = true;
+    client.cgiStdoutClosed = true;
+}
+
+int WebServ::handleCgiEvent(int cgiFd, short revents)
+{
+    std::map<int, int>::iterator mapIt;
+    std::map<int, Client>::iterator clientIt;
+
+    mapIt = cgiFdToClientFd.find(cgiFd);
+    if (mapIt == cgiFdToClientFd.end())
+        return (1);
+
+    clientIt = clients.find(mapIt->second);
+    if (clientIt == clients.end())
+    {
+        close(cgiFd);
+        removePollfd(cgiFd);
+        cgiFdToClientFd.erase(cgiFd);
+        return (1);
+    }
+
+    Client &client = clientIt->second;
+
+    if (revents & (POLLERR | POLLHUP | POLLNVAL))
+    {
+        if (cgiFd == client.cgiStdinFd)
+        {
+            closeCgiFd(client, client.cgiStdinFd);
+            client.cgiStdinFd = -1;
+            client.cgiStdinClosed = true;
+        }
+        else if (cgiFd == client.cgiStdoutFd)
+        {
+            closeCgiFd(client, client.cgiStdoutFd);
+            client.cgiStdoutFd = -1;
+            client.cgiStdoutClosed = true;
+        }
+    }
+
+    if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
+    {
+        if (writeToCgi(client) != 0)
+            cleanupCgi(client);
+    }
+
+    if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
+    {
+        if (readFromCgi(client) != 0)
+            cleanupCgi(client);
+    }
+
+    checkCgiFinished(client);
+
+    if (client.cgiStdoutClosed && client.cgiFinished)
+        finishCgiResponse(client);
+
+    return (0);
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -412,6 +737,13 @@ int WebServ::run()
     while (i < pollFds.size())
 		{
 			int curFD = pollFds[i].fd;
+
+		if (isCgiFd(curFD))
+		{
+			handleCgiEvent(curFD, pollFds[i].revents);
+			++i;
+			continue;
+		}
 
       if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
       {

@@ -23,6 +23,8 @@
 #include <signal.h>
 #include <sys/wait.h>
 
+static const int CGI_TIMEOUT_SECONDS = 5;
+
 WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
@@ -605,6 +607,65 @@ int WebServ::checkCgiFinished(Client &client)
 	return (1);
 }
 
+int WebServ::checkCgiTimeouts(void)
+{
+	std::map<int, Client>::iterator it;
+	time_t now;
+
+	now = std::time(NULL);
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		Client &client = it->second;
+
+		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		{
+			if (now - client.cgiStartTime >= CGI_TIMEOUT_SECONDS)
+			{
+				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
+				failCgiResponse(client, 504, "Gateway Timeout");
+			}
+		}
+		++it;
+	}
+	return (0);
+}
+
+// No active CGI          → return -1
+// CGI already expired    → return 0
+// CGI available, N left  → return N * 1000
+int WebServ::getPollTimeoutMs(void) const
+{
+	std::map<int, Client>::const_iterator it;
+	time_t now;
+	int shortestTimeout;
+	int elapsed;
+	int remaining;
+
+	shortestTimeout = -1;
+	now = std::time(NULL);
+
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		const Client &client = it->second;
+
+		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		{
+			elapsed = static_cast<int>(now - client.cgiStartTime);
+			remaining = CGI_TIMEOUT_SECONDS - elapsed;
+
+			if (remaining <= 0)
+				return (0);
+
+			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
+				shortestTimeout = remaining * 1000;
+		}
+		++it;
+	}
+	return (shortestTimeout);
+}
+
 void WebServ::resetCgiState(Client &client)
 {
 	client.cgiPid = -1;
@@ -739,7 +800,7 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(&this->pollFds[0], this->pollFds.size(), -1);
+		int ready = poll(&this->pollFds[0], this->pollFds.size(), getPollTimeoutMs());
 		if (ready < 0)
 		{
 			if (errno == EINTR)
@@ -747,6 +808,13 @@ int WebServ::run()
 			std::cerr << "poll: " << strerror(errno) << std::endl;
 			return (1);
 		}
+		// Check CGI timeouts on each loop iteration
+		checkCgiTimeouts();
+
+		// No events, continue polling
+		if (ready == 0)
+			continue;
+
 		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
 		// PollFds loop

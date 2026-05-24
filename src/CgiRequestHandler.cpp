@@ -48,7 +48,7 @@ static void addCgiHeadersToResponse(Response &response, const std::string &heade
     }
 }
 
-static Response buildCgiResponse(const std::string &cgiOutput)
+Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
 {
     Response response;
     std::string separator;
@@ -405,5 +405,16 @@ Response CgiRequestHandler::handle(const Request &request, const RouteConfig &ro
     std::cout << "CGI script path: " << context.scriptPath << std::endl;
 
     cgiOutput = CgiHandler::runCgi(context);
-    return (buildCgiResponse(cgiOutput));
+    return (CgiRequestHandler::buildResponse(cgiOutput));
+}
+
+CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+{
+    CgiResolvedPath cgiPath;
+
+    cgiPath = resolveCgiPath(request, route);
+    if (!cgiPath.isCgi)
+        return (CgiContext());
+
+    return (buildCgiContext(request, route, server, remoteAddr, cgiPath));
 }

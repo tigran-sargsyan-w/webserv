@@ -646,7 +646,7 @@ void WebServ::cleanupCgi(Client &client)
 	if (client.cgiPid > 0)
 	{
 		kill(client.cgiPid, SIGKILL);
-		waitpid(client.cgiPid, NULL, 0);
+		waitpid(client.cgiPid, NULL, WNOHANG);
 		client.cgiPid = -1;
 	}
 

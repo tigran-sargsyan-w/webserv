@@ -438,6 +438,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	if (context.executable.empty() || context.scriptPath.empty())
 	{
 		Response error = ErrorResponseHandler::build(403, "Forbidden", server);
+
 		client.responseBuffer = error.toString();
 		client.bytesSent = 0;
 		client.responseReady = true;
@@ -449,6 +450,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	if (CgiHandler::startCgi(context, process) != 0)
 	{
 		Response error = ErrorResponseHandler::build(502, "Bad Gateway", server);
+
 		client.responseBuffer = error.toString();
 		client.bytesSent = 0;
 		client.responseReady = true;
@@ -465,6 +467,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		waitpid(process.pid, NULL, 0);
 
 		Response error = ErrorResponseHandler::build(500, "Internal Server Error", server);
+
 		client.responseBuffer = error.toString();
 		client.bytesSent = 0;
 		client.responseReady = true;
@@ -492,6 +495,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		close(client.cgiStdinFd);
 		client.cgiStdinFd = -1;
 		client.cgiStdinClosed = true;
+		client.state = CGI_READING;
 	}
 	else
 	{
@@ -501,8 +505,6 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	}
 
 	setPollEvents(client.fd, 0);
-	client.state = CGI_READING;
-
 	return (0);
 }
 

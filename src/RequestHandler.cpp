@@ -215,9 +215,8 @@ Response RequestHandler::handleHttpDelete (const Request &request, const RouteCo
 	return ErrorResponseHandler::build (500, "Internal Server Error: Failed to delete the file", server);
 }
 
-Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
-	(void)remoteAddr;
 	Response response;
 
 	// Handle redirects first

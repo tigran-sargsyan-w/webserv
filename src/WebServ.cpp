@@ -162,8 +162,7 @@ int WebServ::SendToClient(Client &client)
 			return (0);
 		}
 
-		Response response = RequestHandler::handleRequest(
-			client.request, route, configs[client.serverIndex], client.getRemoteAddr());
+		Response response = RequestHandler::handleRequest(client.request, route, configs[client.serverIndex]);
 
 		client.responseBuffer = response.toString();
 		client.bytesSent = 0;

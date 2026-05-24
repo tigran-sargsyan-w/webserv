@@ -519,7 +519,7 @@ int WebServ::writeToCgi(Client &client)
 	remaining = client.cgiInputBuffer.size() - client.cgiInputSent;
 	if (remaining == 0)
 	{
-		closeCgiFd(client, client.cgiStdinFd);
+		closeCgiFd(client.cgiStdinFd);
 		client.cgiStdinFd = -1;
 		client.cgiStdinClosed = true;
 		return (0);
@@ -541,7 +541,7 @@ int WebServ::writeToCgi(Client &client)
 
 	if (client.cgiInputSent >= client.cgiInputBuffer.size())
 	{
-		closeCgiFd(client, client.cgiStdinFd);
+		closeCgiFd(client.cgiStdinFd);
 		client.cgiStdinFd = -1;
 		client.cgiStdinClosed = true;
 	}
@@ -567,7 +567,7 @@ int WebServ::readFromCgi(Client &client)
 
 	if (bytesRead == 0)
 	{
-		closeCgiFd(client, client.cgiStdoutFd);
+		closeCgiFd(client.cgiStdoutFd);
 		client.cgiStdoutFd = -1;
 		client.cgiStdoutClosed = true;
 		return (0);
@@ -577,10 +577,8 @@ int WebServ::readFromCgi(Client &client)
 	return (0);
 }
 
-void WebServ::closeCgiFd(Client &client, int fd)
+void WebServ::closeCgiFd(int fd)
 {
-	(void)client;
-
 	if (fd == -1)
 		return;
 
@@ -635,13 +633,13 @@ void WebServ::cleanupCgi(Client &client)
 {
 	if (client.cgiStdinFd != -1)
 	{
-		closeCgiFd(client, client.cgiStdinFd);
+		closeCgiFd(client.cgiStdinFd);
 		client.cgiStdinFd = -1;
 	}
 
 	if (client.cgiStdoutFd != -1)
 	{
-		closeCgiFd(client, client.cgiStdoutFd);
+		closeCgiFd(client.cgiStdoutFd);
 		client.cgiStdoutFd = -1;
 	}
 
@@ -680,13 +678,13 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (cgiFd == client.cgiStdinFd)
 		{
-			closeCgiFd(client, client.cgiStdinFd);
+			closeCgiFd(client.cgiStdinFd);
 			client.cgiStdinFd = -1;
 			client.cgiStdinClosed = true;
 		}
 		else if (cgiFd == client.cgiStdoutFd)
 		{
-			closeCgiFd(client, client.cgiStdoutFd);
+			closeCgiFd(client.cgiStdoutFd);
 			client.cgiStdoutFd = -1;
 			client.cgiStdoutClosed = true;
 		}

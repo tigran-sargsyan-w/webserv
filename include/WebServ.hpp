@@ -46,7 +46,7 @@ private:
 	int handleCgiEvent(int cgiFd, short revents);
 	int writeToCgi(Client &client);
 	int readFromCgi(Client &client);
-	void closeCgiFd(Client &client, int fd);
+	void closeCgiFd(int fd);
 	void cleanupCgi(Client &client);
 	int checkCgiFinished(Client &client);
 	void finishCgiResponse(Client &client);

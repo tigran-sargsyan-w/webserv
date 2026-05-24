@@ -464,7 +464,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		close(process.stdinFd);
 		close(process.stdoutFd);
 		kill(process.pid, SIGKILL);
-		waitpid(process.pid, NULL, 0);
+		waitpid(process.pid, NULL, WNOHANG);
 
 		Response error = ErrorResponseHandler::build(500, "Internal Server Error", server);
 

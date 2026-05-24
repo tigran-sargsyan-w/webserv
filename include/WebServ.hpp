@@ -49,6 +49,7 @@ private:
 	void closeCgiFd(int fd);
 	void cleanupCgi(Client &client);
 	int checkCgiFinished(Client &client);
+	int checkCgiTimeouts(void);
 	void finishCgiResponse(Client &client);
 	void failCgiResponse(Client &client, int code, const std::string &message);
 	void resetCgiState(Client &client);

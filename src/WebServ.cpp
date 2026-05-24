@@ -611,12 +611,20 @@ void WebServ::finishCgiResponse(Client &client)
 	Response response;
 
 	response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
-
 	client.responseBuffer = response.toString();
 	client.bytesSent = 0;
 	client.responseReady = true;
 	client.state = WRITING;
-
+	client.cgiOutputBuffer.clear();
+	client.cgiInputBuffer.clear();
+	client.cgiInputSent = 0;
+	client.cgiPid = -1;
+	client.cgiStdinFd = -1;
+	client.cgiStdoutFd = -1;
+	client.cgiStdinClosed = true;
+	client.cgiStdoutClosed = true;
+	client.cgiFinished = false;
+	client.cgiStartTime = 0;
 	setPollEvents(client.fd, POLLOUT);
 }
 

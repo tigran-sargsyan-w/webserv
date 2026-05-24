@@ -658,11 +658,12 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 {
 	std::map<int, int>::iterator mapIt;
 	std::map<int, Client>::iterator clientIt;
+	int fdRemoved;
 
+	fdRemoved = 0;
 	mapIt = cgiFdToClientFd.find(cgiFd);
 	if (mapIt == cgiFdToClientFd.end())
 		return (1);
-
 	clientIt = clients.find(mapIt->second);
 	if (clientIt == clients.end())
 	{
@@ -681,25 +682,37 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 			closeCgiFd(client.cgiStdinFd);
 			client.cgiStdinFd = -1;
 			client.cgiStdinClosed = true;
+			fdRemoved = 1;
 		}
 		else if (cgiFd == client.cgiStdoutFd)
 		{
 			closeCgiFd(client.cgiStdoutFd);
 			client.cgiStdoutFd = -1;
 			client.cgiStdoutClosed = true;
+			fdRemoved = 1;
 		}
 	}
 
 	if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
 	{
 		if (writeToCgi(client) != 0)
+		{
 			cleanupCgi(client);
+			fdRemoved = 1;
+		}
+		else if (client.cgiStdinFd == -1)
+			fdRemoved = 1;
 	}
 
 	if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
 	{
 		if (readFromCgi(client) != 0)
+		{
 			cleanupCgi(client);
+			fdRemoved = 1;
+		}
+		else if (client.cgiStdoutFd == -1)
+			fdRemoved = 1;
 	}
 
 	checkCgiFinished(client);
@@ -707,7 +720,7 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	if (client.cgiStdoutClosed && client.cgiFinished)
 		finishCgiResponse(client);
 
-	return (0);
+	return (fdRemoved);
 }
 
 int WebServ::run()
@@ -735,8 +748,8 @@ int WebServ::run()
 
 			if (isCgiFd(curFD))
 			{
-				handleCgiEvent(curFD, pollFds[i].revents);
-				++i;
+				if (handleCgiEvent(curFD, pollFds[i].revents) == 0)
+					++i;
 				continue;
 			}
 

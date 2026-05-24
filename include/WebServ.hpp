@@ -36,6 +36,20 @@ private:
   std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
 	std::vector<pollfd> pollFds;
+	std::map<int, int> cgiFdToClientFd;
+
+	bool isCgiFd(int fd) const;
+	void registerPollFd(int fd, short events);
+	void setPollEvents(int fd, short events);
+
+	int startCgiForClient(Client &client, const RouteConfig &route);
+	int handleCgiEvent(int cgiFd, short revents);
+	int writeToCgi(Client &client);
+	int readFromCgi(Client &client);
+	void closeCgiFd(Client &client, int fd);
+	void cleanupCgi(Client &client);
+	int checkCgiFinished(Client &client);
+	void finishCgiResponse(Client &client);
 };
 
 #endif

@@ -1,6 +1,5 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
-#include "ErrorResponseHandler.hpp"
 #include "utils.hpp"
 
 #include <cctype>
@@ -389,23 +388,6 @@ bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &
 
     cgiPath = resolveCgiPath(request, route);
     return (cgiPath.isCgi);
-}
-
-Response CgiRequestHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
-{
-    CgiResolvedPath cgiPath;
-    CgiContext context;
-    std::string cgiOutput;
-
-    cgiPath = resolveCgiPath(request, route);
-    if (!cgiPath.isCgi)
-        return (ErrorResponseHandler::build(403, "Forbidden", server));
-
-    context = buildCgiContext(request, route, server, remoteAddr, cgiPath);
-    std::cout << "CGI script path: " << context.scriptPath << std::endl;
-
-    cgiOutput = CgiHandler::runCgi(context);
-    return (CgiRequestHandler::buildResponse(cgiOutput));
 }
 
 CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)

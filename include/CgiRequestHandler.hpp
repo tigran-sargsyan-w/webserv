@@ -12,7 +12,6 @@ class CgiRequestHandler
 {
 public:
     static bool isCgiRequest(const Request &request, const RouteConfig &route);
-    static Response handle(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr);
     static CgiContext buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr);
     static Response buildResponse(const std::string &cgiOutput);
 

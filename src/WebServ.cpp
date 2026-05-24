@@ -24,7 +24,6 @@
 #include <sys/wait.h>
 
 static const int CGI_TIMEOUT_SECONDS = 5;
-static const int POLL_TIMEOUT_MS = 1000;
 
 WebServ::WebServ()
 {
@@ -632,6 +631,41 @@ int WebServ::checkCgiTimeouts(void)
 	return (0);
 }
 
+// No active CGI          → return -1
+// CGI already expired    → return 0
+// CGI available, N left  → return N * 1000
+int WebServ::getPollTimeoutMs(void) const
+{
+	std::map<int, Client>::const_iterator it;
+	time_t now;
+	int shortestTimeout;
+	int elapsed;
+	int remaining;
+
+	shortestTimeout = -1;
+	now = std::time(NULL);
+
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		const Client &client = it->second;
+
+		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		{
+			elapsed = static_cast<int>(now - client.cgiStartTime);
+			remaining = CGI_TIMEOUT_SECONDS - elapsed;
+
+			if (remaining <= 0)
+				return (0);
+
+			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
+				shortestTimeout = remaining * 1000;
+		}
+		++it;
+	}
+	return (shortestTimeout);
+}
+
 void WebServ::resetCgiState(Client &client)
 {
 	client.cgiPid = -1;
@@ -766,7 +800,7 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(&this->pollFds[0], this->pollFds.size(), POLL_TIMEOUT_MS);
+		int ready = poll(&this->pollFds[0], this->pollFds.size(), getPollTimeoutMs());
 		if (ready < 0)
 		{
 			if (errno == EINTR)

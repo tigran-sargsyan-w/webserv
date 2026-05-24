@@ -727,40 +727,133 @@ If this currently fails, mark it as a missing mandatory CGI-related subject poin
 
 ## 11. Correct working directory test
 
-The subject requires CGI to run in the correct directory for relative path access.
+The subject requires CGI scripts to be executed in the correct working directory so that relative file access works as expected.
 
-Create `www/cgi-bin/read-relative.py`:
+This test verifies that the CGI process is started from the directory containing the CGI script, not from the root directory of the `webserv` executable.
 
-```python
+### Test files
+
+Create the following CGI script:
+
+```bash
+cat > www/cgi-bin/read-relative.py <<'PY'
 #!/usr/bin/env python3
+import os
 
 print("Content-Type: text/plain")
 print()
 
-with open("relative-data.txt", "r") as f:
-    print(f.read())
+print("cwd=" + os.getcwd())
+
+try:
+    with open("relative-data.txt", "r") as f:
+        print("relative_file=" + f.read().strip())
+except Exception as e:
+    print("relative_file_error=" + str(e))
+PY
+
+chmod +x www/cgi-bin/read-relative.py
 ```
 
-Create `www/cgi-bin/relative-data.txt`:
-
-```txt
-relative-ok
-```
-
-Run:
+Create the relative data file in the same directory as the CGI script:
 
 ```bash
-chmod +x ./www/cgi-bin/read-relative.py
-curl -i "http://localhost:8080/cgi-bin/read-relative.py"
+echo "relative-ok" > www/cgi-bin/relative-data.txt
 ```
 
-Expected body:
+### Run the test
+
+Start the server:
+
+```bash
+make
+./webserv configs/default.conf
+```
+
+Then run:
+
+```bash
+curl -i "http://127.0.0.1:8080/cgi-bin/read-relative.py"
+```
+
+### Expected result
+
+The response must contain:
 
 ```txt
-relative-ok
+cwd=/absolute/path/to/webserv/www/cgi-bin
+relative_file=relative-ok
 ```
 
-If this fails, the CGI process is probably not running with the expected working directory. In the current implementation, `PWD` is passed as an environment variable, but that is not the same thing as calling `chdir()` before `execve()`.
+Example:
+
+```txt
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: text/plain
+
+cwd=/home/user/Github/webserv/www/cgi-bin
+relative_file=relative-ok
+```
+
+### What this test validates
+
+This confirms that:
+
+* the CGI process calls `chdir()` before `execve()`;
+* the working directory is the directory containing the CGI script;
+* relative file access from inside the CGI script works correctly;
+* the server does not only set the `PWD` environment variable, but actually changes the process working directory.
+
+### Failure example
+
+If the response looks like this:
+
+```txt
+cwd=/home/user/Github/webserv
+relative_file_error=[Errno 2] No such file or directory: 'relative-data.txt'
+```
+
+then the CGI process is still running from the server root directory instead of the CGI script directory.
+
+In that case, the implementation does not satisfy the subject requirement:
+
+```txt
+The CGI should be run in the correct directory for relative path file access.
+```
+
+### Regression checks
+
+After this test passes, also verify that normal CGI behavior still works:
+
+```bash
+curl -i "http://127.0.0.1:8080/cgi-bin/env.py?x=42"
+```
+
+```bash
+curl -i "http://127.0.0.1:8080/cgi-bin/env.py/extra/path?x=42"
+```
+
+```bash
+curl -i -X POST \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "name=tigran" \
+  "http://127.0.0.1:8080/cgi-bin/env.py"
+```
+
+Expected important values:
+
+```txt
+QUERY_STRING=x=42
+PATH_INFO=/extra/path
+CONTENT_LENGTH=11
+CONTENT_TYPE=application/x-www-form-urlencoded
+BODY:
+name=tigran
+```
+
+This ensures that changing the CGI working directory did not break query string handling, `PATH_INFO`, or request body forwarding through stdin.
+
 
 ---
 
@@ -864,9 +957,9 @@ Final defense build should not print noisy CGI debug logs by default.
 | Unknown/non-CGI extensions                         | 8.3, 8.4, 8.5 | Covered                           |
 | Method restrictions                                | 9             | Covered                           |
 | Chunked request body                               | 10            | Must be verified / likely missing |
-| Correct working directory                          | 11            | Must be verified / likely missing |
-| CGI timeout / no indefinite hang                   | 12            | Must be implemented/tested        |
-| Non-blocking CGI pipes                             | 13            | Architectural risk                |
+| Correct working directory                          | 11            | Covered                           |
+| CGI timeout / no indefinite hang                   | 12            | Covered                           |
+| Non-blocking CGI pipes                             | 13            | Covered                           |
 | Debug output guarded by macro                      | 14            | Cleanup needed                    |
 
 ---

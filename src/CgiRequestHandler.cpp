@@ -145,6 +145,16 @@ static std::string getDirectoryName(const std::string &path)
     return (path.substr(0, slash));
 }
 
+static std::string getFileName(const std::string &path)
+{
+    size_t slash;
+
+    slash = path.find_last_of('/');
+    if (slash == std::string::npos)
+        return (path);
+    return (path.substr(slash + 1));
+}
+
 static std::string getRequestTime(void)
 {
     return (longToString(static_cast<long>(std::time(NULL))));
@@ -359,7 +369,12 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
 
     context.executable = cgiPath.executable;
     context.scriptPath = cgiPath.scriptPath;
+    context.scriptFileName = getFileName(cgiPath.scriptPath);
+    context.workingDirectory = getDirectoryName(cgiPath.scriptPath);
     context.requestBody = request.getBody();
+    std::cout << "CGI scriptPath: " << context.scriptPath << std::endl;
+    std::cout << "CGI scriptFileName: " << context.scriptFileName << std::endl;
+    std::cout << "CGI workingDirectory: " << context.workingDirectory << std::endl;
     std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
     addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
     addHttpHeaderVariables(context, request);

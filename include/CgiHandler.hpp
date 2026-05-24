@@ -60,7 +60,6 @@ public:
 	CgiHandler();
 	~CgiHandler();
 
-	static std::string runCgi(const CgiContext &context);
 	static int startCgi(const CgiContext &context, CgiProcess &process);
 
 private:

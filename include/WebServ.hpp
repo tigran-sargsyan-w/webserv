@@ -51,6 +51,7 @@ private:
 	int checkCgiFinished(Client &client);
 	void finishCgiResponse(Client &client);
 	void failCgiResponse(Client &client, int code, const std::string &message);
+	void resetCgiState(Client &client);
 };
 
 #endif

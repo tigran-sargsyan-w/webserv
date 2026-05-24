@@ -217,6 +217,7 @@ Response RequestHandler::handleHttpDelete (const Request &request, const RouteCo
 
 Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
+	(void)remoteAddr;
 	Response response;
 
 	// Handle redirects first
@@ -224,8 +225,8 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 		return (RedirectHandler::handle (route, server));
 
 	// Handle CGI requests
-	if (CgiRequestHandler::isCgiRequest (request, route))
-		return (CgiRequestHandler::handle (request, route, server, remoteAddr));
+	if (CgiRequestHandler::isCgiRequest(request, route))
+    	return (ErrorResponseHandler::build(500, "Internal Server Error", server));
 
 	// Reject requests that match a CGI route but aren't a valid CGI path
 	if (!route.cgi.empty ())

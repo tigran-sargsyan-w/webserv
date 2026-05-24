@@ -594,24 +594,15 @@ int WebServ::checkCgiFinished(Client &client)
 
 	if (client.cgiPid <= 0)
 		return (0);
-
 	result = waitpid(client.cgiPid, &status, WNOHANG);
 	if (result == 0)
 		return (0);
-
-	if (result == client.cgiPid)
-	{
-		client.cgiPid = -1;
-		client.cgiFinished = true;
-
-		if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
-			return (1);
-		if (WIFSIGNALED(status))
-			return (1);
-
+	if (result != client.cgiPid)
+		return (1);
+	client.cgiPid = -1;
+	client.cgiFinished = true;
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		return (0);
-	}
-
 	return (1);
 }
 
@@ -626,6 +617,20 @@ void WebServ::finishCgiResponse(Client &client)
 	client.responseReady = true;
 	client.state = WRITING;
 
+	setPollEvents(client.fd, POLLOUT);
+}
+
+void WebServ::failCgiResponse(Client &client, int code, const std::string &message)
+{
+	const ServerConfig &server = configs[client.serverIndex];
+	Response response;
+
+	cleanupCgi(client);
+	response = ErrorResponseHandler::build(code, message, server);
+	client.responseBuffer = response.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
 	setPollEvents(client.fd, POLLOUT);
 }
 
@@ -697,8 +702,8 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (writeToCgi(client) != 0)
 		{
-			cleanupCgi(client);
-			fdRemoved = 1;
+			failCgiResponse(client, 502, "Bad Gateway");
+			return (1);
 		}
 		else if (client.cgiStdinFd == -1)
 			fdRemoved = 1;
@@ -708,14 +713,18 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (readFromCgi(client) != 0)
 		{
-			cleanupCgi(client);
-			fdRemoved = 1;
+			failCgiResponse(client, 502, "Bad Gateway");
+			return (1);
 		}
 		else if (client.cgiStdoutFd == -1)
 			fdRemoved = 1;
 	}
 
-	checkCgiFinished(client);
+	if (checkCgiFinished(client) != 0)
+	{
+		failCgiResponse(client, 502, "Bad Gateway");
+		return (1);
+	}
 
 	if (client.cgiStdoutClosed && client.cgiFinished)
 		finishCgiResponse(client);

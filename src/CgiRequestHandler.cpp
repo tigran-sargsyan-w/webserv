@@ -1,6 +1,5 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
-#include "ErrorResponseHandler.hpp"
 #include "utils.hpp"
 
 #include <cctype>
@@ -48,7 +47,7 @@ static void addCgiHeadersToResponse(Response &response, const std::string &heade
     }
 }
 
-static Response buildCgiResponse(const std::string &cgiOutput)
+Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
 {
     Response response;
     std::string separator;
@@ -391,19 +390,13 @@ bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &
     return (cgiPath.isCgi);
 }
 
-Response CgiRequestHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     CgiResolvedPath cgiPath;
-    CgiContext context;
-    std::string cgiOutput;
 
     cgiPath = resolveCgiPath(request, route);
     if (!cgiPath.isCgi)
-        return (ErrorResponseHandler::build(403, "Forbidden", server));
+        return (CgiContext());
 
-    context = buildCgiContext(request, route, server, remoteAddr, cgiPath);
-    std::cout << "CGI script path: " << context.scriptPath << std::endl;
-
-    cgiOutput = CgiHandler::runCgi(context);
-    return (buildCgiResponse(cgiOutput));
+    return (buildCgiContext(request, route, server, remoteAddr, cgiPath));
 }

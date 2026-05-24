@@ -215,7 +215,7 @@ Response RequestHandler::handleHttpDelete (const Request &request, const RouteCo
 	return ErrorResponseHandler::build (500, "Internal Server Error: Failed to delete the file", server);
 }
 
-Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	Response response;
 
@@ -224,8 +224,8 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 		return (RedirectHandler::handle (route, server));
 
 	// Handle CGI requests
-	if (CgiRequestHandler::isCgiRequest (request, route))
-		return (CgiRequestHandler::handle (request, route, server, remoteAddr));
+	if (CgiRequestHandler::isCgiRequest(request, route))
+    	return (ErrorResponseHandler::build(500, "Internal Server Error", server));
 
 	// Reject requests that match a CGI route but aren't a valid CGI path
 	if (!route.cgi.empty ())

@@ -1,66 +1,40 @@
-# Non-blocking CGI Test Guide
+# Non-blocking CGI Tests
 
-This document describes how to manually test the non-blocking CGI system in `webserv`.
-
-The main goal is to verify not only that CGI scripts work, but also that a slow CGI script does **not block the whole server**.
-
----
-
-## 1. Test environment
-
-Use the branch:
-
-```bash
-git checkout non-blocking-cgi-base
-```
-
-Build the project:
-
-```bash
-make re
-```
-
-Run the server:
-
-```bash
-./webserv configs/default.conf
-```
-
-Default address:
-
-```txt
-127.0.0.1:8080
-```
-
-CGI route from `configs/default.conf`:
-
-```txt
-location /cgi-bin {
-    methods GET POST;
-    root ./www/cgi-bin;
-    autoindex off;
-    cgi .py /usr/bin/python3;
-    cgi .php /usr/bin/php-cgi;
-}
-```
-
-Current CGI test scripts:
-
-```txt
-www/cgi-bin/echo.py    - reads stdin and prints method/body info
-www/cgi-bin/sleep.py   - waits 10 seconds, then returns "done"
-www/cgi-bin/big.py     - prints a large response
-www/cgi-bin/fail.py    - exits with status 1
-www/cgi-bin/hang.py    - sleeps for a very long time
-```
-
----
-
-## 2. Basic CGI GET test
+## Static GET smoke test
 
 ### Purpose
 
-Verify that a normal CGI script can be executed and that the server returns a valid HTTP response.
+Verify that the server still serves normal static files after the non-blocking CGI changes.
+
+### Command
+
+```bash
+curl -v http://127.0.0.1:8080/
+```
+
+### Expected result
+
+```txt
+HTTP/1.1 200 OK
+Content-Type: text/html
+```
+
+### Tested result
+
+```txt
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 225
+Content-Type: text/html
+```
+
+---
+
+## Basic CGI GET test
+
+### Purpose
+
+Verify that a CGI script can be executed and that CGI stdout is converted into an HTTP response.
 
 ### Command
 
@@ -70,28 +44,31 @@ curl -v http://127.0.0.1:8080/cgi-bin/echo.py
 
 ### Expected result
 
-The response should be successful and the body should contain something similar to:
-
 ```txt
 METHOD=GET
 CONTENT_LENGTH=
 BODY=
 ```
 
-### What this validates
+### Tested result
 
-* CGI route matching works.
-* Python CGI execution works.
-* CGI stdout is converted into an HTTP response.
-* The server does not crash after executing CGI.
+```txt
+HTTP/1.1 200 OK
+Content-Length: 33
+Content-Type: text/plain
+
+METHOD=GET
+CONTENT_LENGTH=
+BODY=
+```
 
 ---
 
-## 3. CGI POST body test
+## CGI POST body test
 
 ### Purpose
 
-Verify that request body data is written to the CGI process through CGI stdin.
+Verify that the HTTP request body is correctly written to CGI stdin.
 
 ### Command
 
@@ -101,80 +78,65 @@ curl -v -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "hello=world"
 
 ### Expected result
 
-The response body should contain:
-
 ```txt
 METHOD=POST
 CONTENT_LENGTH=11
 BODY=hello=world
 ```
 
-### What this validates
+### Tested result
 
-* POST requests can reach CGI.
-* Request body is passed to CGI stdin.
-* CGI stdin pipe writing works.
-* CGI stdout reading still works after writing request body.
+```txt
+HTTP/1.1 200 OK
+Content-Length: 47
+Content-Type: text/plain
+
+METHOD=POST
+CONTENT_LENGTH=11
+BODY=hello=world
+```
 
 ---
 
-## 4. Non-blocking sleep test
+## Slow CGI test
 
 ### Purpose
 
-Verify the most important behavior of the new CGI system:
+Verify that a slow CGI script correctly returns a response after finishing.
 
-```txt
-A slow CGI request must not block the whole server.
-```
-
-The script `sleep.py` waits 10 seconds before returning a response.
-
-### Terminal 1
-
-Run the slow CGI request:
+### Command
 
 ```bash
 time curl -v http://127.0.0.1:8080/cgi-bin/sleep.py
 ```
 
-Expected body after around 10 seconds:
+### Expected result
 
 ```txt
 done
 ```
 
-### Terminal 2
+The request should finish after around 10 seconds.
 
-While Terminal 1 is still waiting, immediately run:
+### Tested result
 
-```bash
-time curl -v http://127.0.0.1:8080/
+```txt
+HTTP/1.1 200 OK
+Content-Length: 5
+Content-Type: text/plain
+
+done
+
+10.042 total
 ```
-
-### Expected result
-
-The normal GET request should respond immediately.
-
-It must **not** wait for `sleep.py` to finish.
-
-### What this validates
-
-* CGI execution does not block the main server loop.
-* The server can continue handling normal client requests while a CGI process is running.
-* `poll()` still processes normal client sockets while CGI stdout is pending.
-
-### Failure symptom
-
-If the normal GET request waits around 10 seconds and only responds after `sleep.py` finishes, then CGI is still blocking the server.
 
 ---
 
-## 5. Parallel CGI and static requests
+## Parallel slow CGI and static request test
 
 ### Purpose
 
-Verify that multiple slow CGI requests do not prevent static requests from being served.
+Verify that multiple slow CGI requests do not block normal static requests.
 
 ### Command
 
@@ -186,17 +148,7 @@ time curl -s http://127.0.0.1:8080/ > /tmp/static.out
 wait
 ```
 
-### Expected result
-
-The static request should finish quickly.
-
-Each CGI output should eventually contain:
-
-```txt
-done
-```
-
-Check:
+Check CGI outputs:
 
 ```bash
 cat /tmp/cgi_sleep_1.out
@@ -204,21 +156,38 @@ cat /tmp/cgi_sleep_2.out
 cat /tmp/cgi_sleep_3.out
 ```
 
-### What this validates
+### Expected result
 
-* Several CGI processes can be active at the same time.
-* CGI fd to client fd mapping works.
-* Static requests are not blocked by active CGI requests.
+The static request should finish immediately.
+
+Each CGI output should contain:
+
+```txt
+done
+```
+
+### Tested result
+
+```txt
+static request: 0.050 total
+
+/tmp/cgi_sleep_1.out:
+done
+
+/tmp/cgi_sleep_2.out:
+done
+
+/tmp/cgi_sleep_3.out:
+done
+```
 
 ---
 
-## 6. Large CGI output test
+## Large CGI output test
 
 ### Purpose
 
-Verify that large CGI output is read incrementally and is not truncated.
-
-The script `big.py` prints many lines.
+Verify that a large CGI response is read fully and is not truncated.
 
 ### Command
 
@@ -226,9 +195,15 @@ The script `big.py` prints many lines.
 curl -s http://127.0.0.1:8080/cgi-bin/big.py | tail
 ```
 
+Count all output lines:
+
+```bash
+curl -s http://127.0.0.1:8080/cgi-bin/big.py | wc -l
+```
+
 ### Expected result
 
-The output should reach the final lines, for example:
+The output should reach the last lines:
 
 ```txt
 line 99995
@@ -238,34 +213,113 @@ line 99998
 line 99999
 ```
 
-You can also count lines:
-
-```bash
-curl -s http://127.0.0.1:8080/cgi-bin/big.py | wc -l
-```
-
-Expected result should be close to:
+The line count should be:
 
 ```txt
 100000
 ```
 
-### What this validates
+### Tested result
 
-* CGI stdout is read in chunks.
-* Large CGI output is not cut.
-* The server does not depend on a single blocking `read()`.
-* Response buffering works with a large CGI response.
+```txt
+line 99990
+line 99991
+line 99992
+line 99993
+line 99994
+line 99995
+line 99996
+line 99997
+line 99998
+line 99999
+```
+
+Line count:
+
+```txt
+100000
+```
 
 ---
 
-## 7. CGI failure test
+## Static request during large CGI output test
 
 ### Purpose
 
-Verify that a CGI script exiting with a non-zero status produces an HTTP error response instead of crashing or hanging.
+Verify that a large CGI response does not block normal static requests.
 
-The script `fail.py` exits with status `1`.
+### Command
+
+```bash
+curl -s http://127.0.0.1:8080/cgi-bin/big.py > /tmp/big.out &
+time curl -s http://127.0.0.1:8080/ > /tmp/static_during_big.out
+wait
+wc -l /tmp/big.out
+```
+
+### Expected result
+
+The static request should finish immediately.
+
+The large CGI output should still be complete:
+
+```txt
+100000 /tmp/big.out
+```
+
+### Tested result
+
+```txt
+static request: 0.015 total
+big.py output: 100000 /tmp/big.out
+```
+
+---
+
+## Parallel POST CGI test
+
+### Purpose
+
+Verify that multiple POST CGI requests can run at the same time and that each CGI process receives its own request body.
+
+### Command
+
+```bash
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "one=1" &
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "two=2" &
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "three=3" &
+wait
+```
+
+### Expected result
+
+Each response should contain the correct body for that request.
+
+The response order may be different because the requests run in parallel.
+
+### Tested result
+
+```txt
+METHOD=POST
+CONTENT_LENGTH=7
+BODY=three=3
+
+METHOD=POST
+CONTENT_LENGTH=5
+BODY=one=1
+
+METHOD=POST
+CONTENT_LENGTH=5
+BODY=two=2
+```
+
+---
+
+## CGI failure test
+
+### Purpose
+
+Verify that a CGI script exiting with a non-zero status returns an HTTP error response instead of crashing or hanging.
 
 ### Command
 
@@ -274,41 +328,97 @@ curl -v http://127.0.0.1:8080/cgi-bin/fail.py
 ```
 
 ### Expected result
-
-The server should return an error response, usually:
 
 ```txt
 HTTP/1.1 502 Bad Gateway
 ```
 
-### What this validates
+### Tested result
 
-* `waitpid(..., WNOHANG)` result is checked.
-* Non-zero CGI exit status is detected.
-* The client receives a valid HTTP error response.
-* The server remains alive after CGI failure.
+```txt
+HTTP/1.1 502 Bad Gateway
+Connection: close
+Content-Length: 58
+Content-Type: text/html
 
-After the failed CGI request, verify that the server still works:
+<html><body><h1>Custom 502 Bad Gateway</h1></body></html>
+```
+
+---
+
+## Server survival after failed CGI test
+
+### Purpose
+
+Verify that the server still accepts new requests after a CGI process fails.
+
+### Command
+
+```bash
+curl -v http://127.0.0.1:8080/cgi-bin/fail.py
+curl -v http://127.0.0.1:8080/
+```
+
+### Expected result
+
+The failed CGI request should return an error response.
+
+The following static request should return:
+
+```txt
+HTTP/1.1 200 OK
+```
+
+### Tested result
+
+```txt
+fail.py:
+HTTP/1.1 502 Bad Gateway
+
+after fail.py:
+HTTP/1.1 200 OK
+Content-Length: 225
+Content-Type: text/html
+```
+
+---
+
+## Server survival after all CGI tests
+
+### Purpose
+
+Verify that after several CGI scenarios, the server still accepts new clients.
+
+### Command
 
 ```bash
 curl -v http://127.0.0.1:8080/
 ```
 
-Expected result:
+### Expected result
 
 ```txt
-The server should still respond normally.
+HTTP/1.1 200 OK
+```
+
+### Tested result
+
+```txt
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 225
+Content-Type: text/html
 ```
 
 ---
 
-## 8. Hanging CGI test
+## Hanging CGI test
 
 ### Purpose
 
-Verify server behavior when a CGI process does not finish.
+Verify that a hanging CGI script does not block the whole server.
 
-The script `hang.py` sleeps for a very long time.
+This test is only a partial test until server-side CGI timeout is implemented.
 
 ### Command
 
@@ -316,15 +426,7 @@ The script `hang.py` sleeps for a very long time.
 timeout 3 curl -v http://127.0.0.1:8080/cgi-bin/hang.py
 ```
 
-### Current expected result
-
-If server-side CGI timeout is not implemented yet, this request is expected to stay pending until the client-side `timeout` command stops it.
-
-This is a known limitation unless server-side CGI timeout has already been implemented.
-
-### Important parallel check
-
-While the hanging CGI request is active, run another request:
+While the hanging CGI request is active, run:
 
 ```bash
 curl -v http://127.0.0.1:8080/
@@ -332,139 +434,58 @@ curl -v http://127.0.0.1:8080/
 
 ### Expected result
 
-The normal request should still respond immediately.
+Until server-side timeout is implemented, the `hang.py` request may stay pending until the client-side `timeout` command stops it.
 
-### What this validates
+The static request must still respond immediately.
 
-* A hanging CGI does not block the whole server.
-* The affected CGI client may remain pending if timeout is not implemented.
-* Other clients are still handled normally.
+### Future expected result
 
-### Future expected result after CGI timeout implementation
-
-After server-side CGI timeout is implemented, this test should return:
+After server-side CGI timeout is implemented, the hanging CGI request should return:
 
 ```txt
 HTTP/1.1 504 Gateway Timeout
 ```
 
-or another clearly defined CGI timeout error response.
-
 ---
 
-## 9. Server survival test after CGI requests
-
-### Purpose
-
-Verify that after several CGI requests, the server still accepts new clients.
-
-### Commands
+## Quick regression checklist
 
 ```bash
-curl -v http://127.0.0.1:8080/cgi-bin/echo.py
-curl -v http://127.0.0.1:8080/cgi-bin/sleep.py
-curl -v http://127.0.0.1:8080/cgi-bin/fail.py
 curl -v http://127.0.0.1:8080/
-```
-
-### Expected result
-
-The server should not crash.
-
-The last static request should still return a normal response.
-
-### What this validates
-
-* CGI cleanup does not break the event loop.
-* CGI failure does not kill the server.
-* Closed CGI fds are removed from `poll`.
-* The server can continue accepting and responding to clients.
-
----
-
-## 10. Quick regression checklist
-
-Before considering the non-blocking CGI feature stable, run:
-
-```bash
-make re
-./webserv configs/default.conf
-```
-
-Then in another terminal:
-
-```bash
 curl -v http://127.0.0.1:8080/cgi-bin/echo.py
 curl -v -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "hello=world"
 time curl -v http://127.0.0.1:8080/cgi-bin/sleep.py
+curl -s http://127.0.0.1:8080/cgi-bin/sleep.py > /tmp/cgi_sleep_1.out &
+curl -s http://127.0.0.1:8080/cgi-bin/sleep.py > /tmp/cgi_sleep_2.out &
+curl -s http://127.0.0.1:8080/cgi-bin/sleep.py > /tmp/cgi_sleep_3.out &
+time curl -s http://127.0.0.1:8080/ > /tmp/static.out
+wait
 curl -s http://127.0.0.1:8080/cgi-bin/big.py | tail
+curl -s http://127.0.0.1:8080/cgi-bin/big.py | wc -l
+curl -s http://127.0.0.1:8080/cgi-bin/big.py > /tmp/big.out &
+time curl -s http://127.0.0.1:8080/ > /tmp/static_during_big.out
+wait
+wc -l /tmp/big.out
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "one=1" &
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "two=2" &
+curl -s -X POST http://127.0.0.1:8080/cgi-bin/echo.py -d "three=3" &
+wait
 curl -v http://127.0.0.1:8080/cgi-bin/fail.py
-timeout 3 curl -v http://127.0.0.1:8080/cgi-bin/hang.py
 curl -v http://127.0.0.1:8080/
 ```
 
-Expected summary:
+### Expected summary
 
-| Test                             | Expected result                                          |
-| -------------------------------- | -------------------------------------------------------- |
-| `echo.py` GET                    | `METHOD=GET`                                             |
-| `echo.py` POST                   | body is echoed                                           |
-| `sleep.py`                       | returns `done` after around 10 seconds                   |
-| static request during `sleep.py` | responds immediately                                     |
-| `big.py`                         | response reaches `line 99999`                            |
-| `fail.py`                        | returns `502 Bad Gateway` or configured CGI error        |
-| `hang.py`                        | client-side timeout if server timeout is not implemented |
-| `/` after CGI tests              | server still responds                                    |
-
----
-
-## 11. Main success condition
-
-The main success condition is not only that CGI returns a response.
-
-The main success condition is:
-
-```txt
-While one CGI request is running, the server must still respond to other clients.
-```
-
-The most important test is:
-
-```bash
-time curl http://127.0.0.1:8080/cgi-bin/sleep.py
-```
-
-and, while it is still waiting:
-
-```bash
-time curl http://127.0.0.1:8080/
-```
-
-The second command must not wait 10 seconds.
-
----
-
-## 12. Known current limitation
-
-If server-side CGI timeout is not implemented yet, `hang.py` may keep its client connection pending.
-
-This does not necessarily mean the whole non-blocking system failed.
-
-The real failure is if `hang.py` blocks all other clients.
-
-After CGI timeout is implemented, `hang.py` should be used to verify that the server returns `504 Gateway Timeout` or another defined timeout error response.
-
----
-
-## 13. What should not happen
-
-During any CGI test, the following behavior is incorrect:
-
-```txt
-- server crash
-- empty reply from server
-- all other requests blocked by one slow CGI
-- static request waits for sleep.py
-- failed CGI leaves client hanging forever without response
-- big.py response is truncated
-```
+| Test                               | Expected result                        |
+| ---------------------------------- | -------------------------------------- |
+| Static GET `/`                     | `200 OK`                               |
+| `echo.py` GET                      | `METHOD=GET`                           |
+| `echo.py` POST                     | body is echoed                         |
+| `sleep.py`                         | returns `done` after around 10 seconds |
+| Static request during 3 `sleep.py` | responds immediately                   |
+| `big.py` tail                      | reaches `line 99999`                   |
+| `big.py` line count                | `100000`                               |
+| Static request during `big.py`     | responds immediately                   |
+| Parallel POST CGI                  | all bodies returned correctly          |
+| `fail.py`                          | returns `502 Bad Gateway`              |
+| `/` after CGI tests                | server still responds                  |

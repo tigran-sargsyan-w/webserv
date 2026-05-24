@@ -39,6 +39,8 @@ struct CgiContext
 {
 	std::string executable;
 	std::string scriptPath;
+	std::string scriptFileName;
+	std::string workingDirectory;
 	std::string requestBody;
 	CgiStandardMetaVariables standard;
 	CgiHttpHeaderVariables httpHeaders;

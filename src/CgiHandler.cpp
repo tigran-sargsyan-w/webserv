@@ -148,15 +148,17 @@ int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
         close(stdinPipe[0]);
         close(stdoutPipe[1]);
 
-        char *argv[] = {
-            const_cast<char *>(context.executable.c_str()),
-            const_cast<char *>(context.scriptPath.c_str()),
-            NULL
-        };
+		if (chdir(context.workingDirectory.c_str()) == -1)
+			_exit(1);
 
-        execve(context.executable.c_str(), argv, &envp[0]);
-        _exit(1);
-    }
+		char *argv[] = {
+			const_cast<char *>(context.executable.c_str()),
+			const_cast<char *>(context.scriptFileName.c_str()),
+			NULL};
+
+		execve(context.executable.c_str(), argv, &envp[0]);
+		_exit(1);
+	}
 
     close(stdinPipe[0]);
     close(stdoutPipe[1]);

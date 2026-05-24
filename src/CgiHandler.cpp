@@ -196,3 +196,81 @@ std::string CgiHandler::runCgi(const CgiContext &context)
 	}
 	return (output);
 }
+
+int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
+{
+    int stdinPipe[2];
+    int stdoutPipe[2];
+    pid_t pid;
+    CgiEnv env;
+    std::vector<std::string> envStrings;
+    std::vector<char *> envp;
+
+    if (pipe(stdinPipe) == -1)
+    {
+        std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+        return (1);
+    }
+    if (pipe(stdoutPipe) == -1)
+    {
+        std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+        close(stdinPipe[0]);
+        close(stdinPipe[1]);
+        return (1);
+    }
+
+    env = buildEnvironment(context);
+    envStrings = buildEnvironmentStrings(env);
+    envp = buildEnvironmentPointers(envStrings);
+
+    pid = fork();
+    if (pid == -1)
+    {
+        std::cerr << "fork() failed: " << std::strerror(errno) << std::endl;
+        close(stdinPipe[0]);
+        close(stdinPipe[1]);
+        close(stdoutPipe[0]);
+        close(stdoutPipe[1]);
+        return (1);
+    }
+
+    if (pid == 0)
+    {
+        close(stdinPipe[1]);
+        close(stdoutPipe[0]);
+
+        if (dup2(stdinPipe[0], STDIN_FILENO) == -1)
+		{
+			close(stdinPipe[0]);
+			close(stdoutPipe[1]);
+			_exit(1);
+		}
+		if (dup2(stdoutPipe[1], STDOUT_FILENO) == -1)
+		{
+			close(stdinPipe[0]);
+			close(stdoutPipe[1]);
+			_exit(1);
+		}
+		
+        close(stdinPipe[0]);
+        close(stdoutPipe[1]);
+
+        char *argv[] = {
+            const_cast<char *>(context.executable.c_str()),
+            const_cast<char *>(context.scriptPath.c_str()),
+            NULL
+        };
+
+        execve(context.executable.c_str(), argv, &envp[0]);
+        _exit(1);
+    }
+
+    close(stdinPipe[0]);
+    close(stdoutPipe[1]);
+
+    process.pid = pid;
+    process.stdinFd = stdinPipe[1];
+    process.stdoutFd = stdoutPipe[0];
+
+    return (0);
+}

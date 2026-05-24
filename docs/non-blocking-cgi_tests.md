@@ -448,6 +448,98 @@ HTTP/1.1 504 Gateway Timeout
 
 ---
 
+## CGI timeout
+
+These tests verify that a long-running CGI process is killed after the configured timeout and that the server continues working afterwards.
+
+Current timeout:
+
+```cpp
+static const int CGI_TIMEOUT_SECONDS = 10;
+```
+
+The server uses a dynamic `poll()` timeout through `getPollTimeoutMs()`, so `poll()` can block normally when no CGI is active and wakes up only when the nearest CGI timeout may need to be checked.
+
+### Short CGI should finish normally
+
+Create or use a CGI script that sleeps less than the timeout:
+
+```python
+#!/usr/bin/env python3
+
+import time
+
+time.sleep(2)
+
+print("Content-Type: text/plain")
+print()
+print("done")
+```
+
+Run:
+
+```bash
+curl -v http://127.0.0.1:8080/cgi-bin/sleep.py
+```
+
+Expected result:
+
+```txt
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+done
+```
+
+### Long CGI should timeout
+
+Change the same script to sleep longer than the timeout:
+
+```python
+#!/usr/bin/env python3
+
+import time
+
+time.sleep(20)
+
+print("Content-Type: text/plain")
+print()
+print("This should not be returned")
+```
+
+Run:
+
+```bash
+curl -v http://127.0.0.1:8080/cgi-bin/sleep.py
+```
+
+Expected result after about 10 seconds:
+
+```txt
+HTTP/1.1 504 Gateway Timeout
+```
+
+If a custom `504` page is configured, the body should be the custom error page.
+
+### Server should still work after timeout
+
+Immediately after the `504`, run:
+
+```bash
+curl -v http://127.0.0.1:8080/
+curl -v http://127.0.0.1:8080/static/
+```
+
+Expected result:
+
+```txt
+HTTP/1.1 200 OK
+```
+
+This confirms that CGI cleanup did not break the event loop.
+
+---
+
 ## Quick regression checklist
 
 ```bash

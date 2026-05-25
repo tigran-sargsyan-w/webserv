@@ -23,7 +23,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-static const int CGI_TIMEOUT_SECONDS = 5;
+static const int CGI_TIMEOUT_SECONDS = 10;
 
 WebServ::WebServ()
 {
@@ -420,11 +420,28 @@ bool WebServ::isListeningFd(int fd)
 	return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
 }
 
+static bool hasActiveCgi(const Client &client)
+{
+	return (client.cgiPid > 0 || client.cgiStdinFd != -1 || client.cgiStdoutFd != -1);
+}
+
 void WebServ::closeAndRemoveFd(int fd)
 {
+	std::map<int, Client>::iterator clientIt;
+
+	clientIt = clients.find(fd);
+	if (clientIt != clients.end())
+	{
+		if (hasActiveCgi(clientIt->second))
+		{
+			std::cout << "Cleaning CGI for disconnected client fd " << fd << std::endl;
+			cleanupCgi(clientIt->second);
+		}
+		clients.erase(clientIt);
+	}
+
 	close(fd);
 	removePollfd(fd);
-	clients.erase(fd);
 	listenerFdToIndex.erase(fd);
 }
 
@@ -505,7 +522,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		client.state = CGI_WRITING;
 	}
 
-	setPollEvents(client.fd, 0);
+	setPollEvents(client.fd, POLLIN);
 	return (0);
 }
 
@@ -716,7 +733,7 @@ void WebServ::cleanupCgi(Client &client)
 	if (client.cgiPid > 0)
 	{
 		kill(client.cgiPid, SIGKILL);
-		waitpid(client.cgiPid, NULL, WNOHANG);
+		waitpid(client.cgiPid, NULL, 0);
 	}
 	resetCgiState(client);
 }
@@ -857,6 +874,21 @@ int WebServ::run()
 				}
 
 				Client &curClient = clientIt->second;
+				if (curClient.state == CGI_WRITING || curClient.state == CGI_READING)
+				{
+					if (this->pollFds[i].revents & POLLIN)
+					{
+						readFromClient(curClient);
+						if (curClient.state == CLOSING_CONNECTION)
+						{
+							closeAndRemoveFd(curFD);
+							continue;
+						}
+						curClient.rawRequest.clear();
+					}
+					++i;
+					continue;
+				}
 				if (this->pollFds[i].revents & POLLIN)
 				{
 					curClient.state = READING;

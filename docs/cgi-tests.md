@@ -861,54 +861,243 @@ This ensures that changing the CGI working directory did not break query string 
 
 A CGI script must not be able to make the whole server hang indefinitely.
 
-Create `www/cgi-bin/sleep.py`:
+This test verifies that a long-running CGI process is stopped by the server timeout and that the client receives a `504 Gateway Timeout` response.
+
+### Test script
+
+Create `www/cgi-bin/slow.py`:
+
+```bash
+cat > www/cgi-bin/slow.py <<'PY'
+#!/usr/bin/env python3
+import time
+import os
+
+print("Content-Type: text/plain")
+print()
+print("CGI started, pid =", os.getpid(), flush=True)
+
+time.sleep(30)
+
+print("CGI finished")
+PY
+
+chmod +x www/cgi-bin/slow.py
+```
+
+### Run the test
+
+Start the server:
+
+```bash
+make
+./webserv configs/default.conf
+```
+
+Then run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/slow.py"
+```
+
+### Expected result
+
+If the CGI script exceeds the configured CGI timeout, the server should return:
+
+```http
+HTTP/1.1 504 Gateway Timeout
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 504 Gateway Timeout</h1></body></html>
+```
+
+### What this test validates
+
+This confirms that:
+
+* a hanging CGI process does not block the server forever;
+* the server detects CGI timeout;
+* the CGI child process is killed;
+* the CGI child process is reaped with `waitpid()`;
+* the client receives a proper `504 Gateway Timeout` response;
+* the server remains usable after the timeout.
+
+### Regression check
+
+After the timeout response, verify that the server still handles normal requests:
+
+```bash
+curl -v "http://127.0.0.1:8080/"
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+```
+
+---
+
+## 13. Client disconnect cleanup test
+
+This test verifies that if the client disconnects while a CGI script is still running, the server immediately cleans up the CGI process.
+
+This is important because a CGI child process must not continue running after its client connection has been closed.
+
+### Test script
+
+Use the same `www/cgi-bin/slow.py` script from the timeout test:
 
 ```python
 #!/usr/bin/env python3
 import time
+import os
 
 print("Content-Type: text/plain")
 print()
-time.sleep(60)
-print("done")
+print("CGI started, pid =", os.getpid(), flush=True)
+
+time.sleep(30)
+
+print("CGI finished")
 ```
 
-Run:
+Make sure it is executable:
 
 ```bash
-chmod +x ./www/cgi-bin/sleep.py
-curl -i --max-time 5 "http://localhost:8080/cgi-bin/sleep.py"
+chmod +x www/cgi-bin/slow.py
 ```
 
-Expected for a production-like implementation:
+### Run the test
+
+Start the server:
+
+```bash
+make
+./webserv configs/default.conf
+```
+
+In another terminal, start the slow CGI request:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/slow.py"
+```
+
+While the request is still running, stop `curl` with:
 
 ```txt
-The server should not block all other clients while this CGI is running.
+Ctrl+C
 ```
 
-In the current synchronous implementation, this is a high-risk area because `waitpid()` and pipe reads are blocking.
+Immediately check whether the CGI process is still alive:
+
+```bash
+ps aux | grep '[s]low.py'
+```
+
+or:
+
+```bash
+pgrep -af slow.py
+```
+
+### Expected result
+
+After `Ctrl+C`, there should be no running `slow.py` process.
+
+Expected output:
+
+```txt
+<no output>
+```
+
+The server should continue running and should still be able to handle new requests:
+
+```bash
+curl -v "http://127.0.0.1:8080/"
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+```
+
+### What this test validates
+
+This confirms that the server:
+
+* detects client socket close during active CGI execution;
+* calls CGI cleanup before removing the client;
+* closes CGI stdin and stdout file descriptors;
+* removes CGI file descriptors from `poll`;
+* kills the CGI child process if it is still running;
+* reaps the CGI child process with `waitpid()`;
+* keeps the server alive after the disconnect.
+
+### Failure example
+
+If this command still shows a running process after `Ctrl+C`:
+
+```bash
+ps aux | grep '[s]low.py'
+```
+
+Example failure:
+
+```txt
+user  12345  0.0  0.1  13688  8960 pts/8  S+  12:11  0:00 /usr/bin/python3 slow.py
+```
+
+then the server did not clean up the CGI child process correctly.
+
+This means the CGI cleanup on client disconnect is still broken.
+
+### Manual test result example
+
+A successful test should look like this:
+
+```bash
+curl -v http://127.0.0.1:8080/cgi-bin/slow.py
+# Press Ctrl+C while the request is running
+
+ps aux | grep '[s]low.py'
+# No output
+
+curl -v http://127.0.0.1:8080/
+# HTTP/1.1 200 OK
+```
 
 ---
 
-## 13. Non-blocking CGI pipe warning
+## 14. Non-blocking CGI pipe warning
 
 The subject says that I/O that can wait for data, including pipes/FIFOs, must be non-blocking and driven by the single `poll()` or equivalent event loop.
 
-Therefore, CGI stdin/stdout pipes should eventually be integrated into the main non-blocking event loop.
+Therefore, CGI stdin/stdout pipes should be integrated into the main non-blocking event loop.
 
-Current blocking patterns to watch for:
+Current CGI behavior should be checked with:
 
-```cpp
-write(stdinPipe[1], ...)
-read(stdoutPipe[0], ...)
-waitpid(pid, &status, 0)
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+curl -v "http://127.0.0.1:8080/cgi-bin/slow.py"
 ```
 
-These can work in simple tests, but they are not subject-ready for stress tests if they block the server loop.
+Expected:
+
+* normal CGI requests still return valid responses;
+* long-running CGI requests do not block the whole server forever;
+* CGI timeout returns `504 Gateway Timeout`;
+* client disconnect during CGI does not leave child processes alive.
 
 ---
 
-## 14. Debug output policy
+## 15. Debug output policy
 
 During development, it is useful to print CGI variables before `execve()`.
 
@@ -940,7 +1129,7 @@ Final defense build should not print noisy CGI debug logs by default.
 
 ---
 
-## 15. Coverage checklist
+## 16. Coverage checklist
 
 | Area                                               | Test section  | Status                            |
 | -------------------------------------------------- | ------------- | --------------------------------- |
@@ -959,12 +1148,13 @@ Final defense build should not print noisy CGI debug logs by default.
 | Chunked request body                               | 10            | Must be verified / likely missing |
 | Correct working directory                          | 11            | Covered                           |
 | CGI timeout / no indefinite hang                   | 12            | Covered                           |
-| Non-blocking CGI pipes                             | 13            | Covered                           |
-| Debug output guarded by macro                      | 14            | Cleanup needed                    |
+| CGI cleanup on client disconnect                   | 13            | Covered                           |
+| Non-blocking CGI pipes                             | 14            | Covered                           |
+| Debug output guarded by macro                      | 15            | Cleanup needed                    |
 
 ---
 
-## 16. Recommended minimum test run before closing CGI
+## 17. Recommended minimum test run before closing CGI
 
 Run at least:
 
@@ -994,4 +1184,50 @@ curl -i -X DELETE "http://localhost:8080/cgi-bin/env.py"
 printf 'POST /cgi-bin/env.py HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\nContent-Type: text/plain\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n' | nc 127.0.0.1 8080
 ```
 
+Also run the CGI timeout test:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/slow.py"
+```
+
+Expected if the script exceeds the CGI timeout:
+
+```http
+HTTP/1.1 504 Gateway Timeout
+```
+
+Run the CGI client disconnect cleanup test:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/slow.py"
+```
+
+Press `Ctrl+C` while the request is still running.
+
+Then check:
+
+```bash
+ps aux | grep '[s]low.py'
+```
+
+Expected:
+
+```txt
+<no output>
+```
+
+Finally verify that the server still works:
+
+```bash
+curl -v "http://127.0.0.1:8080/"
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+```
+
 Only after these pass should the CGI documentation be considered reasonably complete for defense preparation.
+
+---

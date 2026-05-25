@@ -1075,7 +1075,327 @@ curl -v http://127.0.0.1:8080/
 
 ---
 
-## 14. Non-blocking CGI pipe warning
+## 14. CGI target validation before fork
+
+The server must validate the resolved CGI script path and the configured CGI executable/interpreter before starting a CGI process.
+
+Invalid CGI targets must be rejected before `fork()` / `execve()`.
+
+This prevents cases where a missing script, a directory, an unreadable file, or an invalid interpreter could produce an empty response, a misleading `200 OK`, or an unnecessary child process.
+
+### 14.1 Missing CGI script
+
+Run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/notfound.py"
+```
+
+Expected:
+
+```http
+HTTP/1.1 404 Not Found
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 404 Not Found</h1></body></html>
+```
+
+This checks that a missing CGI script is rejected before starting the CGI process.
+
+---
+
+### 14.2 Directory requested inside CGI location
+
+Run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/"
+```
+
+Expected:
+
+```http
+HTTP/1.1 403 Forbidden
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 403 Forbidden</h1></body></html>
+```
+
+This checks that a directory is not executed as a CGI script.
+
+---
+
+### 14.3 Directory pretending to be a CGI script
+
+Create a directory with a CGI extension:
+
+```bash
+mkdir -p www/cgi-bin/fake.py
+```
+
+Run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/fake.py"
+```
+
+Expected:
+
+```http
+HTTP/1.1 403 Forbidden
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 403 Forbidden</h1></body></html>
+```
+
+Cleanup:
+
+```bash
+rm -rf www/cgi-bin/fake.py
+```
+
+This checks that even if the path has a configured CGI extension, it must not be executed when the resolved target is a directory.
+
+---
+
+### 14.4 Unreadable CGI script
+
+Remove read permission from an existing CGI script:
+
+```bash
+chmod a-r www/cgi-bin/test.py
+```
+
+Run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+```
+
+Expected:
+
+```http
+HTTP/1.1 403 Forbidden
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 403 Forbidden</h1></body></html>
+```
+
+Restore permissions:
+
+```bash
+chmod +r www/cgi-bin/test.py
+```
+
+Then verify that the script works again:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: text/plain
+```
+
+Expected body:
+
+```txt
+HELLO FROM PYTHON CGI!
+```
+
+This checks that an existing but inaccessible CGI script is rejected with `403 Forbidden`, and that restoring permissions restores normal CGI behavior.
+
+---
+
+### 14.5 Invalid CGI executable / interpreter
+
+Create a temporary config for this test:
+
+```bash
+cp configs/default.conf configs/test-invalid-cgi.conf
+```
+
+In `configs/test-invalid-cgi.conf`, replace the Python CGI interpreter with an invalid path:
+
+```nginx
+cgi .py /bad/python/path;
+```
+
+Start the server with this config:
+
+```bash
+make
+./webserv configs/test-invalid-cgi.conf
+```
+
+Run:
+
+```bash
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+```
+
+Expected:
+
+```http
+HTTP/1.1 502 Bad Gateway
+Connection: close
+Content-Type: text/html
+```
+
+Example body:
+
+```html
+<html><body><h1>Custom 502 Bad Gateway</h1></body></html>
+```
+
+This checks that an invalid configured CGI executable/interpreter is rejected before starting the CGI process.
+
+After the test, restore the normal config or run the server again with:
+
+```bash
+./webserv configs/default.conf
+```
+
+The normal CGI configuration should use a valid interpreter, for example:
+
+```nginx
+cgi .py /usr/bin/python3;
+```
+
+---
+
+### What this test validates
+
+This confirms that the server:
+
+* checks that the resolved CGI script path exists;
+* rejects missing CGI scripts with `404 Not Found`;
+* rejects directories used as CGI scripts with `403 Forbidden`;
+* rejects unreadable CGI scripts with `403 Forbidden`;
+* checks that the configured CGI executable/interpreter exists;
+* checks that the configured CGI executable/interpreter has execute permission;
+* returns `502 Bad Gateway` for invalid CGI executable/interpreter;
+* rejects invalid CGI targets before `fork()` / `execve()`;
+* keeps normal valid CGI execution working.
+
+### Failure examples
+
+A missing CGI script must not return:
+
+```http
+HTTP/1.1 200 OK
+```
+
+A directory used as a CGI script must not be executed.
+
+An invalid interpreter must not produce an empty response or a misleading successful CGI response.
+
+---
+
+### Successful manual test result example
+
+```bash
+curl -v http://127.0.0.1:8080/cgi-bin/notfound.py
+# HTTP/1.1 404 Not Found
+
+curl -v http://127.0.0.1:8080/cgi-bin/
+# HTTP/1.1 403 Forbidden
+
+mkdir -p www/cgi-bin/fake.py
+curl -v http://127.0.0.1:8080/cgi-bin/fake.py
+# HTTP/1.1 403 Forbidden
+rm -rf www/cgi-bin/fake.py
+
+chmod a-r www/cgi-bin/test.py
+curl -v http://127.0.0.1:8080/cgi-bin/test.py
+# HTTP/1.1 403 Forbidden
+
+chmod +r www/cgi-bin/test.py
+curl -v http://127.0.0.1:8080/cgi-bin/test.py
+# HTTP/1.1 200 OK
+
+# With invalid interpreter config:
+curl -v http://127.0.0.1:8080/cgi-bin/test.py
+# HTTP/1.1 502 Bad Gateway
+```
+
+---
+
+### Coverage checklist update
+
+Add this row to the `Coverage checklist` table:
+
+```md
+| CGI target validation before fork                  | 14            | Covered                           |
+```
+
+If you inserted this section as `## 14`, then the old following sections should be renumbered:
+
+```txt
+Old 14 -> New 15
+Old 15 -> New 16
+Old 16 -> New 17
+Old 17 -> New 18
+```
+
+---
+
+### Recommended minimum test run update
+
+Add these commands to the `Recommended minimum test run before closing CGI` section:
+
+```bash
+# Missing CGI script
+curl -v "http://127.0.0.1:8080/cgi-bin/notfound.py"
+
+# Directory inside CGI location
+curl -v "http://127.0.0.1:8080/cgi-bin/"
+
+# Directory pretending to be a CGI script
+mkdir -p www/cgi-bin/fake.py
+curl -v "http://127.0.0.1:8080/cgi-bin/fake.py"
+rm -rf www/cgi-bin/fake.py
+
+# Unreadable CGI script
+chmod a-r www/cgi-bin/test.py
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+chmod +r www/cgi-bin/test.py
+
+# Normal CGI still works
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+
+# Invalid interpreter test requires a temporary config:
+# cgi .py /bad/python/path;
+curl -v "http://127.0.0.1:8080/cgi-bin/test.py"
+```
+
+---
+
+## 15. Non-blocking CGI pipe warning
 
 The subject says that I/O that can wait for data, including pipes/FIFOs, must be non-blocking and driven by the single `poll()` or equivalent event loop.
 
@@ -1097,7 +1417,7 @@ Expected:
 
 ---
 
-## 15. Debug output policy
+## 16. Debug output policy
 
 During development, it is useful to print CGI variables before `execve()`.
 
@@ -1129,7 +1449,7 @@ Final defense build should not print noisy CGI debug logs by default.
 
 ---
 
-## 16. Coverage checklist
+## 17. Coverage checklist
 
 | Area                                               | Test section  | Status                            |
 | -------------------------------------------------- | ------------- | --------------------------------- |
@@ -1154,7 +1474,7 @@ Final defense build should not print noisy CGI debug logs by default.
 
 ---
 
-## 17. Recommended minimum test run before closing CGI
+## 18. Recommended minimum test run before closing CGI
 
 Run at least:
 

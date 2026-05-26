@@ -2,15 +2,17 @@
 #include "CgiRequestHandler.hpp"
 #include "ErrorResponseHandler.hpp"
 #include "Response.hpp"
+#include "CgiHandler.hpp"
 
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <ctime>
 #include <iostream>
 #include <signal.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <cerrno>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <cstring>
 
 CgiManager::CgiManager() {}
 
@@ -26,6 +28,103 @@ CgiManager &CgiManager::operator=(const CgiManager &other)
 	if (this != &other)
 		cgiFdToClientFd = other.cgiFdToClientFd;
 	return (*this);
+}
+
+static std::string getCgiValidationMessage(int statusCode)
+{
+	if (statusCode == 403)
+		return ("Forbidden");
+	if (statusCode == 404)
+		return ("Not Found");
+	if (statusCode == 502)
+		return ("Bad Gateway");
+	return ("Internal Server Error");
+}
+
+static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, int statusCode)
+{
+	Response error;
+
+	error = ErrorResponseHandler::build(statusCode, getCgiValidationMessage(statusCode), server);
+	client.responseBuffer = error.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
+}
+
+static int checkCgiScriptPath(const std::string &scriptPath)
+{
+	struct stat scriptStat;
+
+	if (scriptPath.empty())
+		return (404);
+
+	if (stat(scriptPath.c_str(), &scriptStat) == -1)
+	{
+		if (errno == ENOENT || errno == ENOTDIR)
+			return (404);
+		return (403);
+	}
+
+	if (S_ISDIR(scriptStat.st_mode))
+		return (403);
+
+	if (access(scriptPath.c_str(), R_OK) == -1)
+		return (403);
+
+	return (0);
+}
+
+static int checkCgiExecutablePath(const std::string &executablePath)
+{
+	struct stat executableStat;
+
+	if (executablePath.empty())
+		return (502);
+
+	if (stat(executablePath.c_str(), &executableStat) == -1)
+		return (502);
+
+	if (S_ISDIR(executableStat.st_mode))
+		return (502);
+
+	if (access(executablePath.c_str(), X_OK) == -1)
+		return (502);
+
+	return (0);
+}
+
+static int validateCgiContext(const CgiContext &context)
+{
+	int statusCode;
+
+	statusCode = checkCgiScriptPath(context.scriptPath);
+	if (statusCode != 0)
+		return (statusCode);
+
+	statusCode = checkCgiExecutablePath(context.executable);
+	if (statusCode != 0)
+		return (statusCode);
+
+	return (0);
+}
+
+static int setNonBlockingFd(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags == -1)
+	{
+		std::cerr << "fcntl: " << strerror(errno) << "\n";
+		return (1);
+	}
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		std::cerr << "fcntl: " << strerror(errno) << "\n";
+		return (1);
+	}
+	return (0);
 }
 
 bool CgiManager::isCgiFd(int fd) const
@@ -340,4 +439,83 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 		finishResponse(client, pollManager);
 
 	return (fdRemoved);
+}
+
+int CgiManager::startForClient(Client &client, const RouteConfig &route, const ServerConfig &server, PollManager &pollManager)
+{
+	CgiContext context;
+	CgiProcess process;
+	int validationStatus;
+
+	context = CgiRequestHandler::buildContext(client.request, route, server, client.getRemoteAddr());
+
+	validationStatus = validateCgiContext(context);
+	if (validationStatus != 0)
+	{
+		prepareCgiErrorResponse(client, server, validationStatus);
+		pollManager.setEvents(client.fd, POLLOUT);
+		return (0);
+	}
+
+	if (CgiHandler::startCgi(context, process) != 0)
+	{
+		Response error;
+
+		error = ErrorResponseHandler::build(502, "Bad Gateway", server);
+		client.responseBuffer = error.toString();
+		client.bytesSent = 0;
+		client.responseReady = true;
+		client.state = WRITING;
+		pollManager.setEvents(client.fd, POLLOUT);
+		return (1);
+	}
+
+	if (setNonBlockingFd(process.stdinFd) || setNonBlockingFd(process.stdoutFd))
+	{
+		close(process.stdinFd);
+		close(process.stdoutFd);
+		kill(process.pid, SIGKILL);
+		waitpid(process.pid, NULL, 0);
+
+		Response error;
+
+		error = ErrorResponseHandler::build(500, "Internal Server Error", server);
+		client.responseBuffer = error.toString();
+		client.bytesSent = 0;
+		client.responseReady = true;
+		client.state = WRITING;
+		pollManager.setEvents(client.fd, POLLOUT);
+		return (1);
+	}
+
+	client.cgiPid = process.pid;
+	client.cgiStdinFd = process.stdinFd;
+	client.cgiStdoutFd = process.stdoutFd;
+	client.cgiInputBuffer = context.requestBody;
+	client.cgiInputSent = 0;
+	client.cgiOutputBuffer.clear();
+	client.cgiStdinClosed = false;
+	client.cgiStdoutClosed = false;
+	client.cgiFinished = false;
+	client.cgiStartTime = std::time(NULL);
+
+	registerCgiFd(client.cgiStdoutFd, client.fd);
+	pollManager.addFd(client.cgiStdoutFd, POLLIN);
+
+	if (client.cgiInputBuffer.empty())
+	{
+		close(client.cgiStdinFd);
+		client.cgiStdinFd = -1;
+		client.cgiStdinClosed = true;
+		client.state = CGI_READING;
+	}
+	else
+	{
+		registerCgiFd(client.cgiStdinFd, client.fd);
+		pollManager.addFd(client.cgiStdinFd, POLLOUT);
+		client.state = CGI_WRITING;
+	}
+
+	pollManager.setEvents(client.fd, POLLIN);
+	return (0);
 }

@@ -368,24 +368,9 @@ int WebServ::acceptConnection(int listeningSocket)
 	return (clientSocket);
 }
 
-void WebServ::registerPollFd(int fd, short events)
-{
-	pollManager.addFd(fd, events);
-}
-
-void WebServ::setPollEvents(int fd, short events)
-{
-	pollManager.setEvents(fd, events);
-}
-
 bool WebServ::isCgiFd(int fd) const
 {
 	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
-}
-
-void WebServ::removePollfd(int fd)
-{
-	pollManager.removeFd(fd);
 }
 
 bool WebServ::isListeningFd(int fd)
@@ -414,7 +399,7 @@ void WebServ::closeAndRemoveFd(int fd)
 	}
 
 	close(fd);
-	removePollfd(fd);
+	pollManager.removeFd(fd);
 	listenerFdToIndex.erase(fd);
 }
 
@@ -511,7 +496,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	if (validationStatus != 0)
 	{
 		prepareCgiErrorResponse(client, server, validationStatus);
-		setPollEvents(client.fd, POLLOUT);
+		pollManager.setEvents(client.fd, POLLOUT);
 		return (0);
 	}
 
@@ -523,7 +508,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		client.bytesSent = 0;
 		client.responseReady = true;
 		client.state = WRITING;
-		setPollEvents(client.fd, POLLOUT);
+		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}
 
@@ -540,7 +525,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 		client.bytesSent = 0;
 		client.responseReady = true;
 		client.state = WRITING;
-		setPollEvents(client.fd, POLLOUT);
+		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}
 
@@ -556,7 +541,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	client.cgiStartTime = std::time(NULL);
 
 	cgiFdToClientFd[client.cgiStdoutFd] = client.fd;
-	registerPollFd(client.cgiStdoutFd, POLLIN);
+	pollManager.addFd(client.cgiStdoutFd, POLLIN);
 
 	if (client.cgiInputBuffer.empty())
 	{
@@ -568,11 +553,11 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	else
 	{
 		cgiFdToClientFd[client.cgiStdinFd] = client.fd;
-		registerPollFd(client.cgiStdinFd, POLLOUT);
+		pollManager.addFd(client.cgiStdinFd, POLLOUT);
 		client.state = CGI_WRITING;
 	}
 
-	setPollEvents(client.fd, POLLIN);
+	pollManager.setEvents(client.fd, POLLIN);
 	return (0);
 }
 
@@ -651,7 +636,7 @@ void WebServ::closeCgiFd(int fd)
 		return;
 
 	close(fd);
-	removePollfd(fd);
+	pollManager.removeFd(fd);
 	cgiFdToClientFd.erase(fd);
 }
 
@@ -757,7 +742,7 @@ void WebServ::finishCgiResponse(Client &client)
 	client.responseReady = true;
 	client.state = WRITING;
 	resetCgiState(client);
-	setPollEvents(client.fd, POLLOUT);
+	pollManager.setEvents(client.fd, POLLOUT);
 }
 
 void WebServ::failCgiResponse(Client &client, int code, const std::string &message)
@@ -771,7 +756,7 @@ void WebServ::failCgiResponse(Client &client, int code, const std::string &messa
 	client.bytesSent = 0;
 	client.responseReady = true;
 	client.state = WRITING;
-	setPollEvents(client.fd, POLLOUT);
+	pollManager.setEvents(client.fd, POLLOUT);
 }
 
 void WebServ::cleanupCgi(Client &client)
@@ -802,7 +787,7 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	if (clientIt == clients.end())
 	{
 		close(cgiFd);
-		removePollfd(cgiFd);
+		pollManager.removeFd(cgiFd);
 		cgiFdToClientFd.erase(cgiFd);
 		return (1);
 	}
@@ -869,6 +854,9 @@ int WebServ::run()
 	{
 		std::vector<pollfd> &pollFds = pollManager.getFds();
 		
+		if (pollManager.empty())
+			return (1);
+
 		int ready = poll(&pollFds[0], pollFds.size(), getPollTimeoutMs());
 		
 		if (ready < 0)
@@ -973,7 +961,7 @@ int WebServ::run()
 					}
 
 					// TODO: if request is valid set as POLLOUT
-					pollFds[i].events = POLLOUT;
+					pollManager.setEvents(curFD, POLLOUT);
 				}
 				if (pollFds[i].revents & POLLOUT)
 				{

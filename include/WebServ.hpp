@@ -27,7 +27,6 @@ public:
 	int initListeningSocket();
 	int bindSockAddress(int listeningSocket, size_t configIndex);
 	int acceptConnection(int listeningSocket);
-	void removePollfd(int fd);
 	bool isListeningFd(int fd);
 
 private:
@@ -40,9 +39,6 @@ private:
 	std::map<int, int> cgiFdToClientFd;
 
 	bool isCgiFd(int fd) const;
-	void registerPollFd(int fd, short events);
-	void setPollEvents(int fd, short events);
-
 	int startCgiForClient(Client &client, const RouteConfig &route);
 	int handleCgiEvent(int cgiFd, short revents);
 	int writeToCgi(Client &client);

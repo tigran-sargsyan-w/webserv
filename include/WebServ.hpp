@@ -44,14 +44,11 @@ private:
 	int handleCgiEvent(int cgiFd, short revents);
 	int writeToCgi(Client &client);
 	int readFromCgi(Client &client);
-	void closeCgiFd(int fd);
-	void cleanupCgi(Client &client);
 	int checkCgiFinished(Client &client);
 	int getPollTimeoutMs(void) const;
 	int checkCgiTimeouts(void);
 	void finishCgiResponse(Client &client);
 	void failCgiResponse(Client &client, int code, const std::string &message);
-	void resetCgiState(Client &client);
 };
 
 #endif

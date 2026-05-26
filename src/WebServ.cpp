@@ -24,8 +24,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-static const int CGI_TIMEOUT_SECONDS = 10;
-
 WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
@@ -556,92 +554,6 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	return (0);
 }
 
-int WebServ::checkCgiTimeouts(void)
-{
-	std::map<int, Client>::iterator it;
-	time_t now;
-
-	now = std::time(NULL);
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		Client &client = it->second;
-
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
-		{
-			if (now - client.cgiStartTime >= CGI_TIMEOUT_SECONDS)
-			{
-				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
-				failCgiResponse(client, 504, "Gateway Timeout");
-			}
-		}
-		++it;
-	}
-	return (0);
-}
-
-// No active CGI          → return -1
-// CGI already expired    → return 0
-// CGI available, N left  → return N * 1000
-int WebServ::getPollTimeoutMs(void) const
-{
-	std::map<int, Client>::const_iterator it;
-	time_t now;
-	int shortestTimeout;
-	int elapsed;
-	int remaining;
-
-	shortestTimeout = -1;
-	now = std::time(NULL);
-
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		const Client &client = it->second;
-
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
-		{
-			elapsed = static_cast<int>(now - client.cgiStartTime);
-			remaining = CGI_TIMEOUT_SECONDS - elapsed;
-
-			if (remaining <= 0)
-				return (0);
-
-			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
-				shortestTimeout = remaining * 1000;
-		}
-		++it;
-	}
-	return (shortestTimeout);
-}
-
-void WebServ::finishCgiResponse(Client &client)
-{
-	Response response;
-
-	response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-	cgiManager.resetState(client);
-	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void WebServ::failCgiResponse(Client &client, int code, const std::string &message)
-{
-	const ServerConfig &server = configs[client.serverIndex];
-	Response response;
-
-	cgiManager.cleanup(client, pollManager);
-	response = ErrorResponseHandler::build(code, message, server);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-	pollManager.setEvents(client.fd, POLLOUT);
-}
-
 int WebServ::handleCgiEvent(int cgiFd, short revents)
 {
 	std::map<int, Client>::iterator clientIt;
@@ -684,7 +596,7 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (cgiManager.writeToCgi(client, pollManager) != 0)
 		{
-			failCgiResponse(client, 502, "Bad Gateway");
+			cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
 			return (1);
 		}
 		else if (client.cgiStdinFd == -1)
@@ -695,7 +607,7 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (cgiManager.readFromCgi(client, pollManager) != 0)
 		{
-			failCgiResponse(client, 502, "Bad Gateway");
+			cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
 			return (1);
 		}
 		else if (client.cgiStdoutFd == -1)
@@ -704,12 +616,12 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 
 	if (cgiManager.checkFinished(client) != 0)
 	{
-		failCgiResponse(client, 502, "Bad Gateway");
+		cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
 		return (1);
 	}
 
 	if (client.cgiStdoutClosed && client.cgiFinished)
-		finishCgiResponse(client);
+		cgiManager.finishResponse(client, pollManager);
 
 	return (fdRemoved);
 }
@@ -725,7 +637,7 @@ int WebServ::run()
 		if (pollManager.empty())
 			return (1);
 
-		int ready = poll(&pollFds[0], pollFds.size(), getPollTimeoutMs());
+		int ready = poll(&pollFds[0], pollFds.size(), cgiManager.getPollTimeoutMs(clients));
 		
 		if (ready < 0)
 		{
@@ -735,7 +647,7 @@ int WebServ::run()
 			return (1);
 		}
 		// Check CGI timeouts on each loop iteration
-		checkCgiTimeouts();
+		cgiManager.checkTimeouts(clients, configs, pollManager);
 
 		// No events, continue polling
 		if (ready == 0)

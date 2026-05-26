@@ -368,11 +368,6 @@ int WebServ::acceptConnection(int listeningSocket)
 	return (clientSocket);
 }
 
-bool WebServ::isCgiFd(int fd) const
-{
-	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
-}
-
 bool WebServ::isListeningFd(int fd)
 {
 	return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
@@ -540,7 +535,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	client.cgiFinished = false;
 	client.cgiStartTime = std::time(NULL);
 
-	cgiFdToClientFd[client.cgiStdoutFd] = client.fd;
+	cgiManager.registerCgiFd(client.cgiStdoutFd, client.fd);
 	pollManager.addFd(client.cgiStdoutFd, POLLIN);
 
 	if (client.cgiInputBuffer.empty())
@@ -552,7 +547,7 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	}
 	else
 	{
-		cgiFdToClientFd[client.cgiStdinFd] = client.fd;
+		cgiManager.registerCgiFd(client.cgiStdinFd, client.fd);
 		pollManager.addFd(client.cgiStdinFd, POLLOUT);
 		client.state = CGI_WRITING;
 	}
@@ -637,7 +632,7 @@ void WebServ::closeCgiFd(int fd)
 
 	close(fd);
 	pollManager.removeFd(fd);
-	cgiFdToClientFd.erase(fd);
+	cgiManager.unregisterCgiFd(fd);
 }
 
 int WebServ::checkCgiFinished(Client &client)
@@ -775,20 +770,19 @@ void WebServ::cleanupCgi(Client &client)
 
 int WebServ::handleCgiEvent(int cgiFd, short revents)
 {
-	std::map<int, int>::iterator mapIt;
 	std::map<int, Client>::iterator clientIt;
 	int fdRemoved;
+	int clientFd;
 
 	fdRemoved = 0;
-	mapIt = cgiFdToClientFd.find(cgiFd);
-	if (mapIt == cgiFdToClientFd.end())
+	if (!cgiManager.getClientFd(cgiFd, clientFd))
 		return (1);
-	clientIt = clients.find(mapIt->second);
+	clientIt = clients.find(clientFd);
 	if (clientIt == clients.end())
 	{
 		close(cgiFd);
 		pollManager.removeFd(cgiFd);
-		cgiFdToClientFd.erase(cgiFd);
+		cgiManager.unregisterCgiFd(cgiFd);
 		return (1);
 	}
 
@@ -882,7 +876,7 @@ int WebServ::run()
 		{
 			int curFD = pollFds[i].fd;
 
-			if (isCgiFd(curFD))
+			if (cgiManager.isCgiFd(curFD))
 			{
 				if (handleCgiEvent(curFD, pollFds[i].revents) == 0)
 					++i;

@@ -42,10 +42,6 @@ private:
 
 	int startCgiForClient(Client &client, const RouteConfig &route);
 	int handleCgiEvent(int cgiFd, short revents);
-	int getPollTimeoutMs(void) const;
-	int checkCgiTimeouts(void);
-	void finishCgiResponse(Client &client);
-	void failCgiResponse(Client &client, int code, const std::string &message);
 };
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef CGIMANAGER_HPP
 #define CGIMANAGER_HPP
 
+#include "Client.hpp"
+#include "PollManager.hpp"
 #include <map>
 
 class CgiManager
@@ -15,6 +17,10 @@ public:
 	void registerCgiFd(int cgiFd, int clientFd);
 	void unregisterCgiFd(int cgiFd);
 	bool getClientFd(int cgiFd, int &clientFd) const;
+
+    void closeCgiFd(int fd, PollManager &pollManager);
+    void cleanup(Client &client, PollManager &pollManager);
+    void resetState(Client &client);
 
 private:
 	std::map<int, int> cgiFdToClientFd;

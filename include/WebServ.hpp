@@ -42,9 +42,6 @@ private:
 
 	int startCgiForClient(Client &client, const RouteConfig &route);
 	int handleCgiEvent(int cgiFd, short revents);
-	int writeToCgi(Client &client);
-	int readFromCgi(Client &client);
-	int checkCgiFinished(Client &client);
 	int getPollTimeoutMs(void) const;
 	int checkCgiTimeouts(void);
 	void finishCgiResponse(Client &client);

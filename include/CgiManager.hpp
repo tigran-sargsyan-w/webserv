@@ -38,6 +38,8 @@ public:
 
     int handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager);
 
+    int startForClient(Client &client, const RouteConfig &route, const ServerConfig &server, PollManager &pollManager);
+
 private:
 	std::map<int, int> cgiFdToClientFd;
 };

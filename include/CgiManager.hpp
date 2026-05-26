@@ -22,6 +22,10 @@ public:
     void cleanup(Client &client, PollManager &pollManager);
     void resetState(Client &client);
 
+    int writeToCgi(Client &client, PollManager &pollManager);
+    int readFromCgi(Client &client, PollManager &pollManager);
+    int checkFinished(Client &client);
+
 private:
 	std::map<int, int> cgiFdToClientFd;
 };

@@ -36,6 +36,8 @@ public:
     void finishResponse(Client &client, PollManager &pollManager);
     void failResponse(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs, PollManager &pollManager);
 
+    int handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager);
+
 private:
 	std::map<int, int> cgiFdToClientFd;
 };

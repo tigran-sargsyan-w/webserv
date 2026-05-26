@@ -388,7 +388,7 @@ void WebServ::closeAndRemoveFd(int fd)
 		if (hasActiveCgi(clientIt->second))
 		{
 			std::cout << "Cleaning CGI for disconnected client fd " << fd << std::endl;
-			cleanupCgi(clientIt->second);
+			cgiManager.cleanup(clientIt->second, pollManager);
 		}
 		clients.erase(clientIt);
 	}
@@ -567,7 +567,7 @@ int WebServ::writeToCgi(Client &client)
 	remaining = client.cgiInputBuffer.size() - client.cgiInputSent;
 	if (remaining == 0)
 	{
-		closeCgiFd(client.cgiStdinFd);
+		cgiManager.closeCgiFd(client.cgiStdinFd, pollManager);
 		client.cgiStdinFd = -1;
 		client.cgiStdinClosed = true;
 		return (0);
@@ -589,7 +589,7 @@ int WebServ::writeToCgi(Client &client)
 
 	if (client.cgiInputSent >= client.cgiInputBuffer.size())
 	{
-		closeCgiFd(client.cgiStdinFd);
+		cgiManager.closeCgiFd(client.cgiStdinFd, pollManager);
 		client.cgiStdinFd = -1;
 		client.cgiStdinClosed = true;
 	}
@@ -615,7 +615,7 @@ int WebServ::readFromCgi(Client &client)
 
 	if (bytesRead == 0)
 	{
-		closeCgiFd(client.cgiStdoutFd);
+		cgiManager.closeCgiFd(client.cgiStdoutFd, pollManager);
 		client.cgiStdoutFd = -1;
 		client.cgiStdoutClosed = true;
 		return (0);
@@ -623,16 +623,6 @@ int WebServ::readFromCgi(Client &client)
 
 	client.cgiOutputBuffer.append(buffer, bytesRead);
 	return (0);
-}
-
-void WebServ::closeCgiFd(int fd)
-{
-	if (fd == -1)
-		return;
-
-	close(fd);
-	pollManager.removeFd(fd);
-	cgiManager.unregisterCgiFd(fd);
 }
 
 int WebServ::checkCgiFinished(Client &client)
@@ -713,20 +703,6 @@ int WebServ::getPollTimeoutMs(void) const
 	return (shortestTimeout);
 }
 
-void WebServ::resetCgiState(Client &client)
-{
-	client.cgiPid = -1;
-	client.cgiStdinFd = -1;
-	client.cgiStdoutFd = -1;
-	client.cgiInputBuffer.clear();
-	client.cgiInputSent = 0;
-	client.cgiOutputBuffer.clear();
-	client.cgiStdinClosed = true;
-	client.cgiStdoutClosed = true;
-	client.cgiFinished = false;
-	client.cgiStartTime = 0;
-}
-
 void WebServ::finishCgiResponse(Client &client)
 {
 	Response response;
@@ -736,7 +712,7 @@ void WebServ::finishCgiResponse(Client &client)
 	client.bytesSent = 0;
 	client.responseReady = true;
 	client.state = WRITING;
-	resetCgiState(client);
+	cgiManager.resetState(client);
 	pollManager.setEvents(client.fd, POLLOUT);
 }
 
@@ -745,27 +721,13 @@ void WebServ::failCgiResponse(Client &client, int code, const std::string &messa
 	const ServerConfig &server = configs[client.serverIndex];
 	Response response;
 
-	cleanupCgi(client);
+	cgiManager.cleanup(client, pollManager);
 	response = ErrorResponseHandler::build(code, message, server);
 	client.responseBuffer = response.toString();
 	client.bytesSent = 0;
 	client.responseReady = true;
 	client.state = WRITING;
 	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void WebServ::cleanupCgi(Client &client)
-{
-	if (client.cgiStdinFd != -1)
-		closeCgiFd(client.cgiStdinFd);
-	if (client.cgiStdoutFd != -1)
-		closeCgiFd(client.cgiStdoutFd);
-	if (client.cgiPid > 0)
-	{
-		kill(client.cgiPid, SIGKILL);
-		waitpid(client.cgiPid, NULL, 0);
-	}
-	resetCgiState(client);
 }
 
 int WebServ::handleCgiEvent(int cgiFd, short revents)
@@ -792,14 +754,14 @@ int WebServ::handleCgiEvent(int cgiFd, short revents)
 	{
 		if (cgiFd == client.cgiStdinFd)
 		{
-			closeCgiFd(client.cgiStdinFd);
+			cgiManager.closeCgiFd(client.cgiStdinFd, pollManager);
 			client.cgiStdinFd = -1;
 			client.cgiStdinClosed = true;
 			fdRemoved = 1;
 		}
 		else if (cgiFd == client.cgiStdoutFd)
 		{
-			closeCgiFd(client.cgiStdoutFd);
+			cgiManager.closeCgiFd(client.cgiStdoutFd, pollManager);
 			client.cgiStdoutFd = -1;
 			client.cgiStdoutClosed = true;
 			fdRemoved = 1;

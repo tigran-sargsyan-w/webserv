@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "Config.hpp"
 #include "PollManager.hpp"
+#include "CgiManager.hpp"
 #include <map>
 #include <netinet/in.h>
 #include <poll.h>
@@ -31,14 +32,14 @@ public:
 
 private:
 	PollManager pollManager;
+	CgiManager cgiManager;
+
 	int setNonBlocking(int fd);
 	void closeAndRemoveFd(int fd);
 	std::vector<ServerConfig> configs;
 	std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
-	std::map<int, int> cgiFdToClientFd;
 
-	bool isCgiFd(int fd) const;
 	int startCgiForClient(Client &client, const RouteConfig &route);
 	int handleCgiEvent(int cgiFd, short revents);
 	int writeToCgi(Client &client);

@@ -40,7 +40,6 @@ private:
 	std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
 
-	int startCgiForClient(Client &client, const RouteConfig &route);
 };
 
 #endif

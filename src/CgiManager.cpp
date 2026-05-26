@@ -269,3 +269,75 @@ void CgiManager::failResponse(Client &client, int code, const std::string &messa
 	client.state = WRITING;
 	pollManager.setEvents(client.fd, POLLOUT);
 }
+
+int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)
+{
+	std::map<int, Client>::iterator clientIt;
+	int fdRemoved;
+	int clientFd;
+
+	fdRemoved = 0;
+	if (!getClientFd(cgiFd, clientFd))
+		return (1);
+	clientIt = clients.find(clientFd);
+	if (clientIt == clients.end())
+	{
+		close(cgiFd);
+		pollManager.removeFd(cgiFd);
+		unregisterCgiFd(cgiFd);
+		return (1);
+	}
+
+	Client &client = clientIt->second;
+
+	if (revents & (POLLERR | POLLHUP | POLLNVAL))
+	{
+		if (cgiFd == client.cgiStdinFd)
+		{
+			closeCgiFd(client.cgiStdinFd, pollManager);
+			client.cgiStdinFd = -1;
+			client.cgiStdinClosed = true;
+			fdRemoved = 1;
+		}
+		else if (cgiFd == client.cgiStdoutFd)
+		{
+			closeCgiFd(client.cgiStdoutFd, pollManager);
+			client.cgiStdoutFd = -1;
+			client.cgiStdoutClosed = true;
+			fdRemoved = 1;
+		}
+	}
+
+	if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
+	{
+		if (writeToCgi(client, pollManager) != 0)
+		{
+			failResponse(client, 502, "Bad Gateway", configs, pollManager);
+			return (1);
+		}
+		else if (client.cgiStdinFd == -1)
+			fdRemoved = 1;
+	}
+
+	if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
+	{
+		if (readFromCgi(client, pollManager) != 0)
+		{
+			failResponse(client, 502, "Bad Gateway", configs, pollManager);
+			return (1);
+		}
+		else if (client.cgiStdoutFd == -1)
+			fdRemoved = 1;
+	}
+
+	if (checkFinished(client) != 0)
+	{
+		failResponse(client, 502, "Bad Gateway", configs, pollManager);
+		return (1);
+	}
+
+	if (client.cgiStdoutClosed && client.cgiFinished)
+		finishResponse(client, pollManager);
+
+	return (fdRemoved);
+}

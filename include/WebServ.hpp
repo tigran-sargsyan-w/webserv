@@ -41,7 +41,6 @@ private:
 	std::map<int, Client> clients;
 
 	int startCgiForClient(Client &client, const RouteConfig &route);
-	int handleCgiEvent(int cgiFd, short revents);
 };
 
 #endif

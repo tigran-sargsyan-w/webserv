@@ -554,78 +554,6 @@ int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
 	return (0);
 }
 
-int WebServ::handleCgiEvent(int cgiFd, short revents)
-{
-	std::map<int, Client>::iterator clientIt;
-	int fdRemoved;
-	int clientFd;
-
-	fdRemoved = 0;
-	if (!cgiManager.getClientFd(cgiFd, clientFd))
-		return (1);
-	clientIt = clients.find(clientFd);
-	if (clientIt == clients.end())
-	{
-		close(cgiFd);
-		pollManager.removeFd(cgiFd);
-		cgiManager.unregisterCgiFd(cgiFd);
-		return (1);
-	}
-
-	Client &client = clientIt->second;
-
-	if (revents & (POLLERR | POLLHUP | POLLNVAL))
-	{
-		if (cgiFd == client.cgiStdinFd)
-		{
-			cgiManager.closeCgiFd(client.cgiStdinFd, pollManager);
-			client.cgiStdinFd = -1;
-			client.cgiStdinClosed = true;
-			fdRemoved = 1;
-		}
-		else if (cgiFd == client.cgiStdoutFd)
-		{
-			cgiManager.closeCgiFd(client.cgiStdoutFd, pollManager);
-			client.cgiStdoutFd = -1;
-			client.cgiStdoutClosed = true;
-			fdRemoved = 1;
-		}
-	}
-
-	if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
-	{
-		if (cgiManager.writeToCgi(client, pollManager) != 0)
-		{
-			cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
-			return (1);
-		}
-		else if (client.cgiStdinFd == -1)
-			fdRemoved = 1;
-	}
-
-	if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
-	{
-		if (cgiManager.readFromCgi(client, pollManager) != 0)
-		{
-			cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
-			return (1);
-		}
-		else if (client.cgiStdoutFd == -1)
-			fdRemoved = 1;
-	}
-
-	if (cgiManager.checkFinished(client) != 0)
-	{
-		cgiManager.failResponse(client, 502, "Bad Gateway", configs, pollManager);
-		return (1);
-	}
-
-	if (client.cgiStdoutClosed && client.cgiFinished)
-		cgiManager.finishResponse(client, pollManager);
-
-	return (fdRemoved);
-}
-
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -664,7 +592,7 @@ int WebServ::run()
 
 			if (cgiManager.isCgiFd(curFD))
 			{
-				if (handleCgiEvent(curFD, pollFds[i].revents) == 0)
+				if (cgiManager.handleEvent(curFD, pollFds[i].revents, clients, configs, pollManager) == 0)
 					++i;
 				continue;
 			}

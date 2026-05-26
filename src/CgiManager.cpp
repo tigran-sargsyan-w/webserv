@@ -1,4 +1,10 @@
 #include "CgiManager.hpp"
+#include "CgiRequestHandler.hpp"
+#include "ErrorResponseHandler.hpp"
+#include "Response.hpp"
+
+#include <ctime>
+#include <iostream>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -176,4 +182,90 @@ int CgiManager::checkFinished(Client &client)
 		return (0);
 
 	return (1);
+}
+
+// No active CGI          → return -1
+// CGI already expired    → return 0
+// CGI available, N left  → return N * 1000
+int CgiManager::getPollTimeoutMs(const std::map<int, Client> &clients) const
+{
+	std::map<int, Client>::const_iterator it;
+	time_t now;
+	int shortestTimeout;
+	int elapsed;
+	int remaining;
+
+	shortestTimeout = -1;
+	now = std::time(NULL);
+
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		const Client &client = it->second;
+
+		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		{
+			elapsed = static_cast<int>(now - client.cgiStartTime);
+			remaining = CGI_TIMEOUT_SECONDS - elapsed;
+
+			if (remaining <= 0)
+				return (0);
+
+			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
+				shortestTimeout = remaining * 1000;
+		}
+		++it;
+	}
+	return (shortestTimeout);
+}
+
+int CgiManager::checkTimeouts(std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)
+{
+	std::map<int, Client>::iterator it;
+	time_t now;
+
+	now = std::time(NULL);
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		Client &client = it->second;
+
+		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		{
+			if (now - client.cgiStartTime >= CGI_TIMEOUT_SECONDS)
+			{
+				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
+				failResponse(client, 504, "Gateway Timeout", configs, pollManager);
+			}
+		}
+		++it;
+	}
+	return (0);
+}
+
+void CgiManager::finishResponse(Client &client, PollManager &pollManager)
+{
+	Response response;
+
+	response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
+	client.responseBuffer = response.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
+	resetState(client);
+	pollManager.setEvents(client.fd, POLLOUT);
+}
+
+void CgiManager::failResponse(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs, PollManager &pollManager)
+{
+	const ServerConfig &server = configs[client.serverIndex];
+	Response response;
+
+	cleanup(client, pollManager);
+	response = ErrorResponseHandler::build(code, message, server);
+	client.responseBuffer = response.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
+	pollManager.setEvents(client.fd, POLLOUT);
 }

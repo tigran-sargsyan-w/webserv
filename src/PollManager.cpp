@@ -17,6 +17,11 @@ PollManager &PollManager::operator=(const PollManager &other)
 	return (*this);
 }
 
+bool PollManager::empty() const
+{
+	return (pollFds.empty());
+}
+
 void PollManager::addFd(int fd, short events)
 {
 	struct pollfd newPollFd;
@@ -50,6 +55,11 @@ void PollManager::setEvents(int fd, short events)
 			return;
 		}
 	}
+}
+
+size_t PollManager::size() const
+{
+	return (pollFds.size());
 }
 
 std::vector<pollfd> &PollManager::getFds()

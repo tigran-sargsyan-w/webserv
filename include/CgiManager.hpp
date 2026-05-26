@@ -3,7 +3,12 @@
 
 #include "Client.hpp"
 #include "PollManager.hpp"
+#include "Config.hpp"
+#include <vector>
+#include <string>
 #include <map>
+
+static const int CGI_TIMEOUT_SECONDS = 10;
 
 class CgiManager
 {
@@ -25,6 +30,11 @@ public:
     int writeToCgi(Client &client, PollManager &pollManager);
     int readFromCgi(Client &client, PollManager &pollManager);
     int checkFinished(Client &client);
+
+    int getPollTimeoutMs(const std::map<int, Client> &clients) const;
+    int checkTimeouts(std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager);
+    void finishResponse(Client &client, PollManager &pollManager);
+    void failResponse(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs, PollManager &pollManager);
 
 private:
 	std::map<int, int> cgiFdToClientFd;

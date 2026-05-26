@@ -24,8 +24,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-static const int CGI_TIMEOUT_SECONDS = 10;
-
 WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
@@ -160,7 +158,7 @@ int WebServ::SendToClient(Client &client)
 
 		if (CgiRequestHandler::isCgiRequest(client.request, route))
 		{
-			if (startCgiForClient(client, route) != 0)
+			if (cgiManager.startForClient(client, route, configs[client.serverIndex], pollManager) != 0)
 				return (1);
 			return (0);
 		}
@@ -368,11 +366,6 @@ int WebServ::acceptConnection(int listeningSocket)
 	return (clientSocket);
 }
 
-bool WebServ::isCgiFd(int fd) const
-{
-	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
-}
-
 bool WebServ::isListeningFd(int fd)
 {
 	return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
@@ -393,7 +386,7 @@ void WebServ::closeAndRemoveFd(int fd)
 		if (hasActiveCgi(clientIt->second))
 		{
 			std::cout << "Cleaning CGI for disconnected client fd " << fd << std::endl;
-			cleanupCgi(clientIt->second);
+			cgiManager.cleanup(clientIt->second, pollManager);
 		}
 		clients.erase(clientIt);
 	}
@@ -401,449 +394,6 @@ void WebServ::closeAndRemoveFd(int fd)
 	close(fd);
 	pollManager.removeFd(fd);
 	listenerFdToIndex.erase(fd);
-}
-
-static std::string getCgiValidationMessage(int statusCode)
-{
-	if (statusCode == 403)
-		return ("Forbidden");
-	if (statusCode == 404)
-		return ("Not Found");
-	if (statusCode == 502)
-		return ("Bad Gateway");
-	return ("Internal Server Error");
-}
-
-static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, int statusCode)
-{
-	Response error;
-
-	error = ErrorResponseHandler::build(statusCode, getCgiValidationMessage(statusCode), server);
-	client.responseBuffer = error.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-}
-
-static int checkCgiScriptPath(const std::string &scriptPath)
-{
-	struct stat scriptStat;
-
-	if (scriptPath.empty())
-		return (404);
-
-	if (stat(scriptPath.c_str(), &scriptStat) == -1)
-	{
-		if (errno == ENOENT || errno == ENOTDIR)
-			return (404);
-		return (403);
-	}
-
-	if (S_ISDIR(scriptStat.st_mode))
-		return (403);
-
-	if (access(scriptPath.c_str(), R_OK) == -1)
-		return (403);
-
-	return (0);
-}
-
-static int checkCgiExecutablePath(const std::string &executablePath)
-{
-	struct stat executableStat;
-
-	if (executablePath.empty())
-		return (502);
-
-	if (stat(executablePath.c_str(), &executableStat) == -1)
-		return (502);
-
-	if (S_ISDIR(executableStat.st_mode))
-		return (502);
-
-	if (access(executablePath.c_str(), X_OK) == -1)
-		return (502);
-
-	return (0);
-}
-
-static int validateCgiContext(const CgiContext &context)
-{
-	int statusCode;
-
-	statusCode = checkCgiScriptPath(context.scriptPath);
-	if (statusCode != 0)
-		return (statusCode);
-
-	statusCode = checkCgiExecutablePath(context.executable);
-	if (statusCode != 0)
-		return (statusCode);
-
-	return (0);
-}
-
-int WebServ::startCgiForClient(Client &client, const RouteConfig &route)
-{
-	CgiContext context;
-	CgiProcess process;
-	const ServerConfig &server = configs[client.serverIndex];
-
-	context = CgiRequestHandler::buildContext(client.request, route, server, client.getRemoteAddr());
-
-	int validationStatus;
-
-	validationStatus = validateCgiContext(context);
-	if (validationStatus != 0)
-	{
-		prepareCgiErrorResponse(client, server, validationStatus);
-		pollManager.setEvents(client.fd, POLLOUT);
-		return (0);
-	}
-
-	if (CgiHandler::startCgi(context, process) != 0)
-	{
-		Response error = ErrorResponseHandler::build(502, "Bad Gateway", server);
-
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
-		pollManager.setEvents(client.fd, POLLOUT);
-		return (1);
-	}
-
-	if (setNonBlocking(process.stdinFd) || setNonBlocking(process.stdoutFd))
-	{
-		close(process.stdinFd);
-		close(process.stdoutFd);
-		kill(process.pid, SIGKILL);
-		waitpid(process.pid, NULL, WNOHANG);
-
-		Response error = ErrorResponseHandler::build(500, "Internal Server Error", server);
-
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
-		pollManager.setEvents(client.fd, POLLOUT);
-		return (1);
-	}
-
-	client.cgiPid = process.pid;
-	client.cgiStdinFd = process.stdinFd;
-	client.cgiStdoutFd = process.stdoutFd;
-	client.cgiInputBuffer = context.requestBody;
-	client.cgiInputSent = 0;
-	client.cgiOutputBuffer.clear();
-	client.cgiStdinClosed = false;
-	client.cgiStdoutClosed = false;
-	client.cgiFinished = false;
-	client.cgiStartTime = std::time(NULL);
-
-	cgiFdToClientFd[client.cgiStdoutFd] = client.fd;
-	pollManager.addFd(client.cgiStdoutFd, POLLIN);
-
-	if (client.cgiInputBuffer.empty())
-	{
-		close(client.cgiStdinFd);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
-		client.state = CGI_READING;
-	}
-	else
-	{
-		cgiFdToClientFd[client.cgiStdinFd] = client.fd;
-		pollManager.addFd(client.cgiStdinFd, POLLOUT);
-		client.state = CGI_WRITING;
-	}
-
-	pollManager.setEvents(client.fd, POLLIN);
-	return (0);
-}
-
-int WebServ::writeToCgi(Client &client)
-{
-	size_t remaining;
-	ssize_t bytesWritten;
-
-	if (client.cgiStdinFd == -1 || client.cgiStdinClosed)
-		return (0);
-
-	remaining = client.cgiInputBuffer.size() - client.cgiInputSent;
-	if (remaining == 0)
-	{
-		closeCgiFd(client.cgiStdinFd);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
-		return (0);
-	}
-
-	bytesWritten = write(client.cgiStdinFd, client.cgiInputBuffer.c_str() + client.cgiInputSent, remaining);
-
-	if (bytesWritten == -1)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
-		return (1);
-	}
-
-	if (bytesWritten == 0)
-		return (0);
-
-	client.cgiInputSent += static_cast<size_t>(bytesWritten);
-
-	if (client.cgiInputSent >= client.cgiInputBuffer.size())
-	{
-		closeCgiFd(client.cgiStdinFd);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
-	}
-
-	return (0);
-}
-
-int WebServ::readFromCgi(Client &client)
-{
-	char buffer[4096];
-	ssize_t bytesRead;
-
-	if (client.cgiStdoutFd == -1 || client.cgiStdoutClosed)
-		return (0);
-
-	bytesRead = read(client.cgiStdoutFd, buffer, sizeof(buffer));
-	if (bytesRead == -1)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
-		return (1);
-	}
-
-	if (bytesRead == 0)
-	{
-		closeCgiFd(client.cgiStdoutFd);
-		client.cgiStdoutFd = -1;
-		client.cgiStdoutClosed = true;
-		return (0);
-	}
-
-	client.cgiOutputBuffer.append(buffer, bytesRead);
-	return (0);
-}
-
-void WebServ::closeCgiFd(int fd)
-{
-	if (fd == -1)
-		return;
-
-	close(fd);
-	pollManager.removeFd(fd);
-	cgiFdToClientFd.erase(fd);
-}
-
-int WebServ::checkCgiFinished(Client &client)
-{
-	int status;
-	pid_t result;
-
-	if (client.cgiPid <= 0)
-		return (0);
-	result = waitpid(client.cgiPid, &status, WNOHANG);
-	if (result == 0)
-		return (0);
-	if (result != client.cgiPid)
-		return (1);
-	client.cgiPid = -1;
-	client.cgiFinished = true;
-	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-		return (0);
-	return (1);
-}
-
-int WebServ::checkCgiTimeouts(void)
-{
-	std::map<int, Client>::iterator it;
-	time_t now;
-
-	now = std::time(NULL);
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		Client &client = it->second;
-
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
-		{
-			if (now - client.cgiStartTime >= CGI_TIMEOUT_SECONDS)
-			{
-				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
-				failCgiResponse(client, 504, "Gateway Timeout");
-			}
-		}
-		++it;
-	}
-	return (0);
-}
-
-// No active CGI          → return -1
-// CGI already expired    → return 0
-// CGI available, N left  → return N * 1000
-int WebServ::getPollTimeoutMs(void) const
-{
-	std::map<int, Client>::const_iterator it;
-	time_t now;
-	int shortestTimeout;
-	int elapsed;
-	int remaining;
-
-	shortestTimeout = -1;
-	now = std::time(NULL);
-
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		const Client &client = it->second;
-
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
-		{
-			elapsed = static_cast<int>(now - client.cgiStartTime);
-			remaining = CGI_TIMEOUT_SECONDS - elapsed;
-
-			if (remaining <= 0)
-				return (0);
-
-			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
-				shortestTimeout = remaining * 1000;
-		}
-		++it;
-	}
-	return (shortestTimeout);
-}
-
-void WebServ::resetCgiState(Client &client)
-{
-	client.cgiPid = -1;
-	client.cgiStdinFd = -1;
-	client.cgiStdoutFd = -1;
-	client.cgiInputBuffer.clear();
-	client.cgiInputSent = 0;
-	client.cgiOutputBuffer.clear();
-	client.cgiStdinClosed = true;
-	client.cgiStdoutClosed = true;
-	client.cgiFinished = false;
-	client.cgiStartTime = 0;
-}
-
-void WebServ::finishCgiResponse(Client &client)
-{
-	Response response;
-
-	response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-	resetCgiState(client);
-	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void WebServ::failCgiResponse(Client &client, int code, const std::string &message)
-{
-	const ServerConfig &server = configs[client.serverIndex];
-	Response response;
-
-	cleanupCgi(client);
-	response = ErrorResponseHandler::build(code, message, server);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void WebServ::cleanupCgi(Client &client)
-{
-	if (client.cgiStdinFd != -1)
-		closeCgiFd(client.cgiStdinFd);
-	if (client.cgiStdoutFd != -1)
-		closeCgiFd(client.cgiStdoutFd);
-	if (client.cgiPid > 0)
-	{
-		kill(client.cgiPid, SIGKILL);
-		waitpid(client.cgiPid, NULL, 0);
-	}
-	resetCgiState(client);
-}
-
-int WebServ::handleCgiEvent(int cgiFd, short revents)
-{
-	std::map<int, int>::iterator mapIt;
-	std::map<int, Client>::iterator clientIt;
-	int fdRemoved;
-
-	fdRemoved = 0;
-	mapIt = cgiFdToClientFd.find(cgiFd);
-	if (mapIt == cgiFdToClientFd.end())
-		return (1);
-	clientIt = clients.find(mapIt->second);
-	if (clientIt == clients.end())
-	{
-		close(cgiFd);
-		pollManager.removeFd(cgiFd);
-		cgiFdToClientFd.erase(cgiFd);
-		return (1);
-	}
-
-	Client &client = clientIt->second;
-
-	if (revents & (POLLERR | POLLHUP | POLLNVAL))
-	{
-		if (cgiFd == client.cgiStdinFd)
-		{
-			closeCgiFd(client.cgiStdinFd);
-			client.cgiStdinFd = -1;
-			client.cgiStdinClosed = true;
-			fdRemoved = 1;
-		}
-		else if (cgiFd == client.cgiStdoutFd)
-		{
-			closeCgiFd(client.cgiStdoutFd);
-			client.cgiStdoutFd = -1;
-			client.cgiStdoutClosed = true;
-			fdRemoved = 1;
-		}
-	}
-
-	if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
-	{
-		if (writeToCgi(client) != 0)
-		{
-			failCgiResponse(client, 502, "Bad Gateway");
-			return (1);
-		}
-		else if (client.cgiStdinFd == -1)
-			fdRemoved = 1;
-	}
-
-	if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
-	{
-		if (readFromCgi(client) != 0)
-		{
-			failCgiResponse(client, 502, "Bad Gateway");
-			return (1);
-		}
-		else if (client.cgiStdoutFd == -1)
-			fdRemoved = 1;
-	}
-
-	if (checkCgiFinished(client) != 0)
-	{
-		failCgiResponse(client, 502, "Bad Gateway");
-		return (1);
-	}
-
-	if (client.cgiStdoutClosed && client.cgiFinished)
-		finishCgiResponse(client);
-
-	return (fdRemoved);
 }
 
 int WebServ::run()
@@ -857,7 +407,7 @@ int WebServ::run()
 		if (pollManager.empty())
 			return (1);
 
-		int ready = poll(&pollFds[0], pollFds.size(), getPollTimeoutMs());
+		int ready = poll(&pollFds[0], pollFds.size(), cgiManager.getPollTimeoutMs(clients));
 		
 		if (ready < 0)
 		{
@@ -867,7 +417,7 @@ int WebServ::run()
 			return (1);
 		}
 		// Check CGI timeouts on each loop iteration
-		checkCgiTimeouts();
+		cgiManager.checkTimeouts(clients, configs, pollManager);
 
 		// No events, continue polling
 		if (ready == 0)
@@ -882,9 +432,9 @@ int WebServ::run()
 		{
 			int curFD = pollFds[i].fd;
 
-			if (isCgiFd(curFD))
+			if (cgiManager.isCgiFd(curFD))
 			{
-				if (handleCgiEvent(curFD, pollFds[i].revents) == 0)
+				if (cgiManager.handleEvent(curFD, pollFds[i].revents, clients, configs, pollManager) == 0)
 					++i;
 				continue;
 			}

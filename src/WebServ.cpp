@@ -396,6 +396,38 @@ void WebServ::closeAndRemoveFd(int fd)
 	listenerFdToIndex.erase(fd);
 }
 
+static std::string getInspectorErrorMessage(InspectRequestStatus status)
+{
+	if (status == BAD_REQUEST)
+		return ("Bad Request");
+	if (status == REQUEST_TOO_LARGE)
+		return ("Payload Too Large");
+	if (status == URI_TOO_LONG)
+		return ("URI Too Long");
+	if (status == HEADER_TOO_LARGE)
+		return ("Request Header Fields Too Large");
+	if (status == NOT_IMPLEMENTED)
+		return ("Not Implemented");
+	return ("Bad Request");
+}
+
+static void prepareInspectorErrorResponse(Client &client, const ServerConfig &server, InspectRequestStatus status)
+{
+	Response response;
+	int statusCode;
+
+	statusCode = static_cast<int>(status);
+	if (statusCode < 400 || statusCode > 599)
+		statusCode = 400;
+
+	response = ErrorResponseHandler::build(statusCode, getInspectorErrorMessage(status), server);
+
+	client.responseBuffer = response.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -493,7 +525,7 @@ int WebServ::run()
 					RequestParser parser;
 					RequestInspector inspector;
 
-					inspector.inspectRequest(curClient.getRawRequest());
+					inspector.inspectRequest(curClient.getRawRequest(), configs[curClient.serverIndex].clientMaxBodySize);
 					if (inspector.status == COMPLETED)
 					{
 						parser.parse(curClient.getRawRequest(), curClient.request);
@@ -505,8 +537,10 @@ int WebServ::run()
 					}
 					else
 					{
-						// TODO: RequestHandler for errors and close connection
-						closeAndRemoveFd(curFD);
+						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex], inspector.status);
+
+						pollManager.setEvents(curFD, POLLOUT);
+						++i;
 						continue;
 					}
 

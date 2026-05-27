@@ -8,7 +8,7 @@ enum InspectRequestStatus
   EMPTY,
   NEED_MORE_DATA,
   COMPLETED,
-  REQUEST_TOO_LARGE,
+  REQUEST_TOO_LARGE = 413,
   BAD_REQUEST = 400,
   URI_TOO_LONG = 414,
   HEADER_TOO_LARGE = 431,
@@ -22,7 +22,7 @@ class RequestInspector
     RequestInspector() : status(EMPTY), requestLineValid(false) {};
     ~RequestInspector() {};
 
-    InspectRequestStatus inspectRequest(const std::string& rawRequest);
+    InspectRequestStatus inspectRequest(const std::string& rawRequest, size_t maxBodySize);
     InspectRequestStatus status;
 
   private:

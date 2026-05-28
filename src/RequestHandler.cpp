@@ -159,40 +159,40 @@ Response RequestHandler::handleStatic (const Request &request, const RouteConfig
 	return (StaticFileHandler::handle (request, route));
 }
 
-Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
+Response RequestHandler::handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	Response response;
 
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
-		response = ErrorResponseBuilder::build (403, "Forbidden: Upload is disabled for this route");
+		response = ErrorResponseHandler::build (403, "Forbidden: Upload is disabled for this route", server);
 
 	// 2. Check the presence of a storage folder
 	else if (route.uploadStore.empty ())
-		response = ErrorResponseBuilder::build (500, "Internal Server Error: Upload store not configured");
+		response = ErrorResponseHandler::build (500, "Internal Server Error: Upload store not configured", server);
 
 	// 3. Check the body
 	else if (request.getBody ().empty ())
-		response = ErrorResponseBuilder::build (400, "Bad request: Empty body");
+		response = ErrorResponseHandler::build (400, "Bad request: Empty body", server);
 
 	else
 	{
 		// 4. Extraction and safety check of the filename
 		std::string fullPath = getSafeUploadPath (request, route);
 		if (fullPath.empty ())
-			response = ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
+			response = ErrorResponseHandler::build (400, "Bad Request: Invalid file name", server);
 		else
 		{
 			// 5. Check if a directory with this name already exists
 			struct stat pathStat;
 			if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
-				response = ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
+				response = ErrorResponseHandler::build (409, "Conflict: A directory with this name already exists", server);
 			else
 			{
 				// 6. Try to open the file for writing
 				std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
 				if (!file.is_open ())
-					response = ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
+					response = ErrorResponseHandler::build (500, "Internal Server Error: Could not open file", server);
 				else
 				{
 					// 7. Write the body data
@@ -203,7 +203,7 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 					if (file.fail ())
 					{
 						std::remove (fullPath.c_str ());
-						response = ErrorResponseBuilder::build (500, "Internal Server Error: Write failed");
+						response = ErrorResponseHandler::build (500, "Internal Server Error: Write failed", server);
 					}
 					// 9. Success response
 					else
@@ -215,36 +215,36 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 	return response;
 }
 
-Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route)
+Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	Response response;
 
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
-		response = ErrorResponseBuilder::build (403, "Forbidden: Delete is disabled for this route");
+		response = ErrorResponseHandler::build (403, "Forbidden: Delete is disabled for this route", server);
 	else
 	{
 		// 2. Check that the path is safe and create the complete path
 		std::string fullPath = getSafeUploadPath (request, route);
 		if (fullPath.empty ())
-			response = ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
+			response = ErrorResponseHandler::build (403, "Forbidden: Invalid path sequence", server);
 		else
 		{
 			// 3. Check if the resource exists
 			struct stat pathStat;
 			if (stat (fullPath.c_str (), &pathStat) != 0)
-				response = ErrorResponseBuilder::build (404, "Not Found: Resource does not exist");
+				response = ErrorResponseHandler::build (404, "Not Found: Resource does not exist", server);
 
 			// 4. Forbid the deletion of folders
 			else if (S_ISDIR (pathStat.st_mode))
-				response = ErrorResponseBuilder::build (403, "Forbidden: Cannot delete a directory");
+				response = ErrorResponseHandler::build (403, "Forbidden: Cannot delete a directory", server);
 			else
 			{
 				// 5. Try to delete
 				if (std::remove (fullPath.c_str ()) == 0)
 					response = buildSuccessResponse (200, "File deleted successfully");
 				else
-					response = ErrorResponseBuilder::build (500, "Internal Server Error: Failed to delete the file");
+					response = ErrorResponseHandler::build (500, "Internal Server Error: Failed to delete the file", server);
 			}
 		}
 	}
@@ -256,43 +256,39 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 	Response response;
 
 	HttpMethod method = parseHttpMethod (request.getMethod ());
-	std::cout << "DEBUG method: " << httpMethodToString (method) << std::endl; // to delete
 	Response check = validateMethod (route, method);
-	std::cout << "DEBUG validateMethod status: " << check.getStatusCode () << std::endl; // to delete
 
-	if (method == HTTP_UNKNOWN)
-	{
-		std::cout << "DEBUG entering HTTP_UNKNOWN branch" << std::endl; // to delete
-		response = ErrorResponseBuilder::build (501, "Not Implemented");
-	}
 	// Handle redirects
-	else if (route.hasReturn)
-		response = RedirectHandler::handle (route);
+	if (route.hasReturn)
+		response = RedirectHandler::handle (route, server);
+	else if (method == HTTP_UNKNOWN)
+		response = ErrorResponseHandler::build (501, "Not Implemented", server);
 	else if (check.getStatusCode () != 0)
 		response = check;
+
 	else if (server.clientMaxBodySize > 0 && request.getBody ().size () > server.clientMaxBodySize)
-		response = ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
+		response = ErrorResponseHandler::build (413, "Payload Too Large: Body size exceeds limit", server);
 	// Handle CGI requests
 	else if (CgiRequestHandler::isCgiRequest (request, route))
-		response = CgiRequestHandler::handle (request, route, server, remoteAddr);
+		response = ErrorResponseHandler::build (500, "Internal Server Error", server);
 	// Reject requests that match a CGI route but aren't a valid CGI path
 	else if (!route.cgi.empty ())
-		response = ErrorResponseBuilder::build (403, "Forbidden");
+		response = ErrorResponseHandler::build (403, "Forbidden", server);
 	else
 	{
 		switch (method)
 		{
 			case HTTP_GET:
-				response = RequestHandler::handleStatic (request, route);
+				response = RequestHandler::handleStatic (request, route, server);
 				break;
 			case HTTP_POST:
-				response = RequestHandler::handlePost (request, route);
+				response = RequestHandler::handlePost (request, route, server);
 				break;
 			case HTTP_DELETE:
-				response = RequestHandler::handleHttpDelete (request, route);
+				response = RequestHandler::handleHttpDelete (request, route, server);
 				break;
 			default:
-				response = ErrorResponseBuilder::build (500, "Internal Server Error");
+				response = ErrorResponseHandler::build (500, "Internal Server Error", server);
 		}
 	}
 

@@ -209,7 +209,7 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 					else
 						response = buildSuccessResponse (201, "Created: File uploaded");
 				}
-						}
+			}
 		}
 	}
 	return response;
@@ -262,7 +262,7 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 	else if (check.getStatusCode () != 0)
 		response = check;
 	else if (server.clientMaxBodySize > 0 && request.getBody ().size () > server.clientMaxBodySize)
-		return ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
+		response = ErrorResponseBuilder::build (413, "Payload Too Large: Body size exceeds limit");
 	// Handle CGI requests
 	else if (CgiRequestHandler::isCgiRequest (request, route))
 		response = CgiRequestHandler::handle (request, route, server, remoteAddr);

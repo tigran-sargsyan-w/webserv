@@ -94,6 +94,9 @@ static std::string getSafeUploadPath (const Request &request, const RouteConfig 
 	if (decoded.find ('\0') != std::string::npos)
 		return "";
 
+	if (decoded.find ("/../") != std::string::npos || decoded.find ("/..") == decoded.length () - 3)
+		return "";
+
 	std::string fileName = getFileName (decoded);
 
 	if (fileName.empty () || fileName == ".." || fileName == ".")
@@ -158,46 +161,58 @@ Response RequestHandler::handleStatic (const Request &request, const RouteConfig
 
 Response RequestHandler::handlePost (const Request &request, const RouteConfig &route)
 {
+	Response response;
+
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
-		return ErrorResponseBuilder::build (403, "Forbidden: Upload is disabled for this route");
+		response = ErrorResponseBuilder::build (403, "Forbidden: Upload is disabled for this route");
 
 	// 2. Check the presence of a storage folder
-	if (route.uploadStore.empty ())
-		return ErrorResponseBuilder::build (500, "Internal Server Error: Upload store not configured");
+	else if (route.uploadStore.empty ())
+		response = ErrorResponseBuilder::build (500, "Internal Server Error: Upload store not configured");
 
 	// 3. Check the body
-	if (request.getBody ().empty ())
-		return ErrorResponseBuilder::build (400, "Bad request: Empty body");
+	else if (request.getBody ().empty ())
+		response = ErrorResponseBuilder::build (400, "Bad request: Empty body");
 
-	// 4. Extraction and safety check of the filename
-	std::string fullPath = getSafeUploadPath (request, route);
-	if (fullPath.empty ())
-		return ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
-
-	// 5. Check if it's a folder
-	struct stat pathStat;
-	if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
-		return ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
-
-	// 6. Check that the body size isn't bigger than the route's client max body size
-
-	// 7. Try to write the file
-	std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
-	if (!file.is_open ())
-		return ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
-
-	file.write (request.getBody ().data (), request.getBody ().size ());
-	file.close ();
-
-	if (file.fail ())
+	else
 	{
-		std::remove (fullPath.c_str ());
-		return ErrorResponseBuilder::build (500, "Internal Server Error: Write failed");
-	}
+		// 4. Extraction and safety check of the filename
+		std::string fullPath = getSafeUploadPath (request, route);
+		if (fullPath.empty ())
+			response = ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
+		else
+		{
+			// 5. Check if a directory with this name already exists
+			struct stat pathStat;
+			if (stat (fullPath.c_str (), &pathStat) == 0 && S_ISDIR (pathStat.st_mode))
+				response = ErrorResponseBuilder::build (409, "Conflict: A directory with this name already exists");
+			else
+			{
+				// 6. Try to open the file for writing
+				std::ofstream file (fullPath.c_str (), std::ios::out | std::ios::binary);
+				if (!file.is_open ())
+					response = ErrorResponseBuilder::build (500, "Internal Server Error: Could not open file");
+				else
+				{
+					// 7. Write the body data
+					file.write (request.getBody ().data (), request.getBody ().size ());
+					file.close ();
 
-	// 8. Success response
-	return buildSuccessResponse (201, "Created: File uploaded");
+					// 8. Check if disk write failed (disk full)
+					if (file.fail ())
+					{
+						std::remove (fullPath.c_str ());
+						response = ErrorResponseBuilder::build (500, "Internal Server Error: Write failed");
+					}
+					// 9. Success response
+					else
+						response = buildSuccessResponse (201, "Created: File uploaded");
+				}
+						}
+		}
+	}
+	return response;
 }
 
 Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route)
@@ -232,10 +247,15 @@ Response RequestHandler::handleRequest (const Request &request, const RouteConfi
 	Response response;
 
 	HttpMethod method = parseHttpMethod (request.getMethod ());
+	std::cout << "DEBUG method: " << httpMethodToString (method) << std::endl; // to delete
 	Response check = validateMethod (route, method);
+	std::cout << "DEBUG validateMethod status: " << check.getStatusCode () << std::endl; // to delete
 
 	if (method == HTTP_UNKNOWN)
+	{
+		std::cout << "DEBUG entering HTTP_UNKNOWN branch" << std::endl; // to delete
 		response = ErrorResponseBuilder::build (501, "Not Implemented");
+	}
 	// Handle redirects
 	else if (route.hasReturn)
 		response = RedirectHandler::handle (route);

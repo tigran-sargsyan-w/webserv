@@ -217,29 +217,38 @@ Response RequestHandler::handlePost (const Request &request, const RouteConfig &
 
 Response RequestHandler::handleHttpDelete (const Request &request, const RouteConfig &route)
 {
+	Response response;
+
 	// 1. Check the activation of the upload
 	if (!route.uploadEnable)
-		return ErrorResponseBuilder::build (403, "Forbidden: Delete is disabled for this route");
+		response = ErrorResponseBuilder::build (403, "Forbidden: Delete is disabled for this route");
+	else
+	{
+		// 2. Check that the path is safe and create the complete path
+		std::string fullPath = getSafeUploadPath (request, route);
+		if (fullPath.empty ())
+			response = ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
+		else
+		{
+			// 3. Check if the resource exists
+			struct stat pathStat;
+			if (stat (fullPath.c_str (), &pathStat) != 0)
+				response = ErrorResponseBuilder::build (404, "Not Found: Resource does not exist");
 
-	// 2. Check that the path is safe and create the complete path
-	std::string fullPath = getSafeUploadPath (request, route);
-	if (fullPath.empty ())
-		return ErrorResponseBuilder::build (400, "Bad Request: Invalid file name");
-
-	// 3. Check if the resource exists
-	struct stat pathStat;
-	if (stat (fullPath.c_str (), &pathStat) != 0)
-		return ErrorResponseBuilder::build (404, "Not Found: Resource does not exist");
-
-	// 4. Forbid the deletion of folders
-	if (S_ISDIR (pathStat.st_mode))
-		return ErrorResponseBuilder::build (403, "Forbidden: Cannot delete a directory");
-
-	// 5. Try to delete
-	if (std::remove (fullPath.c_str ()) == 0)
-		return buildSuccessResponse (200, "File deleted successfully");
-
-	return ErrorResponseBuilder::build (500, "Internal Server Error: Failed to delete the file");
+			// 4. Forbid the deletion of folders
+			else if (S_ISDIR (pathStat.st_mode))
+				response = ErrorResponseBuilder::build (403, "Forbidden: Cannot delete a directory");
+			else
+			{
+				// 5. Try to delete
+				if (std::remove (fullPath.c_str ()) == 0)
+					response = buildSuccessResponse (200, "File deleted successfully");
+				else
+					response = ErrorResponseBuilder::build (500, "Internal Server Error: Failed to delete the file");
+			}
+		}
+	}
+	return response;
 }
 
 Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)

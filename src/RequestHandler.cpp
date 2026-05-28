@@ -253,6 +253,7 @@ Response RequestHandler::handleHttpDelete (const Request &request, const RouteCo
 
 Response RequestHandler::handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
+	std::cout << "--- [DEBUG] handleRequest ENTRÉ ! ---" << std::endl;
 	Response response;
 
 	HttpMethod method = parseHttpMethod (request.getMethod ());

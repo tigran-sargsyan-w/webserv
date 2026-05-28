@@ -3,6 +3,8 @@
 
 #include "Client.hpp"
 #include "Config.hpp"
+#include "PollManager.hpp"
+#include "CgiManager.hpp"
 #include <map>
 #include <netinet/in.h>
 #include <poll.h>
@@ -15,27 +17,29 @@ class WebServ
 {
 public:
 	WebServ();
-	WebServ(const WebServ& other);
+	WebServ(const WebServ &other);
 	~WebServ();
-	WebServ& operator=(const WebServ& other);
-	int readFromClient(Client& client);
-	int SendToClient(Client& client);
+	WebServ &operator=(const WebServ &other);
+	int readFromClient(Client &client);
+	int SendToClient(Client &client);
 
 	int setup(std::vector<ServerConfig> servers);
 	int run();
 	int initListeningSocket();
 	int bindSockAddress(int listeningSocket, size_t configIndex);
 	int acceptConnection(int listeningSocket);
-	void removePollfd(int fd);
-  bool isListeningFd(int fd);
+	bool isListeningFd(int fd);
 
 private:
+	PollManager pollManager;
+	CgiManager cgiManager;
+
 	int setNonBlocking(int fd);
-  void closeAndRemoveFd(int fd);
-  std::vector<ServerConfig> configs;
-  std::map<int, size_t> listenerFdToIndex;
+	void closeAndRemoveFd(int fd);
+	std::vector<ServerConfig> configs;
+	std::map<int, size_t> listenerFdToIndex;
 	std::map<int, Client> clients;
-	std::vector<pollfd> pollFds;
+
 };
 
 #endif

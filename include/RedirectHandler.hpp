@@ -7,7 +7,7 @@
 class RedirectHandler
 {
 public:
-    static Response handle(const RouteConfig &route);
+    static Response handle(const RouteConfig &route, const ServerConfig &server);
 
 private:
     RedirectHandler();

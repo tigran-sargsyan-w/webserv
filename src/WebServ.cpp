@@ -15,12 +15,21 @@
 #include <sys/socket.h>
 #include <utility>
 
+#include "CgiHandler.hpp"
+#include "CgiRequestHandler.hpp"
+#include "ErrorResponseHandler.hpp"
+
+#include <ctime>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+
 WebServ::WebServ()
 {
 	std::cout << "WebServ created!\n";
 }
 
-WebServ::WebServ(const WebServ& other)
+WebServ::WebServ(const WebServ &other)
 {
 	(void)other;
 	std::cout << "WebServ copy constructor called!\n";
@@ -31,7 +40,7 @@ WebServ::~WebServ()
 	std::cout << "WebServ destroyed!\n";
 }
 
-WebServ& WebServ::operator=(const WebServ& other)
+WebServ &WebServ::operator=(const WebServ &other)
 {
 	(void)other;
 	std::cout << "WebServ assignement operator called!\n";
@@ -54,7 +63,7 @@ int WebServ::setNonBlocking(int fd)
 	return (0);
 }
 
-int WebServ::readFromClient(Client& client)
+int WebServ::readFromClient(Client &client)
 {
 	ssize_t bytesRead;
 	char buffer[4096];
@@ -82,8 +91,7 @@ int WebServ::readFromClient(Client& client)
 	return (0);
 }
 
-static bool routeMatchesPath(const std::string& routePath,
-                             const std::string& requestPath)
+static bool routeMatchesPath(const std::string &routePath, const std::string &requestPath)
 {
 	if (routePath == "/")
 		return (true);
@@ -95,25 +103,24 @@ static bool routeMatchesPath(const std::string& routePath,
 		return (false);
 
 	if (requestPath.length() > routePath.length() &&
-	    requestPath[routePath.length()] == '/')
+		requestPath[routePath.length()] == '/')
 		return (true);
 
 	return (false);
 }
 
-static const RouteConfig& findMatchingRoute(const ServerConfig& serverConfig,
-                                            const std::string& requestPath)
+static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
 {
 	const RouteConfig *bestRoute = NULL;
 	size_t bestLength = 0;
 
 	for (std::vector<RouteConfig>::const_iterator it =
-	         serverConfig.routes.begin();
-	     it != serverConfig.routes.end();
-	     ++it)
+			 serverConfig.routes.begin();
+		 it != serverConfig.routes.end();
+		 ++it)
 	{
 		if (routeMatchesPath(it->path, requestPath) &&
-		    it->path.length() > bestLength)
+			it->path.length() > bestLength)
 		{
 			bestRoute = &(*it);
 			bestLength = it->path.length();
@@ -126,7 +133,7 @@ static const RouteConfig& findMatchingRoute(const ServerConfig& serverConfig,
 	return (serverConfig.routes.front());
 }
 
-static std::string getPathWithoutQuery(const std::string& path)
+static std::string getPathWithoutQuery(const std::string &path)
 {
 	size_t questionMark = path.find('?');
 
@@ -135,26 +142,64 @@ static std::string getPathWithoutQuery(const std::string& path)
 	return (path.substr(0, questionMark));
 }
 
-int WebServ::SendToClient(Client& client)
+int WebServ::SendToClient(Client &client)
 {
-	std::string cleanPath = getPathWithoutQuery(client.request.getPath());
-	const RouteConfig& route = findMatchingRoute(configs[client.serverIndex], cleanPath);
-	std::cout << "Matched route: " << route.path << std::endl;
-	Response response = RequestHandler::handleRequest(
-	    client.request, route, configs[client.serverIndex], client.getRemoteAddr());
-	std::cout << "Response to client:\n\n" << response.toString() << std::endl;
+	ssize_t bytesSent;
+	size_t remaining;
+	const char *data;
 
-	ssize_t bytesSent = send(
-	    client.fd, response.toString().c_str(), response.toString().size(), 0);
+	if (!client.responseReady)
+	{
+		std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+
+		const RouteConfig &route = findMatchingRoute(configs[client.serverIndex], cleanPath);
+
+		std::cout << "Matched route: " << route.path << std::endl;
+
+		if (CgiRequestHandler::isCgiRequest(client.request, route))
+		{
+			if (cgiManager.startForClient(client, route, configs[client.serverIndex], pollManager) != 0)
+				return (1);
+			return (0);
+		}
+
+		Response response = RequestHandler::handleRequest(client.request, route, configs[client.serverIndex]);
+
+		client.responseBuffer = response.toString();
+		client.bytesSent = 0;
+		client.responseReady = true;
+
+		std::cout << "Response to client:\n\n"
+				  << client.responseBuffer << std::endl;
+	}
+	if (client.bytesSent >= client.responseBuffer.size())
+	{
+		client.state = CLOSING_CONNECTION;
+		return (0);
+	}
+
+	remaining = client.responseBuffer.size() - client.bytesSent;
+	data = client.responseBuffer.c_str() + client.bytesSent;
+	bytesSent = send(client.fd, data, remaining, 0);
+
 	if (bytesSent == -1)
 	{
 		if (errno == EWOULDBLOCK || errno == EAGAIN)
 			return (0);
+		if (errno == EINTR)
+			return (0);
 		std::cout << "send: " << strerror(errno) << std::endl;
 		return (1);
 	}
-	if (bytesSent)
+
+	if (bytesSent == 0)
+		return (0);
+
+	client.bytesSent += static_cast<size_t>(bytesSent);
+
+	if (client.bytesSent >= client.responseBuffer.size())
 		client.state = CLOSING_CONNECTION;
+
 	return (0);
 }
 
@@ -171,8 +216,8 @@ int WebServ::initListeningSocket()
 
 	int opt = 1;
 	if (setsockopt(
-	        tmpSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
-	    -1)
+			tmpSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) ==
+		-1)
 	{
 		std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
 		close(tmpSocket);
@@ -181,7 +226,7 @@ int WebServ::initListeningSocket()
 	return (tmpSocket);
 }
 
-int WebServ::bindSockAddress (int listeningSocket, size_t configIndex)
+int WebServ::bindSockAddress(int listeningSocket, size_t configIndex)
 {
 
 	struct addrinfo hints;
@@ -223,60 +268,55 @@ int WebServ::bindSockAddress (int listeningSocket, size_t configIndex)
 
 int WebServ::setup(std::vector<ServerConfig> servers)
 {
-  //TODO: add created ListenerSockets to pollfds and to map
+	// TODO: add created ListenerSockets to pollfds and to map
 	std::cout << "WebServ setup called!\n";
 
-  this->configs = servers; // Refactor instead of copying?
-  bool stop = true;
-  for (size_t i = 0; i < servers.size(); ++i)
-  {
-    ServerConfig& tmpConfig = servers[i];
+	this->configs = servers; // Refactor instead of copying?
+	bool stop = true;
+	for (size_t i = 0; i < servers.size(); ++i)
+	{
+		ServerConfig &tmpConfig = servers[i];
 
-    // 1. Create socket
-    int listeningSocket = initListeningSocket();
-    if (listeningSocket == -1)
-    {
-      std::cerr << "Server Block " << i << " setup failed!\n";
-      continue;
-    }
+		// 1. Create socket
+		int listeningSocket = initListeningSocket();
+		if (listeningSocket == -1)
+		{
+			std::cerr << "Server Block " << i << " setup failed!\n";
+			continue;
+		}
 
+		// 2. Setup address for socket
+		if (bindSockAddress(listeningSocket, i))
+		{
+			std::cerr << "Server Block " << i << " setup failed!\n";
+			continue;
+		}
 
-    // 2. Setup address for socket
-    if (bindSockAddress(listeningSocket, i))
-    {
-      std::cerr << "Server Block " << i << " setup failed!\n";
-      continue;
-    }
+		// 3. Socket listening
 
-    // 3. Socket listening
+		if (listen(listeningSocket, 10) == -1)
+		{
+			std::cerr << "Error on socket " << i << " listening\n";
+			close(listeningSocket);
+			continue;
+		}
+		if (setNonBlocking(listeningSocket))
+		{
+			std::cerr << "Error setting socket " << i << " as Non blocking\n";
+			close(listeningSocket);
+			continue;
+		}
 
-    if (listen(listeningSocket, 10) == -1)
-    {
-      std::cerr << "Error on socket " << i << " listening\n";
-      close(listeningSocket);
-      continue;
-    }
-    if (setNonBlocking(listeningSocket))
-    {
-      std::cerr << "Error setting socket " << i << " as Non blocking\n";
-      close(listeningSocket);
-      continue;
-    }
+		listenerFdToIndex[listeningSocket] = i;
 
-    listenerFdToIndex[listeningSocket] = i;
+		pollManager.addFd(listeningSocket, POLLIN);
 
-    struct pollfd tmpPollfd;
-    tmpPollfd.fd = listeningSocket;
-    tmpPollfd.events = POLLIN;
-    tmpPollfd.revents = 0;
-    this->pollFds.push_back(tmpPollfd);
-
-    std::cout << "Listening on " << tmpConfig.listen.host << ":"
-              << tmpConfig.listen.port << "\n";
-    stop = false;
-  }
-  if (stop)
-    return (1);
+		std::cout << "Listening on " << tmpConfig.listen.host << ":"
+				  << tmpConfig.listen.port << "\n";
+		stop = false;
+	}
+	if (stop)
+		return (1);
 	return (0);
 }
 
@@ -287,7 +327,7 @@ static std::string ipToString(uint32_t address)
 
 	hostAddress = ntohl(address);
 	oss << ((hostAddress >> 24) & 255) << "." << ((hostAddress >> 16) & 255)
-	    << "." << ((hostAddress >> 8) & 255) << "." << (hostAddress & 255);
+		<< "." << ((hostAddress >> 8) & 255) << "." << (hostAddress & 255);
 	return (oss.str());
 }
 
@@ -296,12 +336,10 @@ int WebServ::acceptConnection(int listeningSocket)
 	sockaddr_in clientAddress;
 	socklen_t clientAddressLength;
 	int clientSocket;
-	struct pollfd tmpPollfd;
 	std::map<int, Client>::iterator clientIt;
 
 	clientAddressLength = sizeof(clientAddress);
-	clientSocket = accept(
-	    listeningSocket, (sockaddr *)&clientAddress, &clientAddressLength);
+	clientSocket = accept(listeningSocket, (sockaddr *)&clientAddress, &clientAddressLength);
 	if (clientSocket == -1)
 	{
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -316,46 +354,78 @@ int WebServ::acceptConnection(int listeningSocket)
 		return (-1);
 	}
 
-	tmpPollfd.fd = clientSocket;
-	tmpPollfd.events = POLLIN;
-	tmpPollfd.revents = 0;
-	this->pollFds.push_back(tmpPollfd);
+	pollManager.addFd(clientSocket, POLLIN);
 
 	clients.insert(std::make_pair(clientSocket, Client(clientSocket)));
 	clientIt = clients.find(clientSocket);
 	if (clientIt != clients.end())
-  {
-
-		clientIt->second.setRemoteAddr(
-		    ipToString(clientAddress.sin_addr.s_addr));
-    clientIt->second.serverIndex = listenerFdToIndex[listeningSocket];
-  }
-	return (clientSocket);
-}
-
-void WebServ::removePollfd(int fd)
-{
-	for (size_t i = 0; i < this->pollFds.size(); i++)
 	{
-		if (this->pollFds[i].fd == fd)
-		{
-			this->pollFds.erase(this->pollFds.begin() + i);
-      return;
-		}
+		clientIt->second.setRemoteAddr(ipToString(clientAddress.sin_addr.s_addr));
+		clientIt->second.serverIndex = listenerFdToIndex[listeningSocket];
 	}
+	return (clientSocket);
 }
 
 bool WebServ::isListeningFd(int fd)
 {
-    return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
+	return (this->listenerFdToIndex.find(fd) != this->listenerFdToIndex.end());
+}
+
+static bool hasActiveCgi(const Client &client)
+{
+	return (client.cgiPid > 0 || client.cgiStdinFd != -1 || client.cgiStdoutFd != -1);
 }
 
 void WebServ::closeAndRemoveFd(int fd)
 {
-  close(fd);
-  removePollfd(fd);
-  clients.erase(fd);
-  listenerFdToIndex.erase(fd);
+	std::map<int, Client>::iterator clientIt;
+
+	clientIt = clients.find(fd);
+	if (clientIt != clients.end())
+	{
+		if (hasActiveCgi(clientIt->second))
+		{
+			std::cout << "Cleaning CGI for disconnected client fd " << fd << std::endl;
+			cgiManager.cleanup(clientIt->second, pollManager);
+		}
+		clients.erase(clientIt);
+	}
+
+	close(fd);
+	pollManager.removeFd(fd);
+	listenerFdToIndex.erase(fd);
+}
+
+static std::string getInspectorErrorMessage(InspectRequestStatus status)
+{
+	if (status == BAD_REQUEST)
+		return ("Bad Request");
+	if (status == REQUEST_TOO_LARGE)
+		return ("Payload Too Large");
+	if (status == URI_TOO_LONG)
+		return ("URI Too Long");
+	if (status == HEADER_TOO_LARGE)
+		return ("Request Header Fields Too Large");
+	if (status == NOT_IMPLEMENTED)
+		return ("Not Implemented");
+	return ("Bad Request");
+}
+
+static void prepareInspectorErrorResponse(Client &client, const ServerConfig &server, InspectRequestStatus status)
+{
+	Response response;
+	int statusCode;
+
+	statusCode = static_cast<int>(status);
+	if (statusCode < 400 || statusCode > 599)
+		statusCode = 400;
+
+	response = ErrorResponseHandler::build(statusCode, getInspectorErrorMessage(status), server);
+
+	client.responseBuffer = response.toString();
+	client.bytesSent = 0;
+	client.responseReady = true;
+	client.state = WRITING;
 }
 
 int WebServ::run()
@@ -364,7 +434,13 @@ int WebServ::run()
 
 	while (true)
 	{
-		int ready = poll(&this->pollFds[0], this->pollFds.size(), -1);
+		std::vector<pollfd> &pollFds = pollManager.getFds();
+		
+		if (pollManager.empty())
+			return (1);
+
+		int ready = poll(&pollFds[0], pollFds.size(), cgiManager.getPollTimeoutMs(clients));
+		
 		if (ready < 0)
 		{
 			if (errno == EINTR)
@@ -372,87 +448,117 @@ int WebServ::run()
 			std::cerr << "poll: " << strerror(errno) << std::endl;
 			return (1);
 		}
-		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+		// Check CGI timeouts on each loop iteration
+		cgiManager.checkTimeouts(clients, configs, pollManager);
 
+		// No events, continue polling
+		if (ready == 0)
+			continue;
+
+		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
 
 		// PollFds loop
 
-    size_t i = 0;
-    while (i < pollFds.size())
+		size_t i = 0;
+		while (i < pollFds.size())
 		{
 			int curFD = pollFds[i].fd;
 
-      if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-      {
-        closeAndRemoveFd(curFD);
-        continue;
-      }
+			if (cgiManager.isCgiFd(curFD))
+			{
+				if (cgiManager.handleEvent(curFD, pollFds[i].revents, clients, configs, pollManager) == 0)
+					++i;
+				continue;
+			}
 
-		// Accept connections
+			if (pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+			{
+				closeAndRemoveFd(curFD);
+				continue;
+			}
 
-      if (isListeningFd(curFD))
-      {
-        if (pollFds[i].revents & POLLIN)
-          acceptConnection(curFD);
+			// Accept connections
 
-        ++i;
-        continue;
-      }
-      else
-      {
-          std::map<int, Client>::iterator clientIt = clients.find(curFD);
-          if (clientIt == clients.end())
-          {
-            ++i;
-            continue;
-          }
+			if (isListeningFd(curFD))
+			{
+				if (pollFds[i].revents & POLLIN)
+					acceptConnection(curFD);
 
-          Client& curClient = clientIt->second;
-          if (this->pollFds[i].revents & POLLIN)
-          {
-            curClient.state = READING;
-            readFromClient(curClient);
-            if (curClient.state == CLOSING_CONNECTION)
-            {
-              closeAndRemoveFd(curFD);
-              continue;
-            }
+				++i;
+				continue;
+			}
+			else
+			{
+				std::map<int, Client>::iterator clientIt = clients.find(curFD);
+				if (clientIt == clients.end())
+				{
+					++i;
+					continue;
+				}
 
-            RequestParser parser;
-            RequestInspector inspector;
+				Client &curClient = clientIt->second;
+				if (curClient.state == CGI_WRITING || curClient.state == CGI_READING)
+				{
+					if (pollFds[i].revents & POLLIN)
+					{
+						readFromClient(curClient);
+						if (curClient.state == CLOSING_CONNECTION)
+						{
+							closeAndRemoveFd(curFD);
+							continue;
+						}
+						curClient.rawRequest.clear();
+					}
+					++i;
+					continue;
+				}
+				if (pollFds[i].revents & POLLIN)
+				{
+					curClient.state = READING;
+					readFromClient(curClient);
+					if (curClient.state == CLOSING_CONNECTION)
+					{
+						closeAndRemoveFd(curFD);
+						continue;
+					}
 
-            inspector.inspectRequest(curClient.getRawRequest());
-            if (inspector.status == COMPLETED)
-            {
-              parser.parse(curClient.getRawRequest(), curClient.request);
-            }
-            else if (inspector.status == NEED_MORE_DATA)
-            {
-              ++i;
-              continue;
-            }
-            else
-            {
-              // TODO: RequestHandler for errors and close connection
-              closeAndRemoveFd(curFD);
-              continue;
-            }
+					RequestParser parser;
+					RequestInspector inspector;
 
-            // TODO: if request is valid set as POLLOUT
-            this->pollFds[i].events = POLLOUT;
-          }
-          if (this->pollFds[i].revents & POLLOUT)
-          {
-            curClient.state = WRITING;
-            SendToClient(curClient);
-            if (curClient.state == CLOSING_CONNECTION)
-            {
-              closeAndRemoveFd(curFD);
-              continue;
-          }
-        }
-      }
-      ++i;
+					inspector.inspectRequest(curClient.getRawRequest(), configs[curClient.serverIndex].clientMaxBodySize);
+					if (inspector.status == COMPLETED)
+					{
+						parser.parse(curClient.getRawRequest(), curClient.request);
+					}
+					else if (inspector.status == NEED_MORE_DATA)
+					{
+						++i;
+						continue;
+					}
+					else
+					{
+						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex], inspector.status);
+
+						pollManager.setEvents(curFD, POLLOUT);
+						++i;
+						continue;
+					}
+
+					// TODO: if request is valid set as POLLOUT
+					pollManager.setEvents(curFD, POLLOUT);
+				}
+				if (pollFds[i].revents & POLLOUT)
+				{
+					curClient.state = WRITING;
+					SendToClient(curClient);
+					if (curClient.state == CLOSING_CONNECTION)
+					{
+						closeAndRemoveFd(curFD);
+						continue;
+					}
+				}
+			}
+			++i;
 		}
 	}
 }

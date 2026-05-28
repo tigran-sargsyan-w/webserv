@@ -28,6 +28,10 @@ std::string Response::getReasonPhrase () const
 	{
 		case 200:
 			return ("OK");
+		case 201:
+			return ("Created");
+		case 204:
+			return ("No Content");
 		case 301:
 			return ("Moved Permanently");
 		case 302:
@@ -46,8 +50,14 @@ std::string Response::getReasonPhrase () const
 			return ("Not Found");
 		case 405:
 			return ("Method Not Allowed");
+		case 409:
+			return ("Conflict");
 		case 413:
 			return ("Payload Too Large");
+		case 414:
+			return ("URI Too Long");
+		case 431:
+			return ("Request Header Fields Too Large");
 		case 500:
 			return ("Internal Server Error");
 		case 501:

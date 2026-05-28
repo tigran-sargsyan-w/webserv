@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <sys/types.h>
 
 typedef std::map<std::string, std::string> CgiEnv;
 
@@ -38,10 +39,21 @@ struct CgiContext
 {
 	std::string executable;
 	std::string scriptPath;
+	std::string scriptFileName;
+	std::string workingDirectory;
 	std::string requestBody;
 	CgiStandardMetaVariables standard;
 	CgiHttpHeaderVariables httpHeaders;
 	CgiImplementationVariables implementation;
+};
+
+struct CgiProcess
+{
+    pid_t pid;
+    int stdinFd;
+    int stdoutFd;
+
+    CgiProcess() : pid(-1), stdinFd(-1), stdoutFd(-1) {}
 };
 
 class CgiHandler
@@ -50,7 +62,7 @@ public:
 	CgiHandler();
 	~CgiHandler();
 
-	static std::string runCgi(const CgiContext &context);
+	static int startCgi(const CgiContext &context, CgiProcess &process);
 
 private:
 	static void addEnv(CgiEnv &env, const std::string &key, const std::string &value);

@@ -1,6 +1,5 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
-#include "ErrorResponseBuilder.hpp"
 #include "utils.hpp"
 
 #include <cctype>
@@ -48,7 +47,7 @@ static void addCgiHeadersToResponse(Response &response, const std::string &heade
     }
 }
 
-static Response buildCgiResponse(const std::string &cgiOutput)
+Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
 {
     Response response;
     std::string separator;
@@ -144,6 +143,16 @@ static std::string getDirectoryName(const std::string &path)
     if (slash == 0)
         return ("/");
     return (path.substr(0, slash));
+}
+
+static std::string getFileName(const std::string &path)
+{
+    size_t slash;
+
+    slash = path.find_last_of('/');
+    if (slash == std::string::npos)
+        return (path);
+    return (path.substr(slash + 1));
 }
 
 static std::string getRequestTime(void)
@@ -360,7 +369,12 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
 
     context.executable = cgiPath.executable;
     context.scriptPath = cgiPath.scriptPath;
+    context.scriptFileName = getFileName(cgiPath.scriptPath);
+    context.workingDirectory = getDirectoryName(cgiPath.scriptPath);
     context.requestBody = request.getBody();
+    std::cout << "CGI scriptPath: " << context.scriptPath << std::endl;
+    std::cout << "CGI scriptFileName: " << context.scriptFileName << std::endl;
+    std::cout << "CGI workingDirectory: " << context.workingDirectory << std::endl;
     std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
     addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
     addHttpHeaderVariables(context, request);
@@ -391,19 +405,13 @@ bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &
     return (cgiPath.isCgi);
 }
 
-Response CgiRequestHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
     CgiResolvedPath cgiPath;
-    CgiContext context;
-    std::string cgiOutput;
 
     cgiPath = resolveCgiPath(request, route);
     if (!cgiPath.isCgi)
-        return (ErrorResponseBuilder::build(403, "Forbidden"));
+        return (CgiContext());
 
-    context = buildCgiContext(request, route, server, remoteAddr, cgiPath);
-    std::cout << "CGI script path: " << context.scriptPath << std::endl;
-
-    cgiOutput = CgiHandler::runCgi(context);
-    return (buildCgiResponse(cgiOutput));
+    return (buildCgiContext(request, route, server, remoteAddr, cgiPath));
 }

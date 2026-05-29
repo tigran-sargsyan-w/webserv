@@ -54,6 +54,13 @@ static bool parseSize(const std::string &text, size_t &value)
 	return (true);
 }
 
+enum ContentLengthResult
+{
+	CL_ABSENT,
+	CL_VALID,
+	CL_INVALID
+};
+
 static bool getContentLength(const std::string &headers, size_t &contentLength)
 {
 	std::istringstream stream;
@@ -61,6 +68,8 @@ static bool getContentLength(const std::string &headers, size_t &contentLength)
 	std::string key;
 	std::string value;
 	size_t colon;
+	bool found = false;
+	size_t parsed = 0;
 
 	stream.str(headers);
 	while (std::getline(stream, line))
@@ -77,9 +86,22 @@ static bool getContentLength(const std::string &headers, size_t &contentLength)
 		trimLeft(value);
 
 		if (key == "Content-Length")
-			return (parseSize(value, contentLength));
+		{
+			size_t current = 0;
+			// invalid CL (letters, signs...)
+			if (!parseSize(value, current))
+				return (CL_INVALID);
+			// conflicting CLs
+			if (found && current != parsed)
+				return (CL_INVALID);
+			parsed = current;
+			found = true;
+		}
 	}
-	return (false);
+	if (!found)
+		return (CL_ABSENT);
+	contentLength = parsed;
+	return (CL_VALID);
 }
 
 void RequestInspector::inspectRequestLine(const std::string &requestLine)

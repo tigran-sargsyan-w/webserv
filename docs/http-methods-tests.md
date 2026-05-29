@@ -27,10 +27,10 @@ The goal is to verify that every possible outcome of `handlePost` and `handleHtt
 Both methods use `getSafeUploadPath` to resolve the destination path, which:
 
 1. URL-decodes the request path
-2. Rejects paths containing `..` or null bytes
-3. Extracts the filename (last segment after `/`)
-4. Resolves `uploadStore` to its real absolute path using `realpath()`
-5. Returns the concatenation of the resolved store path and the filename
+2. Checks for path traversal sequences (`..`), null bytes, or empty names
+3. Extracts and isolates the filename safely
+4. Concatenates the configured `upload_store` path with the verified filename
+5. Returns an empty string if any security check fails, triggering a `400 Bad Request` for POST or a `403 Forbidden` for DELETE
 
 ---
 

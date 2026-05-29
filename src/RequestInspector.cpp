@@ -61,7 +61,7 @@ enum ContentLengthResult
 	CL_INVALID
 };
 
-static bool getContentLength(const std::string &headers, size_t &contentLength)
+static ContentLengthResult getContentLength(const std::string &headers, size_t &contentLength)
 {
 	std::istringstream stream;
 	std::string line;
@@ -195,8 +195,14 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 
 	headers = rawRequest.substr(0, headerEnd);
 	contentLength = 0;
+	ContentLengthResult clResult = getContentLength(headers, contentLength);
 
-	if (getContentLength(headers, contentLength))
+	if (clResult == CL_INVALID)
+	{
+		this->status = BAD_REQUEST;
+		return this->status;
+	}
+	if (clResult == CL_VALID)
 	{
 		if (contentLength > maxBodySize)
 		{

@@ -37,15 +37,20 @@ static void trimLeft(std::string &value)
 
 static bool parseSize(const std::string &text, size_t &value)
 {
-	std::istringstream stream;
-	char extra;
+	const size_t maxBeforeMul = static_cast<size_t>(-1) / 10;
 
-	stream.str(text);
-	stream >> value;
-	if (stream.fail())
+	if (text.empty())
 		return (false);
-	if (stream >> extra)
-		return (false);
+
+	value = 0;
+	for (size_t i = 0; i < text.length(); ++i)
+	{
+		if (text[i] < '0' || text[i] > '9')
+			return (false);
+		if (value > maxBeforeMul)
+			return (false);
+		value = value * 10 + (text[i] - '0');
+	}
 	return (true);
 }
 

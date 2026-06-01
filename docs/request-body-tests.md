@@ -38,7 +38,7 @@ make re
 Upload it:
 
 ```bash
-curl http://localhost:8080/uploads/body.txt --data-binary @/tmp/body.txt
+curl -i http://localhost:8080/uploads/body.txt --data-binary @/tmp/body.txt
 ```
 
 Expected result:
@@ -54,7 +54,7 @@ HTTP/1.1 201 Created
 This is the case that exposed the original bug: a binary file contains null bytes.
 
 ```bash
-curl http://localhost:8080/uploads/image.bin --data-binary @/bin/ls
+curl -i http://localhost:8080/uploads/image.bin --data-binary @/bin/ls
 ```
 
 Expected result:
@@ -63,11 +63,10 @@ Expected result:
 HTTP/1.1 201 Created
 ```
 
-Verify that the uploaded file is identical to the original, byte for byte
-(replace `UPLOAD_DIR` with the directory where the server stores uploads):
+Verify that the uploaded file is identical to the original, byte for byte :
 
 ```bash
-cmp /bin/ls UPLOAD_DIR/image.bin
+cmp /bin/ls www/uploads/image.bin
 echo $?
 ```
 
@@ -87,7 +86,7 @@ Send a body shorter than the announced `Content-Length`. The server must keep
 waiting instead of answering, so the request times out on the client side.
 
 ```bash
-curl --max-time 3 \
+curl -i --max-time 3 \
      -H "Content-Length: 999999" \
      -H "Content-Type: text/plain" \
      --data "too short" \

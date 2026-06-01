@@ -633,6 +633,8 @@ curl -X POST http://localhost:8080/uploads/test.txt --data-binary "hello world" 
 curl -X POST http://localhost:8080/uploads/ --data-binary "hello" -v
 curl -X POST http://localhost:8080/uploads/test.txt --data-binary "" -v
 curl -X POST "http://localhost:8080/uploads/..%2Fetc%2Fpasswd" --data-binary "hack" --path-as-is -v
+curl -X POST http://localhost:8080/uploads/big.bin --data-binary @big.bin -v
+curl -X POST http://localhost:8080/uploads --data-binary "edge case" -v
 
 # DELETE
 curl -X DELETE http://localhost:8080/uploads/test.txt -v
@@ -653,4 +655,5 @@ Expected summary:
 | `DELETE /uploads/doesnotexist.txt` | `404 Not Found` | File not found |
 | `DELETE /uploads/` | `403 Forbidden` | Empty filename |
 | `DELETE /uploads/..%2Fetc%2Fpasswd` | `403 Forbidden` | Traversal blocked |
-
+| `POST /uploads/big.bin` oversized | `413 Payload Too Large` | Size limit enforced |
+| `POST /uploads` (no filename) | `201 Created` | Last path segment as name |

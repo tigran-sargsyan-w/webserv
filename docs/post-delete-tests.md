@@ -336,7 +336,21 @@ wc -c www/uploads/image.bin
 wc -c /bin/ls
 ```
 
-Both values must match.
+Both values must match. Then confirm the content is byte-for-byte identical,
+not just the same size:
+
+```bash
+diff /bin/ls www/uploads/image.bin && echo "IDENTICAL"
+```
+
+Expected output:
+
+```txt
+IDENTICAL
+```
+
+`diff` exits silently with status 0 when files are identical; any byte
+difference (e.g. body corruption during write) would print the mismatch.
 
 ---
 

@@ -354,6 +354,52 @@ difference (e.g. body corruption during write) would print the mismatch.
 
 ---
 
+### 3.11 Body too large (exceeds client_max_body_size)
+
+This is the key case proving large uploads are bounded and rejected cleanly,
+not buffered until the server runs out of memory.
+
+Make sure the upload route (or server block) has a small limit, e.g.:
+
+```conf
+client_max_body_size 1m;
+```
+
+Generate a file larger than the limit and upload it:
+
+```bash
+head -c 5M /dev/urandom > big.bin
+curl -X POST http://localhost:8080/uploads/big.bin \
+  --data-binary @big.bin -v
+```
+
+Expected:
+
+```http
+HTTP/1.1 413 Payload Too Large
+```
+
+The rejection must happen during request inspection (before the full body is
+buffered), and no file should be written:
+
+```bash
+ls www/uploads/big.bin
+```
+
+Expected:
+
+```txt
+ls: cannot access 'www/uploads/big.bin': No such file or directory
+```
+
+Cleanup:
+
+```bash
+rm -f big.bin
+```
+
+---
+
 ## 4. DELETE tests
 
 ### 4.1 Successful deletion

@@ -37,25 +37,39 @@ static void trimLeft(std::string &value)
 
 static bool parseSize(const std::string &text, size_t &value)
 {
-	std::istringstream stream;
-	char extra;
+	const size_t maxBeforeMul = static_cast<size_t>(-1) / 10;
 
-	stream.str(text);
-	stream >> value;
-	if (stream.fail())
+	if (text.empty())
 		return (false);
-	if (stream >> extra)
-		return (false);
+
+	value = 0;
+	for (size_t i = 0; i < text.length(); ++i)
+	{
+		if (text[i] < '0' || text[i] > '9')
+			return (false);
+		if (value > maxBeforeMul)
+			return (false);
+		value = value * 10 + (text[i] - '0');
+	}
 	return (true);
 }
 
-static bool getContentLength(const std::string &headers, size_t &contentLength)
+enum ContentLengthResult
+{
+	CL_ABSENT,
+	CL_VALID,
+	CL_INVALID
+};
+
+static ContentLengthResult getContentLength(const std::string &headers, size_t &contentLength)
 {
 	std::istringstream stream;
 	std::string line;
 	std::string key;
 	std::string value;
 	size_t colon;
+	bool found = false;
+	size_t parsed = 0;
 
 	stream.str(headers);
 	while (std::getline(stream, line))
@@ -72,9 +86,22 @@ static bool getContentLength(const std::string &headers, size_t &contentLength)
 		trimLeft(value);
 
 		if (key == "Content-Length")
-			return (parseSize(value, contentLength));
+		{
+			size_t current = 0;
+			// invalid CL (letters, signs...)
+			if (!parseSize(value, current))
+				return (CL_INVALID);
+			// conflicting CLs
+			if (found && current != parsed)
+				return (CL_INVALID);
+			parsed = current;
+			found = true;
+		}
 	}
-	return (false);
+	if (!found)
+		return (CL_ABSENT);
+	contentLength = parsed;
+	return (CL_VALID);
 }
 
 void RequestInspector::inspectRequestLine(const std::string &requestLine)
@@ -168,8 +195,14 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 
 	headers = rawRequest.substr(0, headerEnd);
 	contentLength = 0;
+	ContentLengthResult clResult = getContentLength(headers, contentLength);
 
-	if (getContentLength(headers, contentLength))
+	if (clResult == CL_INVALID)
+	{
+		this->status = BAD_REQUEST;
+		return this->status;
+	}
+	if (clResult == CL_VALID)
 	{
 		if (contentLength > maxBodySize)
 		{

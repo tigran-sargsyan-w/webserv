@@ -21,8 +21,8 @@
 
 #include <ctime>
 #include <signal.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 WebServ::WebServ()
 {
@@ -82,8 +82,7 @@ int WebServ::readFromClient(Client &client)
 	}
 	else
 	{
-		buffer[bytesRead] = '\0';
-		client.rawRequest.append(buffer);
+		client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
 		// std::cout << "Request from client:\n\n" << client.rawRequest <<
 		// std::endl;
 	}
@@ -257,7 +256,8 @@ int WebServ::bindSockAddress(int listeningSocket, size_t configIndex)
 
 	if (bind(listeningSocket, res->ai_addr, res->ai_addrlen) == -1)
 	{
-		std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
+		std::cerr << "Error binding socket\n"
+				  << std::strerror(errno) << "\n";
 		freeaddrinfo(res);
 		close(listeningSocket);
 		return (1);
@@ -435,12 +435,12 @@ int WebServ::run()
 	while (true)
 	{
 		std::vector<pollfd> &pollFds = pollManager.getFds();
-		
+
 		if (pollManager.empty())
 			return (1);
 
 		int ready = poll(&pollFds[0], pollFds.size(), cgiManager.getPollTimeoutMs(clients));
-		
+
 		if (ready < 0)
 		{
 			if (errno == EINTR)
@@ -455,7 +455,8 @@ int WebServ::run()
 		if (ready == 0)
 			continue;
 
-		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+		std::cout << "Sockets Ready - " << ready << "\n"
+				  << std::endl;
 
 		// PollFds loop
 

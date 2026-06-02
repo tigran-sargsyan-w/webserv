@@ -336,9 +336,98 @@ wc -c www/uploads/image.bin
 wc -c /bin/ls
 ```
 
-Both values must match.
+Both values must match. Then confirm the content is byte-for-byte identical, not just the same size:
+
+```bash
+diff /bin/ls www/uploads/image.bin && echo "IDENTICAL"
+```
+
+Expected output:
+
+```txt
+IDENTICAL
+```
+
+`diff` exits silently with status 0 when files are identical; any byte difference (e.g. body corruption during write) would print the mismatch.
 
 ---
+
+### 3.11 Body too large (exceeds client_max_body_size)
+
+This is the key case proving large uploads are bounded and rejected cleanly, not buffered until the server runs out of memory.
+
+Make sure the upload route (or server block) has a small limit, e.g.:
+
+```conf
+client_max_body_size 1m;
+```
+
+Generate a file larger than the limit and upload it:
+
+```bash
+head -c 5M /dev/urandom > big.bin
+curl -X POST http://localhost:8080/uploads/big.bin \
+  --data-binary @big.bin -v
+```
+
+Expected:
+
+```http
+HTTP/1.1 413 Payload Too Large
+```
+
+The rejection must happen during request inspection (before the full body is buffered), and no file should be written:
+
+```bash
+ls www/uploads/big.bin
+```
+
+Expected:
+
+```txt
+ls: cannot access 'www/uploads/big.bin': No such file or directory
+```
+
+Cleanup:
+
+```bash
+rm -f big.bin
+```
+
+---
+
+### 3.12 Upload to route path without a trailing filename
+
+A POST on the route prefix itself (no trailing `/`) uses the last path segment as the filename, so the file is literally named after the route.
+
+```bash
+curl -X POST http://localhost:8080/uploads \
+  --data-binary "edge case" -v
+```
+
+Expected:
+
+```http
+HTTP/1.1 201 Created
+```
+
+Verify a file named `uploads` was created inside the store:
+
+```bash
+cat www/uploads/uploads
+```
+
+Expected output:
+
+```txt
+edge case
+```
+
+Cleanup:
+
+```bash
+rm -f www/uploads/uploads
+```
 
 ## 4. DELETE tests
 
@@ -544,6 +633,8 @@ curl -X POST http://localhost:8080/uploads/test.txt --data-binary "hello world" 
 curl -X POST http://localhost:8080/uploads/ --data-binary "hello" -v
 curl -X POST http://localhost:8080/uploads/test.txt --data-binary "" -v
 curl -X POST "http://localhost:8080/uploads/..%2Fetc%2Fpasswd" --data-binary "hack" --path-as-is -v
+curl -X POST http://localhost:8080/uploads/big.bin --data-binary @big.bin -v
+curl -X POST http://localhost:8080/uploads --data-binary "edge case" -v
 
 # DELETE
 curl -X DELETE http://localhost:8080/uploads/test.txt -v
@@ -564,4 +655,5 @@ Expected summary:
 | `DELETE /uploads/doesnotexist.txt` | `404 Not Found` | File not found |
 | `DELETE /uploads/` | `403 Forbidden` | Empty filename |
 | `DELETE /uploads/..%2Fetc%2Fpasswd` | `403 Forbidden` | Traversal blocked |
-
+| `POST /uploads/big.bin` oversized | `413 Payload Too Large` | Size limit enforced |
+| `POST /uploads` (no filename) | `201 Created` | Last path segment as name |

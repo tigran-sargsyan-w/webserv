@@ -70,11 +70,7 @@ int WebServ::readFromClient(Client &client)
 
 	bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
 	if (bytesRead == -1)
-	{
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return (0);
 		return 1;
-	}
 	else if (bytesRead == 0)
 	{
 		std::cout << "Client closed connection\n";

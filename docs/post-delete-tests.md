@@ -17,6 +17,18 @@ The goal is to verify that every possible outcome of `handlePost` and `handleHtt
 - a non-empty request body
 - a valid, safe filename in the request path
 
+### Upload authorization (per route)
+
+Before `handlePost` runs, `handleRequest` checks that the HTTP method is listed in the route `methods` directive.
+
+| Situation | Where it is checked | Expected status |
+|-----------|---------------------|-----------------|
+| `POST` not in `methods` (e.g. `/static`) | `validateMethod` in `handleRequest` | `405 Method Not Allowed` + `Allow` header |
+| `POST` allowed but `upload_enable off` (e.g. `/`) | `handlePost` | `403 Forbidden` |
+| `POST` allowed and `upload_enable on` with valid `upload_store` (e.g. `/uploads`) | `handlePost` | `201 Created` (if body and path are valid) |
+
+With `configs/default.conf`, you do **not** need an extra `location /no-upload`: `location /` already has `methods GET POST DELETE` and `upload_enable off`.
+
 ### DELETE
 
 `handleHttpDelete` deletes a file from `uploadStore`. It requires:

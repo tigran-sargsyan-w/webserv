@@ -183,10 +183,6 @@ int WebServ::SendToClient(Client &client)
 
 	if (bytesSent == -1)
 	{
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return (0);
-		if (errno == EINTR)
-			return (0);
 		std::cout << "send: " << strerror(errno) << std::endl;
 		return (1);
 	}

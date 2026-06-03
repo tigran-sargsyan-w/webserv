@@ -209,6 +209,13 @@ HTTP/1.1 400 Bad Request
 
 ### 3.5 Path traversal with `..` (plain)
 
+Check the size before:
+```bash
+wc -c /etc/passwd
+```
+
+Then do the test:
+
 ```bash
 curl -X POST "http://localhost:8080/uploads/../etc/passwd" \
   --data-binary "hack" --path-as-is -v
@@ -224,10 +231,10 @@ HTTP/1.1 400 Bad Request
 <html><body><h1>400 Bad Request: Invalid file name</h1></body></html>
 ```
 
-Verify nothing was written:
+Verify nothing was written by checking the size after is identical to the size before:
 
 ```bash
-cat /etc/passwd
+wc -c /etc/passwd
 ```
 
 The file must not have been modified.

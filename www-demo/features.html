@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features · webserv</title>
+<meta name="description" content="Supported HTTP features of the webserv C++98 server.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// supported features</span>
+  <h1>Features</h1>
+  <p class="lead" style="color:var(--muted);max-width:680px">
+    Everything below is implemented in our C++98 server and exercised by the demo pages in this site.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="grid">
+    <div class="card"><h3><span class="method get">GET</span> Static files</h3><p>Retrieves any file under a configured <code>root</code>, with MIME type detection and proper status codes.</p></div>
+    <div class="card"><h3><span class="method post">POST</span> Submit data</h3><p>Accepts <code>application/x-www-form-urlencoded</code> and <code>multipart/form-data</code> payloads.</p></div>
+    <div class="card"><h3><span class="method delete">DELETE</span> Remove resources</h3><p>Deletes a resource on disk when the route allows it.</p></div>
+    <div class="card"><h3>📤 File upload</h3><p>Parses multipart bodies and stores files to the configured upload directory.</p></div>
+    <div class="card"><h3>🐍 CGI</h3><p>Executes external interpreters (Python, PHP) and pipes their output back to the client.</p></div>
+    <div class="card"><h3>📂 Autoindex</h3><p>Generates a directory listing page when <code>autoindex on;</code> is set and no index file exists.</p></div>
+    <div class="card"><h3>🚧 Custom error pages</h3><p>Serves project-styled 4xx/5xx pages per the <code>error_page</code> directive.</p></div>
+    <div class="card"><h3>🔀 Redirection</h3><p>Returns 301/302 responses configured per route.</p></div>
+    <div class="card"><h3>🧱 Multiple servers</h3><p>Bind several <code>listen</code> directives with independent <code>server_name</code> and roots.</p></div>
+  </div>
+</section>
+
+<section class="section container">
+  <h2>HTTP methods</h2>
+  <ul class="feature-list">
+    <li><span class="method get">GET</span> &nbsp; safe, idempotent; serves a resource or runs CGI</li>
+    <li><span class="method post">POST</span> &nbsp; accepts forms and uploads</li>
+    <li><span class="method delete">DELETE</span> &nbsp; removes a resource if the route allows it</li>
+  </ul>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

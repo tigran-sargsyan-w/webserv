@@ -1,0 +1,6 @@
+Hello from /files/sample.txt!
+
+This is a plain text file served by webserv.
+Try requesting it with curl:
+
+    curl -i http://localhost:8080/files/sample.txt

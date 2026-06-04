@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File upload · webserv</title>
+<meta name="description" content="Send a multipart file upload to the webserv server.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// POST · multipart/form-data</span>
+  <h1>File upload</h1>
+  <p class="lead" style="color:var(--muted)">Send a file to the server. The webserv config decides where it gets stored.</p>
+</section>
+
+<section class="section container">
+  <form class="form" action="/upload" method="POST" enctype="multipart/form-data">
+    <div class="field">
+      <label for="file">Choose a file to upload</label>
+      <input id="file" type="file" name="file" required>
+    </div>
+    <div class="field">
+      <label for="note">Optional note</label>
+      <input id="note" class="input" type="text" name="note" placeholder="e.g. peer-eval demo">
+    </div>
+    <div>
+      <button class="btn btn-primary" type="submit">⬆ Upload file</button>
+    </div>
+  </form>
+
+  <div class="section">
+    <div class="card">
+      <h3>ℹ Notes for evaluators</h3>
+      <p>
+        Submitting this form sends a <code>POST</code> request with
+        <code>Content-Type: multipart/form-data</code> to the
+        <code>/upload</code> route. The server should accept the body,
+        parse the multipart sections, and save the file to the directory
+        configured by the matching <code>location</code> block.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

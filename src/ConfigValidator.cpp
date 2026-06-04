@@ -8,6 +8,10 @@
 #include <sstream>
 #include <stdexcept>
 
+// new
+#include <sys/stat.h>
+#include <unistd.h>
+
 static std::runtime_error configError(const std::string &message)
 {
 	return (std::runtime_error("Config validation error: " + message));
@@ -130,10 +134,7 @@ static void validateServerUniqueness(const Config &config)
 
 		if (keys.find(key) != keys.end())
 		{
-			throw configError("duplicate server block for "
-				+ server.listen.host + ":"
-				+ toString(server.listen.port)
-				+ " with server_name '" + server.serverName + "'");
+			throw configError("duplicate server block for " + server.listen.host + ":" + toString(server.listen.port) + " with server_name '" + server.serverName + "'");
 		}
 		keys.insert(key);
 	}
@@ -169,6 +170,18 @@ static void validateCgiConfig(const RouteConfig &route)
 	}
 }
 
+// new
+static void validateUploadStoreDirectory(const RouteConfig &route)
+{
+	struct stat pathStat;
+	if (stat(route.uploadStore.c_str(), &pathStat) != 0)
+		throw configError("location " + route.path + " upload_store doesn not exist");
+	if (!S_ISDIR(pathStat.st_mode))
+		throw configError("location " + route.path + " has invalid upload_store directory");
+	if (access(route.uploadStore.c_str(), W_OK) != 0)
+		throw configError("location " + route.path + " upload_store directory is not writable");
+}
+
 static void validateRoutePaths(const RouteConfig &route)
 {
 	if (!isValidLocationPath(route.path))
@@ -190,6 +203,11 @@ static void validateRoute(const RouteConfig &route)
 		throw configError("location " + route.path + " has upload_enable on but upload_store is missing");
 	if (!route.uploadEnable && !route.uploadStore.empty())
 		throw configError("location " + route.path + " has upload_store but upload_enable is off");
+
+	// new
+	if (route.uploadEnable == true)
+		validateUploadStoreDirectory(route);
+
 	if (route.hasReturn && !isRedirectStatusCode(route.returnCode))
 		throw configError("location " + route.path + " has invalid redirect status code");
 	if (route.hasReturn && !isValidRedirectTarget(route.returnPath))
@@ -248,15 +266,15 @@ void ConfigValidator::validate(const Config &config)
 void ConfigValidator::debugPrintValidation(const Config &config)
 {
 	std::cout << ConfigDebug::validator << "[validator] config is valid"
-		<< ConfigDebug::reset << "\n";
+			  << ConfigDebug::reset << "\n";
 	std::cout << ConfigDebug::validator << "  servers: "
-		<< config.servers.size() << ConfigDebug::reset << "\n";
+			  << config.servers.size() << ConfigDebug::reset << "\n";
 	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
 	{
 		const ServerConfig &server = config.servers[serverIndex];
 
 		std::cout << ConfigDebug::validator << "  server #"
-			<< serverIndex << " routes: " << server.routes.size()
-			<< ConfigDebug::reset << "\n";
+				  << serverIndex << " routes: " << server.routes.size()
+				  << ConfigDebug::reset << "\n";
 	}
 }

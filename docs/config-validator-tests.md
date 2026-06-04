@@ -1120,7 +1120,231 @@ If the project decides to allow `upload_store` while `upload_enable off`, this t
 
 ---
 
-## 20. Test: invalid redirect status code
+## 20. Test: upload_store filesystem validation at startup
+
+### Preparation
+
+Use `configs/default.conf`, which enables upload on `/uploads` with `upload_store ./www/uploads`.
+
+Temporarily hide the upload directory:
+
+```bash
+mv www/uploads www/uploads.bak
+```
+
+### Command
+
+```bash
+./webserv configs/default.conf
+```
+
+### Expected result
+
+The server must not start.
+
+Expected error example:
+
+```txt
+Config validation error: location /uploads: upload_store ./www/uploads does not exist
+```
+
+### Cleanup
+
+```bash
+mv www/uploads.bak www/uploads
+```
+
+If the backup does not exist:
+
+```bash
+mkdir -p www/uploads
+chmod u+rwx www/uploads
+```
+
+### Purpose
+
+Checks that a missing `upload_store` path is rejected at startup instead of failing later during POST with `400 Bad Request`.
+
+The validator must **not** create the directory automatically.
+
+---
+
+## 21. Test: upload_store is not a directory
+
+### Preparation
+
+Create:
+
+```bash
+touch www/fake_upload_store
+
+cat > configs/validator-tests/upload_store_is_file.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name validator_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location /uploads {
+        methods GET POST DELETE;
+        root ./www/uploads;
+        upload_enable on;
+        upload_store ./www/fake_upload_store;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/validator-tests/upload_store_is_file.conf
+```
+
+### Expected result
+
+The server must not start.
+
+Expected error example:
+
+```txt
+Config validation error: location /uploads has invalid upload_store directory
+```
+
+### Cleanup
+
+```bash
+rm -f www/fake_upload_store
+```
+
+### Purpose
+
+Checks that `upload_store` cannot point to a regular file.
+
+---
+
+## 22. Test: upload_store is not writable
+
+### Preparation
+
+Create:
+
+```bash
+mkdir -p www/uploads_readonly
+chmod a-w www/uploads_readonly
+
+cat > configs/validator-tests/upload_store_not_writable.conf <<'EOF'
+server {
+    listen 127.0.0.1:8080;
+    server_name validator_test;
+
+    root ./www;
+    index index.html;
+    client_max_body_size 1048576;
+
+    location /uploads {
+        methods GET POST DELETE;
+        root ./www/uploads;
+        upload_enable on;
+        upload_store ./www/uploads_readonly;
+    }
+}
+EOF
+```
+
+### Command
+
+```bash
+./webserv configs/validator-tests/upload_store_not_writable.conf
+```
+
+### Expected result
+
+The server must not start.
+
+Expected error example:
+
+```txt
+Config validation error: location /uploads upload_store directory is not writable
+```
+
+### Cleanup
+
+```bash
+chmod u+rwx www/uploads_readonly
+```
+
+### Purpose
+
+Checks that the process has write permission on the configured upload directory before the server starts listening.
+
+---
+
+## 23. Test: valid upload_store allows server startup
+
+### Preparation
+
+Relative paths such as `./www/uploads` are resolved from the **project root** when `./webserv` is launched.
+
+```bash
+mkdir -p www/uploads
+chmod u+rwx www/uploads
+```
+
+### Command
+
+```bash
+./webserv configs/default.conf
+```
+
+### Expected result
+
+The server starts and prints a listening message, for example:
+
+```txt
+Listening on 127.0.0.1:8080
+```
+
+Stop the server with `Ctrl+C`, or keep it running for the upload check below.
+
+### Upload regression
+
+With the server running:
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/uploads/small.txt \
+  --data-binary @www/static/client-max-body-size-tests/small.txt
+```
+
+Expected:
+
+```http
+HTTP/1.1 201 Created
+```
+
+Verify on disk:
+
+```bash
+cat www/uploads/small.txt
+```
+
+Cleanup (optional):
+
+```bash
+rm -f www/uploads/small.txt
+```
+
+For more POST and DELETE cases, see `docs/post-delete-tests.md`.
+
+### Purpose
+
+Checks that a valid writable `upload_store` does not break startup or normal upload behavior.
+
+---
+
+## 24. Test: invalid redirect status code
 
 Create:
 
@@ -1170,7 +1394,7 @@ Supported redirect codes:
 
 ---
 
-## 21. Test: invalid redirect target
+## 25. Test: invalid redirect target
 
 Create:
 
@@ -1220,7 +1444,7 @@ or:
 
 ---
 
-## 22. Test: invalid error_page status code
+## 26. Test: invalid error_page status code
 
 Create:
 
@@ -1271,7 +1495,7 @@ Accepted range:
 
 ---
 
-## 23. Test: valid error_page status codes
+## 27. Test: valid error_page status codes
 
 Create:
 
@@ -1324,7 +1548,7 @@ Checks that valid HTTP error status codes are accepted.
 
 ---
 
-## 24. Test: invalid CGI extension without dot
+## 28. Test: invalid CGI extension without dot
 
 Create:
 
@@ -1370,7 +1594,7 @@ Checks that CGI extensions must use the expected extension format:
 
 ---
 
-## 25. Test: invalid CGI extension with only dot
+## 29. Test: invalid CGI extension with only dot
 
 Create:
 
@@ -1411,7 +1635,7 @@ Checks that `.` alone is not accepted as a CGI extension.
 
 ---
 
-## 26. Test: duplicate CGI extension
+## 30. Test: duplicate CGI extension
 
 Create:
 
@@ -1457,7 +1681,7 @@ Checks that a single location cannot define two executables for the same CGI ext
 
 ---
 
-## 27. Test: valid CGI configuration
+## 31. Test: valid CGI configuration
 
 Create:
 
@@ -1504,7 +1728,7 @@ Checks that multiple different CGI extensions can be configured in the same loca
 
 ---
 
-## 28. Test: missing semicolon
+## 32. Test: missing semicolon
 
 Create:
 
@@ -1547,7 +1771,7 @@ Checks that syntax errors are caught by the parser before validation.
 
 ---
 
-## 29. Test: missing closing brace
+## 33. Test: missing closing brace
 
 Create:
 
@@ -1585,7 +1809,7 @@ Checks that incomplete config blocks are rejected.
 
 ---
 
-## 30. Quick regression checklist
+## 34. Quick regression checklist
 
 Before opening or merging the PR, run these checks manually from the project root.
 
@@ -1614,6 +1838,8 @@ Then run each config file:
 ./webserv configs/invalid/invalid_upload_enable.conf
 ./webserv configs/invalid/upload_enabled_without_store.conf
 ./webserv configs/invalid/upload_store_with_upload_disabled.conf
+./webserv configs/validator-tests/upload_store_is_file.conf
+./webserv configs/validator-tests/upload_store_not_writable.conf
 ./webserv configs/invalid/invalid_redirect_code.conf
 ./webserv configs/invalid/invalid_redirect_target.conf
 ./webserv configs/invalid/invalid_error_page_code.conf

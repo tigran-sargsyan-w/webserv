@@ -175,10 +175,10 @@ static void validateUploadStoreDirectory(const RouteConfig &route)
 {
 	struct stat pathStat;
 	if (stat(route.uploadStore.c_str(), &pathStat) != 0)
-		throw configError("location " + route.path + " upload_store doesn not exist");
-	if (!S_ISDIR(pathStat.st_mode))
+		throw configError("location " + route.path + " upload_store does not exist");
+	else if (!S_ISDIR(pathStat.st_mode))
 		throw configError("location " + route.path + " has invalid upload_store directory");
-	if (access(route.uploadStore.c_str(), W_OK) != 0)
+	else if (access(route.uploadStore.c_str(), W_OK) != 0)
 		throw configError("location " + route.path + " upload_store directory is not writable");
 }
 
@@ -205,7 +205,7 @@ static void validateRoute(const RouteConfig &route)
 		throw configError("location " + route.path + " has upload_store but upload_enable is off");
 
 	// new
-	if (route.uploadEnable == true)
+	if (route.uploadEnable)
 		validateUploadStoreDirectory(route);
 
 	if (route.hasReturn && !isRedirectStatusCode(route.returnCode))

@@ -18,6 +18,7 @@ Covered features:
 * accepted HTTP methods validation;
 * `autoindex` value validation;
 * upload configuration validation;
+* `upload_store` filesystem validation at startup (exists, directory, writable);
 * redirect configuration validation;
 * CGI extension and executable validation;
 * duplicate CGI extension detection;
@@ -1894,6 +1895,10 @@ Expected summary:
 | `invalid_upload_enable.conf`             |           fails | upload_enable must be `on` or `off` |
 | `upload_enabled_without_store.conf`      |           fails | upload_store required               |
 | `upload_store_with_upload_disabled.conf` |           fails | contradictory upload config         |
+| `default.conf` with missing `www/uploads`|           fails | `upload_store` does not exist       |
+| `upload_store_is_file.conf`              |           fails | `upload_store` not a directory      |
+| `upload_store_not_writable.conf`         |           fails | `upload_store` not writable         |
+| `default.conf` with valid `www/uploads`  |          starts | valid upload directory              |
 | `invalid_redirect_code.conf`             |           fails | invalid redirect code               |
 | `invalid_redirect_target.conf`           |           fails | invalid redirect target             |
 | `invalid_error_page_code.conf`           |           fails | invalid error_page code             |

@@ -1,4 +1,5 @@
 #include "RequestInspector.hpp"
+#include "utils.hpp"
 
 #include <string>
 #include <sstream>
@@ -81,11 +82,11 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 		if (colon == std::string::npos)
 			continue;
 
-		key = line.substr(0, colon);
+		key = toLowerCase(line.substr(0, colon));
 		value = line.substr(colon + 1);
 		trimLeft(value);
 
-		if (key == "Content-Length")
+		if (key == "content-length")
 		{
 			size_t current = 0;
 			// invalid CL (letters, signs...)

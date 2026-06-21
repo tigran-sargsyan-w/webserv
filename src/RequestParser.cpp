@@ -15,7 +15,7 @@ static bool getContentLength(const Request &request, size_t &contentLength)
     std::map<std::string, std::string>::const_iterator it;
     std::istringstream stream;
 
-    it = request.getHeaders().find("Content-Length");
+    it = request.getHeaders().find("content-length");
     if (it == request.getHeaders().end())
         return (false);
 

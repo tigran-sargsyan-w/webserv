@@ -1,3 +1,6 @@
+#include "utils.hpp"
+
+#include <cctype>
 #include <sstream>
 
 std::string intToString(int num)

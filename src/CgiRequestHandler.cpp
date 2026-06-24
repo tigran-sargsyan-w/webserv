@@ -323,11 +323,16 @@ static bool headerNameEquals(const std::string &left, const std::string &right)
 
 static bool isContentHeader(const std::string &name)
 {
-    if (headerNameEquals(name, "Content-Length"))
-        return (true);
-    if (headerNameEquals(name, "Content-Type"))
-        return (true);
-    return (false);
+	if (headerNameEquals(name, "Content-Length"))
+		return (true);
+
+	if (headerNameEquals(name, "Content-Type"))
+		return (true);
+
+	if (headerNameEquals(name, "Transfer-Encoding"))
+		return (true);
+
+	return (false);
 }
 
 static std::string buildCgiHttpHeaderName(const std::string &name)

@@ -1,4 +1,5 @@
 #include "RequestInspector.hpp"
+#include "ChunkedDecoder.hpp"
 #include "utils.hpp"
 
 #include <string>
@@ -105,6 +106,87 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	return (CL_VALID);
 }
 
+enum TransferEncodingResult
+{
+	TE_ABSENT,
+	TE_CHUNKED,
+	TE_UNSUPPORTED,
+	TE_INVALID
+};
+
+static void trimRight(std::string &value)
+{
+	while (!value.empty()
+		&& (value[value.length() - 1] == ' '
+			|| value[value.length() - 1] == '\t'))
+	{
+		value.erase(value.length() - 1);
+	}
+}
+
+static TransferEncodingResult getTransferEncoding(
+	const std::string &headers)
+{
+	std::istringstream stream;
+	std::string line;
+	std::string key;
+	std::string value;
+	size_t colon;
+	bool found;
+
+	stream.str(headers);
+	found = false;
+
+	while (std::getline(stream, line))
+	{
+		if (!line.empty() && line[line.length() - 1] == '\r')
+			line.erase(line.length() - 1);
+
+		colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+
+		key = toLowerCase(line.substr(0, colon));
+		value = line.substr(colon + 1);
+
+		trimLeft(value);
+		trimRight(value);
+
+		if (key != "transfer-encoding")
+			continue;
+
+		if (found)
+			return (TE_INVALID);
+
+		found = true;
+		value = toLowerCase(value);
+
+		if (value.empty())
+			return (TE_INVALID);
+
+		if (value == "chunked")
+			return (TE_CHUNKED);
+
+		return (TE_UNSUPPORTED);
+	}
+
+	return (TE_ABSENT);
+}
+
+static std::string getRequestVersion(
+	const std::string &requestLine)
+{
+	std::istringstream stream;
+	std::string method;
+	std::string uri;
+	std::string version;
+
+	stream.str(requestLine);
+	stream >> method >> uri >> version;
+
+	return (version);
+}
+
 void RequestInspector::inspectRequestLine(const std::string &requestLine)
 {
 	std::stringstream ss;
@@ -164,6 +246,11 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 	size_t currentBodySize;
 	std::string headers;
 
+	std::string version;
+	TransferEncodingResult teResult;
+	ChunkedDecodeStatus chunkedStatus;
+	size_t messageEnd;
+
 	if (rawRequest.empty())
 	{
 		this->status = NEED_MORE_DATA;
@@ -196,13 +283,65 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 
 	headers = rawRequest.substr(0, headerEnd);
 	contentLength = 0;
-	ContentLengthResult clResult = getContentLength(headers, contentLength);
+
+	ContentLengthResult clResult;
+	clResult = getContentLength(headers, contentLength);
+
+	teResult = getTransferEncoding(headers);
+	version = getRequestVersion(requestLine);
 
 	if (clResult == CL_INVALID)
 	{
 		this->status = BAD_REQUEST;
-		return this->status;
+		return (this->status);
 	}
+	if (teResult == TE_INVALID)
+	{
+		this->status = BAD_REQUEST;
+		return (this->status);
+	}
+	if (teResult == TE_UNSUPPORTED)
+	{
+		this->status = NOT_IMPLEMENTED;
+		return (this->status);
+	}
+	if (version == "HTTP/1.0" && teResult != TE_ABSENT)
+	{
+		this->status = BAD_REQUEST;
+		return (this->status);
+	}
+	if (teResult == TE_CHUNKED && clResult == CL_VALID)
+	{
+		this->status = BAD_REQUEST;
+		return (this->status);
+	}
+	if (teResult == TE_CHUNKED)
+	{
+		chunkedStatus = ChunkedDecoder::inspect(
+			rawRequest,
+			bodyStart,
+			maxBodySize,
+			messageEnd);
+		if (chunkedStatus == CHUNKED_NEED_MORE_DATA)
+		{
+			this->status = NEED_MORE_DATA;
+			return (this->status);
+		}
+		if (chunkedStatus == CHUNKED_BODY_TOO_LARGE)
+		{
+			this->status = REQUEST_TOO_LARGE;
+			return (this->status);
+		}
+		if (chunkedStatus == CHUNKED_BAD_REQUEST)
+		{
+			this->status = BAD_REQUEST;
+			return (this->status);
+		}
+
+		this->status = COMPLETED;
+		return (this->status);
+	}
+
 	if (clResult == CL_VALID)
 	{
 		if (contentLength > maxBodySize)
@@ -212,6 +351,7 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 		}
 
 		currentBodySize = rawRequest.length() - bodyStart;
+
 		if (currentBodySize < contentLength)
 		{
 			this->status = NEED_MORE_DATA;

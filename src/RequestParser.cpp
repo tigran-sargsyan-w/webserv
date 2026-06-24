@@ -1,4 +1,5 @@
 #include "RequestParser.hpp"
+#include "ChunkedDecoder.hpp"
 #include "Request.hpp"
 #include "utils.hpp"
 #include <sstream>
@@ -26,6 +27,40 @@ static bool getContentLength(const Request &request, size_t &contentLength)
         return (false);
 
     return (true);
+}
+
+static void trimHeaderValue(std::string &value)
+{
+	while (!value.empty()
+		&& (value[0] == ' ' || value[0] == '\t'))
+	{
+		value.erase(0, 1);
+	}
+
+	while (!value.empty()
+		&& (value[value.length() - 1] == ' '
+			|| value[value.length() - 1] == '\t'
+			|| value[value.length() - 1] == '\r'))
+	{
+		value.erase(value.length() - 1);
+	}
+}
+
+static bool isChunkedRequest(const Request &request)
+{
+	std::map<std::string, std::string>::const_iterator it;
+	std::string value;
+
+	it = request.getHeaders().find("transfer-encoding");
+
+	if (it == request.getHeaders().end())
+		return (false);
+
+	value = it->second;
+	trimHeaderValue(value);
+	value = toLowerCase(value);
+
+	return (value == "chunked");
 }
 
 static int parseRequestLine(std::string &requestLine, Request &request) {
@@ -121,16 +156,33 @@ int RequestParser::parse(const std::string &rawRequest, Request &req)
         parseHeader(headerLine, req);
     }
 
-    body = rawRequest.substr(bodyStart);
+    if (isChunkedRequest(req))
+	{
+		size_t messageEnd;
 
-    contentLength = 0;
-    if (getContentLength(req, contentLength))
-    {
-        if (body.length() > contentLength)
-            body = body.substr(0, contentLength);
-    }
+		if (!ChunkedDecoder::decode(
+				rawRequest,
+				bodyStart,
+				body,
+				messageEnd))
+		{
+			return (1);
+		}
+	}
+	else
+	{
+		body = rawRequest.substr(bodyStart);
 
-    req.setBody(body);
+		contentLength = 0;
+
+		if (getContentLength(req, contentLength))
+		{
+			if (body.length() > contentLength)
+				body = body.substr(0, contentLength);
+		}
+	}
+
+	req.setBody(body);
 
     std::cout << "Parsed method: " << req.getMethod() << std::endl;
     std::cout << "Parsed path: " << req.getPath() << std::endl;

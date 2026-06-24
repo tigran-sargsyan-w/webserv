@@ -65,28 +65,23 @@ int WebServ::setNonBlocking(int fd)
 
 int WebServ::readFromClient(Client &client)
 {
-	ssize_t bytesRead;
-	char buffer[4096];
+	ssize_t	bytesRead;
+	char	buffer[4096];
 
-	bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
-	if (bytesRead == -1)
+	bytesRead = recv(client.fd, buffer, sizeof(buffer), 0);
+	if (bytesRead < 0)
 	{
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return (0);
-		return 1;
-	}
-	else if (bytesRead == 0)
-	{
-		std::cout << "Client closed connection\n";
+		std::cerr << "Failed to read from client fd " << client.fd << std::endl;
 		client.state = CLOSING_CONNECTION;
+		return (1);
 	}
-	else
+	if (bytesRead == 0)
 	{
-		client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
-		// std::cout << "Request from client:\n\n" << client.rawRequest <<
-		// std::endl;
+		std::cout << "Client closed connection" << std::endl;
+		client.state = CLOSING_CONNECTION;
+		return (0);
 	}
-
+	client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
 	return (0);
 }
 
@@ -180,19 +175,12 @@ int WebServ::SendToClient(Client &client)
 	remaining = client.responseBuffer.size() - client.bytesSent;
 	data = client.responseBuffer.c_str() + client.bytesSent;
 	bytesSent = send(client.fd, data, remaining, 0);
-
-	if (bytesSent == -1)
+	if (bytesSent <= 0)
 	{
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return (0);
-		if (errno == EINTR)
-			return (0);
-		std::cout << "send: " << strerror(errno) << std::endl;
+		std::cerr << "Failed to send response to client fd " << client.fd << std::endl;
+		client.state = CLOSING_CONNECTION;
 		return (1);
 	}
-
-	if (bytesSent == 0)
-		return (0);
 
 	client.bytesSent += static_cast<size_t>(bytesSent);
 

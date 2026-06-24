@@ -160,14 +160,8 @@ int RequestParser::parse(const std::string &rawRequest, Request &req)
 	{
 		size_t messageEnd;
 
-		if (!ChunkedDecoder::decode(
-				rawRequest,
-				bodyStart,
-				body,
-				messageEnd))
-		{
+		if (!ChunkedDecoder::decode(rawRequest, bodyStart, body, messageEnd))
 			return (1);
-		}
 	}
 	else
 	{

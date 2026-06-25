@@ -2,16 +2,13 @@
 
 namespace
 {
-	bool	isHexDigit(char c)
+	bool isHexDigit(char c)
 	{
 		return (
-			(c >= '0' && c <= '9')
-			|| (c >= 'a' && c <= 'f')
-			|| (c >= 'A' && c <= 'F')
-		);
+			(c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
 	}
 
-	int	hexToInt(char c)
+	int hexToInt(char c)
 	{
 		if (c >= '0' && c <= '9')
 			return (c - '0');
@@ -23,9 +20,9 @@ namespace
 
 namespace UriUtils
 {
-	std::string	getPathWithoutQuery(const std::string &uri)
+	std::string getPathWithoutQuery(const std::string &uri)
 	{
-		size_t	questionMark;
+		size_t questionMark;
 
 		questionMark = uri.find('?');
 		if (questionMark == std::string::npos)
@@ -33,9 +30,9 @@ namespace UriUtils
 		return (uri.substr(0, questionMark));
 	}
 
-	std::string	getQueryString(const std::string &uri)
+	std::string getQueryString(const std::string &uri)
 	{
-		size_t	questionMark;
+		size_t questionMark;
 
 		questionMark = uri.find('?');
 		if (questionMark == std::string::npos)
@@ -43,21 +40,17 @@ namespace UriUtils
 		return (uri.substr(questionMark + 1));
 	}
 
-	std::string	decodePath(const std::string &path)
+	std::string decodePath(const std::string &path)
 	{
-		std::string	result;
-		size_t		i;
-		int			value;
+		std::string result;
+		size_t i;
+		int value;
 
 		i = 0;
 		while (i < path.length())
 		{
 			if (
-				path[i] == '%'
-				&& i + 2 < path.length()
-				&& isHexDigit(path[i + 1])
-				&& isHexDigit(path[i + 2])
-			)
+				path[i] == '%' && i + 2 < path.length() && isHexDigit(path[i + 1]) && isHexDigit(path[i + 2]))
 			{
 				value = hexToInt(path[i + 1]) * 16;
 				value += hexToInt(path[i + 2]);

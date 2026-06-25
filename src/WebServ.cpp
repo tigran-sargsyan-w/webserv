@@ -1,10 +1,10 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
-#include "UriUtils.hpp"
 #include "RequestHandler.hpp"
 #include "RequestInspector.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
+#include "Router.hpp"
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
@@ -86,48 +86,6 @@ int WebServ::readFromClient(Client &client)
 	return (0);
 }
 
-static bool routeMatchesPath(const std::string &routePath, const std::string &requestPath)
-{
-	if (routePath == "/")
-		return (true);
-
-	if (requestPath == routePath)
-		return (true);
-
-	if (requestPath.find(routePath) != 0)
-		return (false);
-
-	if (requestPath.length() > routePath.length() &&
-		requestPath[routePath.length()] == '/')
-		return (true);
-
-	return (false);
-}
-
-static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
-{
-	const RouteConfig *bestRoute = NULL;
-	size_t bestLength = 0;
-
-	for (std::vector<RouteConfig>::const_iterator it =
-			 serverConfig.routes.begin();
-		 it != serverConfig.routes.end();
-		 ++it)
-	{
-		if (routeMatchesPath(it->path, requestPath) &&
-			it->path.length() > bestLength)
-		{
-			bestRoute = &(*it);
-			bestLength = it->path.length();
-		}
-	}
-
-	if (bestRoute != NULL)
-		return (*bestRoute);
-
-	return (serverConfig.routes.front());
-}
-
 int WebServ::SendToClient(Client &client)
 {
 	ssize_t bytesSent;
@@ -136,9 +94,8 @@ int WebServ::SendToClient(Client &client)
 
 	if (!client.responseReady)
 	{
-		std::string cleanPath = UriUtils::getPathWithoutQuery(client.request.getPath());
-
-		const RouteConfig &route = findMatchingRoute(configs[client.serverIndex], cleanPath);
+		const ServerConfig &server = configs[client.serverIndex];
+		const RouteConfig &route = Router::resolve(server, client.request.getPath());
 
 		std::cout << "Matched route: " << route.path << std::endl;
 

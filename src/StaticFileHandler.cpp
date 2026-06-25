@@ -2,6 +2,8 @@
 #include "StaticFileHandler.hpp"
 #include "MimeTypes.hpp"
 #include "utils.hpp"
+#include "PathUtils.hpp"
+#include "UriUtils.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -23,29 +25,6 @@ StaticFileHandler &StaticFileHandler::operator=(const StaticFileHandler &other)
 }
 
 StaticFileHandler::~StaticFileHandler() {}
-
-static std::string getPathWithoutQuery(const std::string &path)
-{
-    size_t questionMark;
-
-    questionMark = path.find('?');
-    if (questionMark == std::string::npos)
-        return (path);
-    return (path.substr(0, questionMark));
-}
-
-static std::string joinPaths(const std::string &left, const std::string &right)
-{
-    if (left.empty())
-        return (right);
-    if (right.empty())
-        return (left);
-    if (left[left.length() - 1] == '/' && right[0] == '/')
-        return (left + right.substr(1));
-    if (left[left.length() - 1] != '/' && right[0] != '/')
-        return (left + "/" + right);
-    return (left + right);
-}
 
 static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route)
 {
@@ -114,7 +93,7 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
         name = entry->d_name;
         if (name != "." && name != "..")
         {
-            entryPath = joinPaths(directoryPath, name);
+            entryPath = PathUtils::join(directoryPath, name);
             autoindexEntry.name = name;
             autoindexEntry.isDirectory = isDirectory(entryPath);
             entries.push_back(autoindexEntry);
@@ -157,49 +136,6 @@ static bool isUrlSafeChar(unsigned char c)
     if (c == '-' || c == '_' || c == '.' || c == '~')
         return (true);
     return (false);
-}
-
-static bool isHexDigit(char c)
-{
-    return ((c >= '0' && c <= '9')
-        || (c >= 'a' && c <= 'f')
-        || (c >= 'A' && c <= 'F'));
-}
-
-static int hexToInt(char c)
-{
-    if (c >= '0' && c <= '9')
-        return (c - '0');
-    if (c >= 'a' && c <= 'f')
-        return (c - 'a' + 10);
-    if (c >= 'A' && c <= 'F')
-        return (c - 'A' + 10);
-    return (0);
-}
-
-static std::string urlDecodePath(const std::string &path)
-{
-    std::string result;
-    size_t i;
-    int value;
-
-    i = 0;
-    while (i < path.length())
-    {
-        if (path[i] == '%' && i + 2 < path.length()
-            && isHexDigit(path[i + 1]) && isHexDigit(path[i + 2]))
-        {
-            value = hexToInt(path[i + 1]) * 16 + hexToInt(path[i + 2]);
-            result += static_cast<char>(value);
-            i += 3;
-        }
-        else
-        {
-            result += path[i];
-            i++;
-        }
-    }
-    return (result);
 }
 
 static std::string urlEncodePathSegment(const std::string &text)
@@ -291,7 +227,7 @@ static Response handleDirectoryRequest(const std::string &requestPath, const std
 
     if (!route.index.empty())
     {
-        indexPath = joinPaths(fullPath, route.index);
+        indexPath = PathUtils::join(fullPath, route.index);
         if (isRegularFile(indexPath))
             return (buildFileResponse(indexPath));
     }
@@ -331,11 +267,11 @@ Response StaticFileHandler::handle(const Request &request, const RouteConfig &ro
     std::string decodedPath;
     std::string fullPath;
 
-    cleanPath = getPathWithoutQuery(request.getPath());
-    decodedPath = urlDecodePath(cleanPath);
+    cleanPath = UriUtils::getPathWithoutQuery(request.getPath());
+    decodedPath = UriUtils::decodePath(cleanPath);
     if (hasPathTraversal(decodedPath))
         return (ErrorResponseHandler::build(403, "Forbidden", server));
-    fullPath = joinPaths(route.root, getCleanPathInsideRoute(decodedPath, route));
+    fullPath = PathUtils::join(route.root, getCleanPathInsideRoute(decodedPath, route));
 
     if (!pathExists(fullPath))
         return (ErrorResponseHandler::build(404, "Not Found", server));

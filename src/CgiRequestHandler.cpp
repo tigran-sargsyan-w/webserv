@@ -1,6 +1,8 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
 #include "utils.hpp"
+#include "PathUtils.hpp"
+#include "UriUtils.hpp"
 
 #include <cctype>
 #include <ctime>
@@ -80,27 +82,9 @@ Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
     return (response);
 }
 
-static std::string getQueryString(const std::string &path)
-{
-    size_t questionMark = path.find('?');
-
-    if (questionMark == std::string::npos)
-        return ("");
-    return (path.substr(questionMark + 1));
-}
-
-static std::string getPathWithoutQuery(const std::string &path)
-{
-    size_t questionMark = path.find('?');
-
-    if (questionMark == std::string::npos)
-        return (path);
-    return (path.substr(0, questionMark));
-}
-
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route)
 {
-    std::string cleanPath = getPathWithoutQuery(requestPath);
+    std::string cleanPath = UriUtils::getPathWithoutQuery(requestPath);
 
     if (route.path == "/")
         return (cleanPath);
@@ -111,48 +95,12 @@ static std::string getPathInsideRoute(const std::string &requestPath, const Rout
     return (cleanPath.substr(route.path.length()));
 }
 
-static std::string joinPaths(const std::string &left, const std::string &right)
-{
-    if (left.empty())
-        return (right);
-    if (right.empty())
-        return (left);
-
-    if (left[left.length() - 1] == '/' && right[0] == '/')
-        return (left + right.substr(1));
-    if (left[left.length() - 1] != '/' && right[0] != '/')
-        return (left + "/" + right);
-    return (left + right);
-}
-
 static std::string longToString(long value)
 {
     std::ostringstream stream;
 
     stream << value;
     return (stream.str());
-}
-
-static std::string getDirectoryName(const std::string &path)
-{
-    size_t slash;
-
-    slash = path.find_last_of('/');
-    if (slash == std::string::npos)
-        return (".");
-    if (slash == 0)
-        return ("/");
-    return (path.substr(0, slash));
-}
-
-static std::string getFileName(const std::string &path)
-{
-    size_t slash;
-
-    slash = path.find_last_of('/');
-    if (slash == std::string::npos)
-        return (path);
-    return (path.substr(slash + 1));
 }
 
 static std::string getRequestTime(void)
@@ -205,7 +153,7 @@ static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig 
     size_t position;
     size_t scriptEnd;
 
-    cleanPath = getPathWithoutQuery(request.getPath());
+    cleanPath = UriUtils::getPathWithoutQuery(request.getPath());
     for (std::vector<CgiConfig>::const_iterator it = route.cgi.begin();
          it != route.cgi.end(); ++it)
     {
@@ -217,10 +165,10 @@ static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig 
             info.executable = it->executable;
             info.scriptName = cleanPath.substr(0, scriptEnd);
             info.pathInfo = cleanPath.substr(scriptEnd);
-            info.scriptPath = joinPaths(route.root,
+            info.scriptPath = PathUtils::join(route.root,
                                         getPathInsideRoute(info.scriptName, route));
             if (!info.pathInfo.empty())
-                info.pathTranslated = joinPaths(route.root, info.pathInfo);
+                info.pathTranslated = PathUtils::join(route.root, info.pathInfo);
             return (info);
         }
     }
@@ -275,7 +223,7 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
     context.standard.values["GATEWAY_INTERFACE"] = "CGI/1.1";
     context.standard.values["PATH_INFO"] = cgiPath.pathInfo;
     context.standard.values["PATH_TRANSLATED"] = cgiPath.pathTranslated;
-    context.standard.values["QUERY_STRING"] = getQueryString(request.getPath());
+    context.standard.values["QUERY_STRING"] = UriUtils::getQueryString(request.getPath());
     context.standard.values["REMOTE_ADDR"] = remoteAddr;
     context.standard.values["REMOTE_HOST"] = "";
     context.standard.values["REMOTE_IDENT"] = "";
@@ -300,7 +248,7 @@ static void addImplementationCgiVariables(CgiContext &context, const Request &re
     context.implementation.values["FCGI_ROLE"] = "RESPONDER";
     context.implementation.values["PHP_SELF"] = cgiPath.scriptName + cgiPath.pathInfo;
     context.implementation.values["PATH"] = "/usr/bin:/bin";
-    context.implementation.values["PWD"] = getDirectoryName(cgiPath.scriptPath);
+    context.implementation.values["PWD"] = PathUtils::getDirectoryName(cgiPath.scriptPath);
     context.implementation.values["REQUEST_TIME"] = getRequestTime();
     context.implementation.values["REQUEST_TIME_FLOAT"] = getRequestTimeFloat();
 }
@@ -374,8 +322,8 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
 
     context.executable = cgiPath.executable;
     context.scriptPath = cgiPath.scriptPath;
-    context.scriptFileName = getFileName(cgiPath.scriptPath);
-    context.workingDirectory = getDirectoryName(cgiPath.scriptPath);
+    context.scriptFileName = PathUtils::getFileName(cgiPath.scriptPath);
+    context.workingDirectory = PathUtils::getDirectoryName(cgiPath.scriptPath);
     context.requestBody = request.getBody();
     std::cout << "CGI scriptPath: " << context.scriptPath << std::endl;
     std::cout << "CGI scriptFileName: " << context.scriptFileName << std::endl;

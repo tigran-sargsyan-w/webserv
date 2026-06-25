@@ -17,12 +17,12 @@ Usage from the repository root:
     python3 tests/regression_tester.py record \
     --build \
     --check-relink \
-    --baseline tests/baselines/before_errno_refactor.json
+    --baseline tests/baselines/before_refactor.json
 
     python3 tests/regression_tester.py compare \
         --build \
         --check-relink \
-        --baseline tests/baselines/before_errno_refactor.json
+        --baseline tests/baselines/before_refactor.json
 
 The tester creates an isolated runtime directory, generates its own config and
 website fixtures, starts ./webserv, performs deterministic tests, and stops it.

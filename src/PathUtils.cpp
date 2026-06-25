@@ -2,7 +2,7 @@
 
 namespace PathUtils
 {
-	std::string	join(const std::string &left, const std::string &right)
+	std::string join(const std::string &left, const std::string &right)
 	{
 		if (left.empty())
 			return (right);
@@ -17,9 +17,9 @@ namespace PathUtils
 		return (left + right);
 	}
 
-	std::string	getDirectoryName(const std::string &path)
+	std::string getDirectoryName(const std::string &path)
 	{
-		size_t	lastSlash;
+		size_t lastSlash;
 
 		lastSlash = path.find_last_of('/');
 		if (lastSlash == std::string::npos)
@@ -29,9 +29,9 @@ namespace PathUtils
 		return (path.substr(0, lastSlash));
 	}
 
-	std::string	getFileName(const std::string &path)
+	std::string getFileName(const std::string &path)
 	{
-		size_t	lastSlash;
+		size_t lastSlash;
 
 		lastSlash = path.find_last_of('/');
 		if (lastSlash == std::string::npos)

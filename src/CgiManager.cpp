@@ -210,15 +210,11 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 
 	bytesWritten = write(client.cgiStdinFd, client.cgiInputBuffer.c_str() + client.cgiInputSent, remaining);
 
-	if (bytesWritten == -1)
+	if (bytesWritten <= 0)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
+		std::cerr << "Failed to write request body to CGI" << std::endl;
 		return (1);
 	}
-
-	if (bytesWritten == 0)
-		return (0);
 
 	client.cgiInputSent += static_cast<size_t>(bytesWritten);
 
@@ -241,13 +237,11 @@ int CgiManager::readFromCgi(Client &client, PollManager &pollManager)
 		return (0);
 
 	bytesRead = read(client.cgiStdoutFd, buffer, sizeof(buffer));
-	if (bytesRead == -1)
+	if (bytesRead < 0)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
+		std::cerr << "Failed to read CGI output" << std::endl;
 		return (1);
 	}
-
 	if (bytesRead == 0)
 	{
 		closeCgiFd(client.cgiStdoutFd, pollManager);
@@ -256,7 +250,7 @@ int CgiManager::readFromCgi(Client &client, PollManager &pollManager)
 		return (0);
 	}
 
-	client.cgiOutputBuffer.append(buffer, bytesRead);
+	client.cgiOutputBuffer.append(buffer, static_cast<size_t>(bytesRead));
 	return (0);
 }
 

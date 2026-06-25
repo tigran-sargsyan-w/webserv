@@ -1,4 +1,6 @@
 #include "RequestHandler.hpp"
+#include "PathUtils.hpp"
+#include "UriUtils.hpp"
 
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -26,70 +28,12 @@ RequestHandler::RequestHandler () {}
 
 RequestHandler::~RequestHandler () {}
 
-/******************** UTILS ********************/
-
-static std::string getPathWithoutQuery (const std::string &path)
-{
-	size_t questionMark;
-
-	questionMark = path.find ('?');
-	if (questionMark == std::string::npos)
-		return (path);
-	return (path.substr (0, questionMark));
-}
-
-/***********************************************/
-
-static bool isHexDigit (char c)
-{
-	return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
-}
-
-static int hexToInt (char c)
-{
-	if (c >= '0' && c <= '9')
-		return (c - '0');
-	if (c >= 'a' && c <= 'f')
-		return (c - 'a' + 10);
-	return (c - 'A' + 10);
-}
-
-static std::string urlDecodePath (const std::string &path)
-{
-	std::string result;
-	size_t i = 0;
-
-	while (i < path.length ())
-	{
-		if (path[i] == '%' && i + 2 < path.length () && isHexDigit (path[i + 1]) && isHexDigit (path[i + 2]))
-		{
-			result += static_cast<char> (hexToInt (path[i + 1]) * 16 + hexToInt (path[i + 2]));
-			i += 3;
-		}
-		else
-		{
-			result += path[i];
-			i++;
-		}
-	}
-	return result;
-}
-
-static std::string getFileName (const std::string &path)
-{
-	size_t lastSlash = path.find_last_of ('/');
-
-	if (lastSlash == std::string::npos)
-		return (path);
-	return (path.substr (lastSlash + 1));
-}
-
 static std::string getSafeUploadPath (const Request &request, const RouteConfig &route)
 {
 	if (route.uploadStore.empty ())
 		return "";
 
-	std::string decoded = urlDecodePath (getPathWithoutQuery (request.getPath ()));
+	std::string decoded = UriUtils::decodePath (UriUtils::getPathWithoutQuery (request.getPath ()));
 
 	if (decoded.find ('\0') != std::string::npos)
 		return "";
@@ -97,7 +41,7 @@ static std::string getSafeUploadPath (const Request &request, const RouteConfig 
 	if (decoded.find ("/../") != std::string::npos || decoded.find ("/..") == decoded.length () - 3)
 		return "";
 
-	std::string fileName = getFileName (decoded);
+	std::string fileName = PathUtils::getFileName (decoded);
 
 	if (fileName.empty () || fileName == ".." || fileName == ".")
 		return "";

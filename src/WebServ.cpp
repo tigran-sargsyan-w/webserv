@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
+#include "UriUtils.hpp"
 #include "RequestHandler.hpp"
 #include "RequestInspector.hpp"
 #include "RequestParser.hpp"
@@ -127,15 +128,6 @@ static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, co
 	return (serverConfig.routes.front());
 }
 
-static std::string getPathWithoutQuery(const std::string &path)
-{
-	size_t questionMark = path.find('?');
-
-	if (questionMark == std::string::npos)
-		return (path);
-	return (path.substr(0, questionMark));
-}
-
 int WebServ::SendToClient(Client &client)
 {
 	ssize_t bytesSent;
@@ -144,7 +136,7 @@ int WebServ::SendToClient(Client &client)
 
 	if (!client.responseReady)
 	{
-		std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+		std::string cleanPath = UriUtils::getPathWithoutQuery(client.request.getPath());
 
 		const RouteConfig &route = findMatchingRoute(configs[client.serverIndex], cleanPath);
 

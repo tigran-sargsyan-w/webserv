@@ -101,12 +101,12 @@ int WebServ::SendToClient(Client &client)
 
 		if (CgiRequestHandler::isCgiRequest(client.request, route))
 		{
-			if (cgiManager.startForClient(client, route, configs[client.serverIndex], pollManager) != 0)
+			if (cgiManager.startForClient(client, route, server, pollManager) != 0)
 				return (1);
 			return (0);
 		}
 
-		Response response = RequestHandler::handleRequest(client.request, route, configs[client.serverIndex]);
+		Response response = RequestHandler::handleRequest(client.request, route, server);
 
 		client.responseBuffer = response.toString();
 		client.bytesSent = 0;

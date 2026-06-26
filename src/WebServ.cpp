@@ -1,10 +1,8 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
-// #include "RequestHandler.hpp"
 #include "RequestInspector.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
-// #include "Router.hpp"
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
@@ -17,7 +15,6 @@
 #include <utility>
 
 #include "CgiHandler.hpp"
-// #include "CgiRequestHandler.hpp"
 #include "RequestDispatcher.hpp"
 #include "ErrorResponseHandler.hpp"
 

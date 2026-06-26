@@ -96,11 +96,8 @@ int WebServ::SendToClient(Client &client)
 
 	if (!client.responseReady)
 	{
-		dispatchResult = RequestDispatcher::dispatch(
-			client,
-			configs[client.serverIndex],
-			cgiManager,
-			pollManager);
+		dispatchResult = RequestDispatcher::dispatch(client, configs[client.serverIndex],
+													 cgiManager, pollManager);
 
 		if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
 			return (1);

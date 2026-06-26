@@ -1,10 +1,10 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
-#include "RequestHandler.hpp"
+// #include "RequestHandler.hpp"
 #include "RequestInspector.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
-#include "Router.hpp"
+// #include "Router.hpp"
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
@@ -17,7 +17,8 @@
 #include <utility>
 
 #include "CgiHandler.hpp"
-#include "CgiRequestHandler.hpp"
+// #include "CgiRequestHandler.hpp"
+#include "RequestDispatcher.hpp"
 #include "ErrorResponseHandler.hpp"
 
 #include <ctime>
@@ -86,35 +87,80 @@ int WebServ::readFromClient(Client &client)
 	return (0);
 }
 
+// int WebServ::SendToClient(Client &client)
+// {
+// 	ssize_t bytesSent;
+// 	size_t remaining;
+// 	const char *data;
+
+// 	if (!client.responseReady)
+// 	{
+// 		const ServerConfig &server = configs[client.serverIndex];
+// 		const RouteConfig &route = Router::resolve(server, client.request.getPath());
+
+// 		std::cout << "Matched route: " << route.path << std::endl;
+
+// 		if (CgiRequestHandler::isCgiRequest(client.request, route))
+// 		{
+// 			if (cgiManager.startForClient(client, route, server, pollManager) != 0)
+// 				return (1);
+// 			return (0);
+// 		}
+
+// 		Response response = RequestHandler::handleRequest(client.request, route, server);
+
+// 		client.responseBuffer = response.toString();
+// 		client.bytesSent = 0;
+// 		client.responseReady = true;
+
+// 		std::cout << "Response to client:\n\n"
+// 				  << client.responseBuffer << std::endl;
+// 	}
+// 	if (client.bytesSent >= client.responseBuffer.size())
+// 	{
+// 		client.state = CLOSING_CONNECTION;
+// 		return (0);
+// 	}
+
+// 	remaining = client.responseBuffer.size() - client.bytesSent;
+// 	data = client.responseBuffer.c_str() + client.bytesSent;
+// 	bytesSent = send(client.fd, data, remaining, 0);
+// 	if (bytesSent <= 0)
+// 	{
+// 		std::cerr << "Failed to send response to client fd " << client.fd << std::endl;
+// 		client.state = CLOSING_CONNECTION;
+// 		return (1);
+// 	}
+
+// 	client.bytesSent += static_cast<size_t>(bytesSent);
+
+// 	if (client.bytesSent >= client.responseBuffer.size())
+// 		client.state = CLOSING_CONNECTION;
+
+// 	return (0);
+// }
+
 int WebServ::SendToClient(Client &client)
 {
-	ssize_t bytesSent;
-	size_t remaining;
-	const char *data;
+	RequestDispatcher::Result	dispatchResult;
+	ssize_t						bytesSent;
+	size_t						remaining;
+	const char					*data;
 
 	if (!client.responseReady)
 	{
-		const ServerConfig &server = configs[client.serverIndex];
-		const RouteConfig &route = Router::resolve(server, client.request.getPath());
+		dispatchResult = RequestDispatcher::dispatch(
+			client,
+			configs[client.serverIndex],
+			cgiManager,
+			pollManager);
 
-		std::cout << "Matched route: " << route.path << std::endl;
-
-		if (CgiRequestHandler::isCgiRequest(client.request, route))
-		{
-			if (cgiManager.startForClient(client, route, server, pollManager) != 0)
-				return (1);
+		if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
+			return (1);
+		if (dispatchResult == RequestDispatcher::ASYNC_STARTED)
 			return (0);
-		}
-
-		Response response = RequestHandler::handleRequest(client.request, route, server);
-
-		client.responseBuffer = response.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-
-		std::cout << "Response to client:\n\n"
-				  << client.responseBuffer << std::endl;
 	}
+
 	if (client.bytesSent >= client.responseBuffer.size())
 	{
 		client.state = CLOSING_CONNECTION;
@@ -124,9 +170,11 @@ int WebServ::SendToClient(Client &client)
 	remaining = client.responseBuffer.size() - client.bytesSent;
 	data = client.responseBuffer.c_str() + client.bytesSent;
 	bytesSent = send(client.fd, data, remaining, 0);
+
 	if (bytesSent <= 0)
 	{
-		std::cerr << "Failed to send response to client fd " << client.fd << std::endl;
+		std::cerr << "Failed to send response to client fd "
+				  << client.fd << std::endl;
 		client.state = CLOSING_CONNECTION;
 		return (1);
 	}

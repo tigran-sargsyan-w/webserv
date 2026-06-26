@@ -1,11 +1,7 @@
 #include "RequestDispatcher.hpp"
 
-#include "CgiManager.hpp"
 #include "CgiRequestHandler.hpp"
-#include "Client.hpp"
-#include "PollManager.hpp"
 #include "RequestHandler.hpp"
-#include "Response.hpp"
 #include "Router.hpp"
 
 #include <iostream>

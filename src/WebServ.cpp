@@ -89,10 +89,10 @@ int WebServ::readFromClient(Client &client)
 
 int WebServ::SendToClient(Client &client)
 {
-	RequestDispatcher::Result	dispatchResult;
-	ssize_t						bytesSent;
-	size_t						remaining;
-	const char					*data;
+	RequestDispatcher::Result dispatchResult;
+	ssize_t bytesSent;
+	size_t remaining;
+	const char *data;
 
 	if (!client.responseReady)
 	{

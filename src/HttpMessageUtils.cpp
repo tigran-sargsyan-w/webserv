@@ -2,9 +2,7 @@
 
 namespace HttpMessageUtils
 {
-	bool	findHeaderEnd(const std::string &rawMessage,
-					size_t &headerEnd,
-					size_t &bodyStart)
+	bool findHeaderEnd(const std::string &rawMessage, size_t &headerEnd, size_t &bodyStart)
 	{
 		headerEnd = rawMessage.find("\r\n\r\n");
 		if (headerEnd != std::string::npos)
@@ -23,33 +21,30 @@ namespace HttpMessageUtils
 		return (false);
 	}
 
-	void	trimLeft(std::string &value)
+	void trimLeft(std::string &value)
 	{
 		while (!value.empty() && (value[0] == ' ' || value[0] == '\t'))
 			value.erase(0, 1);
 	}
 
-	void	trimRight(std::string &value)
+	void trimRight(std::string &value)
 	{
-		while (!value.empty()
-			&& (value[value.length() - 1] == ' '
-				|| value[value.length() - 1] == '\t'
-				|| value[value.length() - 1] == '\r'))
+		while (!value.empty() && (value[value.length() - 1] == ' ' || value[value.length() - 1] == '\t' || value[value.length() - 1] == '\r'))
 		{
 			value.erase(value.length() - 1);
 		}
 	}
 
-	void	trimHeaderValue(std::string &value)
+	void trimHeaderValue(std::string &value)
 	{
 		trimLeft(value);
 		trimRight(value);
 	}
 
-	bool	parseSize(const std::string &text, size_t &value)
+	bool parseSize(const std::string &text, size_t &value)
 	{
-		const size_t	maxBeforeMul = static_cast<size_t>(-1) / 10;
-		size_t			i;
+		const size_t maxBeforeMul = static_cast<size_t>(-1) / 10;
+		size_t i;
 
 		if (text.empty())
 			return (false);
@@ -67,12 +62,10 @@ namespace HttpMessageUtils
 		return (true);
 	}
 
-	bool	splitHeaderLine(const std::string &line,
-					std::string &key,
-					std::string &value)
+	bool splitHeaderLine(const std::string &line, std::string &key, std::string &value)
 	{
-		std::string	cleanLine;
-		size_t		colon;
+		std::string cleanLine;
+		size_t colon;
 
 		cleanLine = line;
 		if (!cleanLine.empty() && cleanLine[cleanLine.length() - 1] == '\r')

@@ -1,6 +1,7 @@
 #ifndef REQUEST_INSPECTOR_HPP
 # define REQUEST_INSPECTOR_HPP
 
+#include "RequestLine.hpp"
 #include <string>
 
 enum InspectRequestStatus
@@ -26,7 +27,7 @@ class RequestInspector
     InspectRequestStatus status;
 
   private:
-    void inspectRequestLine(const std::string& requestLine);
+    void inspectRequestLine(const std::string& requestLine, RequestLine& parsedLine);
     bool requestLineValid;
 };
 

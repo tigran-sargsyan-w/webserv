@@ -1,7 +1,7 @@
 #ifndef REQUEST_LINE_HPP
-# define REQUEST_LINE_HPP
+#define REQUEST_LINE_HPP
 
-# include <string>
+#include <string>
 
 enum RequestLineStatus
 {
@@ -16,23 +16,22 @@ class RequestLine
 	public:
 		RequestLine();
 
-		bool				parse(const std::string &line);
-		RequestLineStatus	getStatus(void) const;
-
-		const std::string	&getMethod(void) const;
-		const std::string	&getUri(void) const;
-		const std::string	&getVersion(void) const;
+		bool parse(const std::string &line);
+		RequestLineStatus getStatus(void) const;
+		const std::string &getMethod(void) const;
+		const std::string &getUri(void) const;
+		const std::string &getVersion(void) const;
 
 	private:
-		std::string			method;
-		std::string			uri;
-		std::string			version;
-		RequestLineStatus	status;
+		std::string method;
+		std::string uri;
+		std::string version;
+		RequestLineStatus status;
 
-		void				clear(void);
-		bool				isSupportedMethod(void) const;
-		bool				isValidUri(void) const;
-		bool				isSupportedVersion(void) const;
+		void clear(void);
+		bool isSupportedMethod(void) const;
+		bool isValidUri(void) const;
+		bool isSupportedVersion(void) const;
 };
 
 #endif

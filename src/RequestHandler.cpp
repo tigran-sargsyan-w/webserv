@@ -16,10 +16,7 @@
 
 RequestHandler::RequestHandler() {}
 
-RequestHandler::RequestHandler(const RequestHandler &other)
-{
-	(void)other;
-}
+RequestHandler::RequestHandler(const RequestHandler &other) { (void)other; }
 
 RequestHandler::~RequestHandler() {}
 
@@ -65,6 +62,7 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 	HttpMethod method = parseHttpMethod(request.getMethod());
 	Response check = validateMethod(route, method, server);
 
+	// Handle redirects
 	if (route.hasReturn)
 		response = RedirectHandler::handle(route, server);
 	else if (method == HTTP_UNKNOWN)
@@ -74,8 +72,10 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
 	else if (server.clientMaxBodySize > 0 && request.getBody().size() > server.clientMaxBodySize)
 		response = ErrorResponseHandler::build(413, "Payload Too Large: Body size exceeds limit", server);
+	// Handle CGI requests
 	else if (CgiRequestHandler::isCgiRequest(request, route))
 		response = ErrorResponseHandler::build(500, "Internal Server Error", server);
+	// Reject requests that match a CGI route but aren't a valid CGI path
 	else if (!route.cgi.empty())
 		response = ErrorResponseHandler::build(403, "Forbidden", server);
 	else

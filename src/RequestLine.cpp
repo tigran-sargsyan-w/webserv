@@ -13,7 +13,7 @@ RequestLine::RequestLine()
 	this->status = REQUEST_LINE_BAD_REQUEST;
 }
 
-void	RequestLine::clear(void)
+void RequestLine::clear(void)
 {
 	this->method.clear();
 	this->uri.clear();
@@ -21,10 +21,10 @@ void	RequestLine::clear(void)
 	this->status = REQUEST_LINE_BAD_REQUEST;
 }
 
-bool	RequestLine::parse(const std::string &line)
+bool RequestLine::parse(const std::string &line)
 {
-	std::stringstream	stream;
-	std::string			extra;
+	std::stringstream stream;
+	std::string extra;
 
 	this->clear();
 	if (line.size() > MAX_REQUEST_LINE_SIZE)
@@ -62,40 +62,37 @@ bool	RequestLine::parse(const std::string &line)
 	return (true);
 }
 
-bool	RequestLine::isSupportedMethod(void) const
+bool RequestLine::isSupportedMethod(void) const
 {
-	return (this->method == "GET"
-		|| this->method == "POST"
-		|| this->method == "DELETE");
+	return (this->method == "GET" || this->method == "POST" || this->method == "DELETE");
 }
 
-bool	RequestLine::isValidUri(void) const
+bool RequestLine::isValidUri(void) const
 {
 	return (!this->uri.empty() && this->uri[0] == '/');
 }
 
-bool	RequestLine::isSupportedVersion(void) const
+bool RequestLine::isSupportedVersion(void) const
 {
-	return (this->version == "HTTP/1.1"
-		|| this->version == "HTTP/1.0");
+	return (this->version == "HTTP/1.1" || this->version == "HTTP/1.0");
 }
 
-RequestLineStatus	RequestLine::getStatus(void) const
+RequestLineStatus RequestLine::getStatus(void) const
 {
 	return (this->status);
 }
 
-const std::string	&RequestLine::getMethod(void) const
+const std::string &RequestLine::getMethod(void) const
 {
 	return (this->method);
 }
 
-const std::string	&RequestLine::getUri(void) const
+const std::string &RequestLine::getUri(void) const
 {
 	return (this->uri);
 }
 
-const std::string	&RequestLine::getVersion(void) const
+const std::string &RequestLine::getVersion(void) const
 {
 	return (this->version);
 }

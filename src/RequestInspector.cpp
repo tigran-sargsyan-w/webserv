@@ -7,8 +7,6 @@
 #include <sstream>
 
 const std::size_t MAX_HEADERS_SIZE = 32768;
-// const std::size_t MAX_REQUEST_LINE_SIZE = 8192;
-// const std::size_t MAX_HEADER_FIELD_SIZE = 8192;
 
 enum ContentLengthResult
 {
@@ -101,20 +99,6 @@ static TransferEncodingResult getTransferEncoding(
 	return (TE_ABSENT);
 }
 
-// static std::string getRequestVersion(
-// 	const std::string &requestLine)
-// {
-// 	std::istringstream stream;
-// 	std::string method;
-// 	std::string uri;
-// 	std::string version;
-
-// 	stream.str(requestLine);
-// 	stream >> method >> uri >> version;
-
-// 	return (version);
-// }
-
 static InspectRequestStatus toInspectStatus(RequestLineStatus status)
 {
 	if (status == REQUEST_LINE_OK)
@@ -125,55 +109,6 @@ static InspectRequestStatus toInspectStatus(RequestLineStatus status)
 		return (NOT_IMPLEMENTED);
 	return (BAD_REQUEST);
 }
-
-// void RequestInspector::inspectRequestLine(const std::string &requestLine)
-// {
-// 	std::stringstream ss;
-// 	std::string method;
-// 	std::string uri;
-// 	std::string version;
-// 	std::string extra;
-
-// 	if (requestLine.size() > MAX_REQUEST_LINE_SIZE)
-// 	{
-// 		this->status = URI_TOO_LONG;
-// 		return;
-// 	}
-
-// 	ss << requestLine;
-// 	if (!(ss >> method >> uri >> version))
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return;
-// 	}
-
-// 	if (ss >> extra)
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return;
-// 	}
-
-// 	if (method != "GET" && method != "POST" && method != "DELETE")
-// 	{
-// 		this->status = NOT_IMPLEMENTED;
-// 		return;
-// 	}
-
-// 	if (uri.empty() || uri[0] != '/')
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return;
-// 	}
-
-// 	if (version != "HTTP/1.1" && version != "HTTP/1.0")
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return;
-// 	}
-
-// 	requestLineValid = true;
-// 	this->status = COMPLETED;
-// }
 
 void	RequestInspector::inspectRequestLine(const std::string &requestLine,
 	RequestLine &parsedLine)
@@ -240,7 +175,6 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 	clResult = getContentLength(headers, contentLength);
 
 	teResult = getTransferEncoding(headers);
-	// version = getRequestVersion(requestLine);
 	version = parsedLine.getVersion();
 
 	if (clResult == CL_INVALID)

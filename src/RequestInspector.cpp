@@ -110,8 +110,7 @@ static InspectRequestStatus toInspectStatus(RequestLineStatus status)
 	return (BAD_REQUEST);
 }
 
-void	RequestInspector::inspectRequestLine(const std::string &requestLine,
-	RequestLine &parsedLine)
+void RequestInspector::inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine)
 {
 	requestLineValid = false;
 	if (!parsedLine.parse(requestLine))

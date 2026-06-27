@@ -1,5 +1,6 @@
 #include "RequestParser.hpp"
 #include "ChunkedDecoder.hpp"
+#include "HttpMessageUtils.hpp"
 #include "Request.hpp"
 #include "utils.hpp"
 #include <sstream>
@@ -29,23 +30,6 @@ static bool getContentLength(const Request &request, size_t &contentLength)
     return (true);
 }
 
-static void trimHeaderValue(std::string &value)
-{
-	while (!value.empty()
-		&& (value[0] == ' ' || value[0] == '\t'))
-	{
-		value.erase(0, 1);
-	}
-
-	while (!value.empty()
-		&& (value[value.length() - 1] == ' '
-			|| value[value.length() - 1] == '\t'
-			|| value[value.length() - 1] == '\r'))
-	{
-		value.erase(value.length() - 1);
-	}
-}
-
 static bool isChunkedRequest(const Request &request)
 {
 	std::map<std::string, std::string>::const_iterator it;
@@ -57,7 +41,7 @@ static bool isChunkedRequest(const Request &request)
 		return (false);
 
 	value = it->second;
-	trimHeaderValue(value);
+	HttpMessageUtils::trimHeaderValue(value);
 	value = toLowerCase(value);
 
 	return (value == "chunked");
@@ -93,20 +77,11 @@ static void parseHeader(std::string &header, Request &request)
 {
     std::string key;
     std::string value;
-    size_t colonIndex;
 
-    if (!header.empty() && header[header.length() - 1] == '\r')
-        header.erase(header.length() - 1);
-
-    colonIndex = header.find(":");
-    if (colonIndex == std::string::npos)
+    if (!HttpMessageUtils::splitHeaderLine(header, key, value))
         return;
 
-    key = header.substr(0, colonIndex);
-    value = header.substr(colonIndex + 1);
-
-    while (!value.empty() && (value[0] == ' ' || value[0] == '\t'))
-        value.erase(0, 1);
+    HttpMessageUtils::trimLeft(value);
 
     request.addHeader(key, value);
 }
@@ -115,7 +90,6 @@ int RequestParser::parse(const std::string &rawRequest, Request &req)
 {
     size_t headerEnd;
     size_t bodyStart;
-    size_t separatorLength;
     std::string headerPart;
     std::string body;
     std::string requestLine;
@@ -126,19 +100,9 @@ int RequestParser::parse(const std::string &rawRequest, Request &req)
     if (rawRequest.empty())
         return (1);
 
-    headerEnd = rawRequest.find("\r\n\r\n");
-    separatorLength = 4;
-
-    if (headerEnd == std::string::npos)
-    {
-        headerEnd = rawRequest.find("\n\n");
-        separatorLength = 2;
-    }
-
-    if (headerEnd == std::string::npos)
+    if (!HttpMessageUtils::findHeaderEnd(rawRequest, headerEnd, bodyStart))
         return (1);
 
-    bodyStart = headerEnd + separatorLength;
     headerPart = rawRequest.substr(0, headerEnd);
 
     headerStream.str(headerPart);

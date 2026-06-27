@@ -8,7 +8,12 @@
 
 namespace StoragePathResolver
 {
-	static bool	hasInvalidTraversal(const std::string &path)
+	static bool	hasNulByte(const std::string &path)
+	{
+		return (path.find('\0') != std::string::npos);
+	}
+
+	static bool	hasTraversalSequence(const std::string &path)
 	{
 		if (path.find("/../") != std::string::npos)
 			return (true);
@@ -16,6 +21,26 @@ namespace StoragePathResolver
 			&& path.find("/..") == path.length() - 3)
 			return (true);
 		return (false);
+	}
+
+	static bool	isSafeDecodedPath(const std::string &path)
+	{
+		if (hasNulByte(path))
+			return (false);
+		if (hasTraversalSequence(path))
+			return (false);
+		return (true);
+	}
+
+	static bool	isValidStorageFileName(const std::string &fileName)
+	{
+		if (fileName.empty())
+			return (false);
+		if (fileName == ".")
+			return (false);
+		if (fileName == "..")
+			return (false);
+		return (true);
 	}
 
 	static bool	isValidStorageDirectory(const std::string &path)
@@ -39,16 +64,17 @@ namespace StoragePathResolver
 		std::string	decodedPath;
 		std::string	fileName;
 
-		decodedPath = UriUtils::decodePath(
-				UriUtils::getPathWithoutQuery(request.getPath()));
-
-		if (decodedPath.find('\0') != std::string::npos)
+		if (route.uploadStore.empty())
 			return ("");
-		if (hasInvalidTraversal(decodedPath))
+
+		decodedPath = UriUtils::decodePath(
+			UriUtils::getPathWithoutQuery(request.getPath()));
+
+		if (!isSafeDecodedPath(decodedPath))
 			return ("");
 
 		fileName = PathUtils::getFileName(decodedPath);
-		if (fileName.empty() || fileName == "." || fileName == "..")
+		if (!isValidStorageFileName(fileName))
 			return ("");
 
 		if (!isValidStorageDirectory(route.uploadStore))

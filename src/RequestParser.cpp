@@ -16,20 +16,20 @@
 
 static bool getContentLength(const Request &request, size_t &contentLength)
 {
-    std::map<std::string, std::string>::const_iterator it;
-    std::istringstream stream;
+	std::map<std::string, std::string>::const_iterator it;
+	std::istringstream stream;
 
-    it = request.getHeaders().find("content-length");
-    if (it == request.getHeaders().end())
-        return (false);
+	it = request.getHeaders().find("content-length");
+	if (it == request.getHeaders().end())
+		return (false);
 
-    stream.str(it->second);
-    stream >> contentLength;
+	stream.str(it->second);
+	stream >> contentLength;
 
-    if (stream.fail())
-        return (false);
+	if (stream.fail())
+		return (false);
 
-    return (true);
+	return (true);
 }
 
 static bool isChunkedRequest(const Request &request)
@@ -49,9 +49,9 @@ static bool isChunkedRequest(const Request &request)
 	return (value == "chunked");
 }
 
-static int	parseRequestLine(std::string &requestLine, Request &request)
+static int parseRequestLine(std::string &requestLine, Request &request)
 {
-	RequestLine	line;
+	RequestLine line;
 
 	if (!line.parse(requestLine))
 		return (1);
@@ -63,52 +63,52 @@ static int	parseRequestLine(std::string &requestLine, Request &request)
 
 static void parseHeader(std::string &header, Request &request)
 {
-    std::string key;
-    std::string value;
+	std::string key;
+	std::string value;
 
-    if (!HttpMessageUtils::splitHeaderLine(header, key, value))
-        return;
+	if (!HttpMessageUtils::splitHeaderLine(header, key, value))
+		return;
 
-    HttpMessageUtils::trimLeft(value);
+	HttpMessageUtils::trimLeft(value);
 
-    request.addHeader(key, value);
+	request.addHeader(key, value);
 }
 
 int RequestParser::parse(const std::string &rawRequest, Request &req)
 {
-    size_t headerEnd;
-    size_t bodyStart;
-    std::string headerPart;
-    std::string body;
-    std::string requestLine;
-    std::string headerLine;
-    std::istringstream headerStream;
-    size_t contentLength;
+	size_t headerEnd;
+	size_t bodyStart;
+	std::string headerPart;
+	std::string body;
+	std::string requestLine;
+	std::string headerLine;
+	std::istringstream headerStream;
+	size_t contentLength;
 
-    if (rawRequest.empty())
-        return (1);
+	if (rawRequest.empty())
+		return (1);
 
-    if (!HttpMessageUtils::findHeaderEnd(rawRequest, headerEnd, bodyStart))
-        return (1);
+	if (!HttpMessageUtils::findHeaderEnd(rawRequest, headerEnd, bodyStart))
+		return (1);
 
-    headerPart = rawRequest.substr(0, headerEnd);
+	headerPart = rawRequest.substr(0, headerEnd);
 
-    headerStream.str(headerPart);
+	headerStream.str(headerPart);
 
-    if (!std::getline(headerStream, requestLine))
-        return (1);
+	if (!std::getline(headerStream, requestLine))
+		return (1);
 
-    if (parseRequestLine(requestLine, req))
-        return (1);
+	if (parseRequestLine(requestLine, req))
+		return (1);
 
-    while (std::getline(headerStream, headerLine))
-    {
-        if (headerLine.empty() || headerLine == "\r")
-            break;
-        parseHeader(headerLine, req);
-    }
+	while (std::getline(headerStream, headerLine))
+	{
+		if (headerLine.empty() || headerLine == "\r")
+			break;
+		parseHeader(headerLine, req);
+	}
 
-    if (isChunkedRequest(req))
+	if (isChunkedRequest(req))
 	{
 		size_t messageEnd;
 
@@ -130,24 +130,24 @@ int RequestParser::parse(const std::string &rawRequest, Request &req)
 
 	req.setBody(body);
 
-    std::cout << "Parsed method: " << req.getMethod() << std::endl;
-    std::cout << "Parsed path: " << req.getPath() << std::endl;
-    std::cout << "Parsed version: " << req.getVersion() << std::endl;
-    std::cout << "Parsed body: [" << req.getBody() << "]" << std::endl;
+	std::cout << "Parsed method: " << req.getMethod() << std::endl;
+	std::cout << "Parsed path: " << req.getPath() << std::endl;
+	std::cout << "Parsed version: " << req.getVersion() << std::endl;
+	std::cout << "Parsed body: [" << req.getBody() << "]" << std::endl;
 
-    std::cout << "Parsed headers:" << std::endl;
-    for (std::map<std::string, std::string>::const_iterator it = req.getHeaders().begin();
-        it != req.getHeaders().end(); ++it)
-    {
-        std::cout << it->first << " = [" << it->second << "]" << std::endl;
-    }
+	std::cout << "Parsed headers:" << std::endl;
+	for (std::map<std::string, std::string>::const_iterator it = req.getHeaders().begin();
+		 it != req.getHeaders().end(); ++it)
+	{
+		std::cout << it->first << " = [" << it->second << "]" << std::endl;
+	}
 
-    if (req.getMethod().empty())
-    {
-        std::cout << "Failed to parse request\n";
-        return (1);
-    }
+	if (req.getMethod().empty())
+	{
+		std::cout << "Failed to parse request\n";
+		return (1);
+	}
 
-    req.setValid();
-    return (0);
+	req.setValid();
+	return (0);
 }

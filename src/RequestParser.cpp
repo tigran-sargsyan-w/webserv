@@ -1,4 +1,5 @@
 #include "RequestParser.hpp"
+#include "RequestLine.hpp"
 #include "ChunkedDecoder.hpp"
 #include "HttpMessageUtils.hpp"
 #include "Request.hpp"
@@ -47,30 +48,42 @@ static bool isChunkedRequest(const Request &request)
 	return (value == "chunked");
 }
 
-static int parseRequestLine(std::string &requestLine, Request &request) {
-  if (requestLine.empty())
-    return (1);
-  if (requestLine[requestLine.length() - 1] == '\r')
-    requestLine.erase(requestLine.length() - 1);
+// static int parseRequestLine(std::string &requestLine, Request &request) {
+//   if (requestLine.empty())
+//     return (1);
+//   if (requestLine[requestLine.length() - 1] == '\r')
+//     requestLine.erase(requestLine.length() - 1);
 
-  std::istringstream lineStream(requestLine);
-  std::string method;
-  std::string path;
-  std::string version;
-  lineStream >> method >> path >> version;
+//   std::istringstream lineStream(requestLine);
+//   std::string method;
+//   std::string path;
+//   std::string version;
+//   lineStream >> method >> path >> version;
 
-  request.setMethod(method);
-  request.setPath(path);
-  request.setVersion(version);
+//   request.setMethod(method);
+//   request.setPath(path);
+//   request.setVersion(version);
 
-//   struct stat st;
-//   stat(path.c_str(), &st);
-//  if (!(S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)))
-//  {
-//    std::cout << "Invalid path in request!\n";
-//    return (1);
-//   }
-  return (0);
+// //   struct stat st;
+// //   stat(path.c_str(), &st);
+// //  if (!(S_ISDIR(st.st_mode) || S_ISREG(st.st_mode)))
+// //  {
+// //    std::cout << "Invalid path in request!\n";
+// //    return (1);
+// //   }
+//   return (0);
+// }
+
+static int	parseRequestLine(std::string &requestLine, Request &request)
+{
+	RequestLine	line;
+
+	if (!line.parse(requestLine))
+		return (1);
+	request.setMethod(line.getMethod());
+	request.setPath(line.getUri());
+	request.setVersion(line.getVersion());
+	return (0);
 }
 
 static void parseHeader(std::string &header, Request &request)

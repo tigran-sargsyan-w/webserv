@@ -8,9 +8,7 @@
 class UploadHandler
 {
 	public:
-		static Response	handle(const Request &request,
-				const RouteConfig &route,
-				const ServerConfig &server);
+		static Response handle(const Request &request, const RouteConfig &route, const ServerConfig &server);
 
 	private:
 		UploadHandler();

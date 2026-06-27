@@ -1,5 +1,6 @@
 #include "RequestInspector.hpp"
 #include "ChunkedDecoder.hpp"
+#include "HttpMessageUtils.hpp"
 #include "utils.hpp"
 
 #include <string>
@@ -8,53 +9,6 @@
 const std::size_t MAX_HEADERS_SIZE = 32768;
 const std::size_t MAX_REQUEST_LINE_SIZE = 8192;
 // const std::size_t MAX_HEADER_FIELD_SIZE = 8192;
-
-static size_t findHeaderEnd(const std::string &rawRequest, size_t &bodyStart)
-{
-	size_t headerEnd;
-
-	headerEnd = rawRequest.find("\r\n\r\n");
-	if (headerEnd != std::string::npos)
-	{
-		bodyStart = headerEnd + 4;
-		return (headerEnd);
-	}
-
-	headerEnd = rawRequest.find("\n\n");
-	if (headerEnd != std::string::npos)
-	{
-		bodyStart = headerEnd + 2;
-		return (headerEnd);
-	}
-
-	bodyStart = std::string::npos;
-	return (std::string::npos);
-}
-
-static void trimLeft(std::string &value)
-{
-	while (!value.empty() && (value[0] == ' ' || value[0] == '\t'))
-		value.erase(0, 1);
-}
-
-static bool parseSize(const std::string &text, size_t &value)
-{
-	const size_t maxBeforeMul = static_cast<size_t>(-1) / 10;
-
-	if (text.empty())
-		return (false);
-
-	value = 0;
-	for (size_t i = 0; i < text.length(); ++i)
-	{
-		if (text[i] < '0' || text[i] > '9')
-			return (false);
-		if (value > maxBeforeMul)
-			return (false);
-		value = value * 10 + (text[i] - '0');
-	}
-	return (true);
-}
 
 enum ContentLengthResult
 {
@@ -69,29 +23,22 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	std::string line;
 	std::string key;
 	std::string value;
-	size_t colon;
 	bool found = false;
 	size_t parsed = 0;
 
 	stream.str(headers);
 	while (std::getline(stream, line))
 	{
-		if (!line.empty() && line[line.length() - 1] == '\r')
-			line.erase(line.length() - 1);
-
-		colon = line.find(':');
-		if (colon == std::string::npos)
+		if (!HttpMessageUtils::splitHeaderLine(line, key, value))
 			continue;
-
-		key = toLowerCase(line.substr(0, colon));
-		value = line.substr(colon + 1);
-		trimLeft(value);
+		key = toLowerCase(key);
+		HttpMessageUtils::trimLeft(value);
 
 		if (key == "content-length")
 		{
 			size_t current = 0;
 			// invalid CL (letters, signs...)
-			if (!parseSize(value, current))
+			if (!HttpMessageUtils::parseSize(value, current))
 				return (CL_INVALID);
 			// conflicting CLs
 			if (found && current != parsed)
@@ -114,16 +61,6 @@ enum TransferEncodingResult
 	TE_INVALID
 };
 
-static void trimRight(std::string &value)
-{
-	while (!value.empty()
-		&& (value[value.length() - 1] == ' '
-			|| value[value.length() - 1] == '\t'))
-	{
-		value.erase(value.length() - 1);
-	}
-}
-
 static TransferEncodingResult getTransferEncoding(
 	const std::string &headers)
 {
@@ -131,7 +68,6 @@ static TransferEncodingResult getTransferEncoding(
 	std::string line;
 	std::string key;
 	std::string value;
-	size_t colon;
 	bool found;
 
 	stream.str(headers);
@@ -139,18 +75,10 @@ static TransferEncodingResult getTransferEncoding(
 
 	while (std::getline(stream, line))
 	{
-		if (!line.empty() && line[line.length() - 1] == '\r')
-			line.erase(line.length() - 1);
-
-		colon = line.find(':');
-		if (colon == std::string::npos)
+		if (!HttpMessageUtils::splitHeaderLine(line, key, value))
 			continue;
-
-		key = toLowerCase(line.substr(0, colon));
-		value = line.substr(colon + 1);
-
-		trimLeft(value);
-		trimRight(value);
+		key = toLowerCase(key);
+		HttpMessageUtils::trimHeaderValue(value);
 
 		if (key != "transfer-encoding")
 			continue;
@@ -268,8 +196,7 @@ InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequ
 	if (this->status != COMPLETED)
 		return (this->status);
 
-	headerEnd = findHeaderEnd(rawRequest, bodyStart);
-	if (headerEnd == std::string::npos)
+	if (!HttpMessageUtils::findHeaderEnd(rawRequest, headerEnd, bodyStart))
 	{
 		this->status = NEED_MORE_DATA;
 		return (this->status);

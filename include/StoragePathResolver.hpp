@@ -8,8 +8,7 @@
 
 namespace StoragePathResolver
 {
-	std::string	resolve(const Request &request,
-			const RouteConfig &route);
+	std::string resolve(const Request &request, const RouteConfig &route);
 }
 
 #endif

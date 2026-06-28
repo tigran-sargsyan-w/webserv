@@ -15,6 +15,7 @@
 #include <vector>
 
 static bool headerNameEquals(const std::string &left, const std::string &right);
+static bool parseCgiStatusCode(const std::string &value, int &statusCode);
 static std::string trimHeaderValue(const std::string &value);
 
 static void addCgiHeaderToResponse(Response &response, const std::string &line)
@@ -22,6 +23,7 @@ static void addCgiHeaderToResponse(Response &response, const std::string &line)
 	size_t colon;
 	std::string name;
 	std::string value;
+	int statusCode;
 
 	colon = line.find(':');
 	if (colon == std::string::npos)
@@ -30,6 +32,12 @@ static void addCgiHeaderToResponse(Response &response, const std::string &line)
 	value = trimHeaderValue(line.substr(colon + 1));
 	if (name.empty())
 		return;
+	if (headerNameEquals(name, "Status"))
+	{
+		if (parseCgiStatusCode(value, statusCode))
+			response.setStatusCode(statusCode);
+		return;
+	}
 	response.addHeader(name, value);
 }
 
@@ -46,6 +54,23 @@ static void addCgiHeadersToResponse(Response &response, const std::string &heade
 		if (!line.empty())
 			addCgiHeaderToResponse(response, line);
 	}
+}
+
+static bool parseCgiStatusCode(const std::string &value, int &statusCode)
+{
+	if (value.length() < 3)
+		return (false);
+	if (!std::isdigit(static_cast<unsigned char>(value[0]))
+		|| !std::isdigit(static_cast<unsigned char>(value[1]))
+		|| !std::isdigit(static_cast<unsigned char>(value[2])))
+		return (false);
+	if (value.length() > 3 && value[3] != ' ' && value[3] != '\t')
+		return (false);
+	statusCode = (value[0] - '0') * 100 + (value[1] - '0') * 10
+		+ (value[2] - '0');
+	if (statusCode < 100 || statusCode > 599)
+		return (false);
+	return (true);
 }
 
 Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)

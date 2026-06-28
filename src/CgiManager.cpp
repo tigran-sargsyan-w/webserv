@@ -1,11 +1,11 @@
 #include "CgiManager.hpp"
 #include "CgiRequestHandler.hpp"
+#include "CgiValidator.hpp"
 #include "ErrorResponseHandler.hpp"
 #include "Response.hpp"
 #include "CgiHandler.hpp"
 
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <ctime>
 #include <iostream>
 #include <signal.h>
@@ -30,83 +30,15 @@ CgiManager &CgiManager::operator=(const CgiManager &other)
 	return (*this);
 }
 
-static std::string getCgiValidationMessage(int statusCode)
-{
-	if (statusCode == 403)
-		return ("Forbidden");
-	if (statusCode == 404)
-		return ("Not Found");
-	if (statusCode == 502)
-		return ("Bad Gateway");
-	return ("Internal Server Error");
-}
-
 static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, int statusCode)
 {
 	Response error;
 
-	error = ErrorResponseHandler::build(statusCode, getCgiValidationMessage(statusCode), server);
+	error = ErrorResponseHandler::build(statusCode, CgiValidator::messageForStatus(statusCode), server);
 	client.responseBuffer = error.toString();
 	client.bytesSent = 0;
 	client.responseReady = true;
 	client.state = WRITING;
-}
-
-static int checkCgiScriptPath(const std::string &scriptPath)
-{
-	struct stat scriptStat;
-
-	if (scriptPath.empty())
-		return (404);
-
-	if (stat(scriptPath.c_str(), &scriptStat) == -1)
-	{
-		if (errno == ENOENT || errno == ENOTDIR)
-			return (404);
-		return (403);
-	}
-
-	if (S_ISDIR(scriptStat.st_mode))
-		return (403);
-
-	if (access(scriptPath.c_str(), R_OK) == -1)
-		return (403);
-
-	return (0);
-}
-
-static int checkCgiExecutablePath(const std::string &executablePath)
-{
-	struct stat executableStat;
-
-	if (executablePath.empty())
-		return (502);
-
-	if (stat(executablePath.c_str(), &executableStat) == -1)
-		return (502);
-
-	if (S_ISDIR(executableStat.st_mode))
-		return (502);
-
-	if (access(executablePath.c_str(), X_OK) == -1)
-		return (502);
-
-	return (0);
-}
-
-static int validateCgiContext(const CgiContext &context)
-{
-	int statusCode;
-
-	statusCode = checkCgiScriptPath(context.scriptPath);
-	if (statusCode != 0)
-		return (statusCode);
-
-	statusCode = checkCgiExecutablePath(context.executable);
-	if (statusCode != 0)
-		return (statusCode);
-
-	return (0);
 }
 
 static int setNonBlockingFd(int fd)
@@ -429,7 +361,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 
 	context = CgiRequestHandler::buildContext(client.request, route, server, client.getRemoteAddr());
 
-	validationStatus = validateCgiContext(context);
+	validationStatus = CgiValidator::validate(context);
 	if (validationStatus != 0)
 	{
 		prepareCgiErrorResponse(client, server, validationStatus);

@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "generated_at": "2026-06-25T14:03:26Z",
+  "generated_at": "2026-06-28T16:53:56Z",
   "tests": {
     "CGI PATH_INFO": {
       "passed": true,
@@ -33,9 +33,18 @@
       }
     },
     "CGI Status header": {
-      "passed": false,
+      "passed": true,
       "snapshot": {
-        "error": "TestFailure: expected status 201, got 200"
+        "body_preview": "CGI_CUSTOM_STATUS\n",
+        "body_sha256": "570199e00a4841b2beccad67af73bfe2b725cb64d1df4660e2eb8ca90648a6d5",
+        "body_size": 18,
+        "headers": {
+          "connection": "close",
+          "content-length": "18",
+          "content-type": "text/plain"
+        },
+        "reason": "Created",
+        "status": 201
       }
     },
     "CGI basic GET": {
@@ -175,9 +184,18 @@
       }
     },
     "client_max_body_size": {
-      "passed": false,
+      "passed": true,
       "snapshot": {
-        "error": "ConnectionResetError: [Errno 104] Connection reset by peer"
+        "body_preview": "<h1>CUSTOM_ERROR_413</h1>\n",
+        "body_sha256": "1fa16fba897f7548d2ccc340a1647151dea330caa30fbcc9e5efc57f46394145",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Payload Too Large",
+        "status": 413
       }
     },
     "conflicting Content-Length": {

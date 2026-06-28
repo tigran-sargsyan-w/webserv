@@ -54,10 +54,8 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 		if (key == "content-length")
 		{
 			size_t current = 0;
-			// invalid CL (letters, signs...)
 			if (!HttpMessageUtils::parseSize(value, current))
 				return (CL_INVALID);
-			// conflicting CLs
 			if (found && current != parsed)
 				return (CL_INVALID);
 			parsed = current;
@@ -78,8 +76,7 @@ enum TransferEncodingResult
 	TE_INVALID
 };
 
-static TransferEncodingResult getTransferEncoding(
-	const std::string &headers)
+static TransferEncodingResult getTransferEncoding(const std::string &headers)
 {
 	std::istringstream stream;
 	std::string line;
@@ -141,135 +138,7 @@ void RequestInspector::inspectRequestLine(const std::string &requestLine, Reques
 	this->status = COMPLETED;
 }
 
-// InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
-// {
-// 	std::string requestLine;
-// 	std::stringstream ss;
-// 	size_t headerEnd;
-// 	size_t bodyStart;
-// 	size_t contentLength;
-// 	size_t currentBodySize;
-// 	std::string headers;
-// 	RequestLine parsedLine;
-
-// 	std::string version;
-// 	TransferEncodingResult teResult;
-// 	ChunkedDecodeStatus chunkedStatus;
-// 	size_t messageEnd;
-
-// 	if (rawRequest.empty())
-// 	{
-// 		this->status = NEED_MORE_DATA;
-// 		return (this->status);
-// 	}
-
-// 	ss << rawRequest;
-// 	if (!std::getline(ss, requestLine))
-// 	{
-// 		this->status = NEED_MORE_DATA;
-// 		return (this->status);
-// 	}
-
-// 	inspectRequestLine(requestLine, parsedLine);
-// 	if (this->status != COMPLETED)
-// 		return (this->status);
-
-// 	if (!HttpMessageUtils::findHeaderEnd(rawRequest, headerEnd, bodyStart))
-// 	{
-// 		this->status = NEED_MORE_DATA;
-// 		return (this->status);
-// 	}
-
-// 	if (headerEnd > MAX_HEADERS_SIZE)
-// 	{
-// 		this->status = HEADER_TOO_LARGE;
-// 		return (this->status);
-// 	}
-
-// 	headers = rawRequest.substr(0, headerEnd);
-// 	contentLength = 0;
-
-// 	ContentLengthResult clResult;
-// 	clResult = getContentLength(headers, contentLength);
-
-// 	teResult = getTransferEncoding(headers);
-// 	version = parsedLine.getVersion();
-
-// 	if (clResult == CL_INVALID)
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return (this->status);
-// 	}
-// 	if (teResult == TE_INVALID)
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return (this->status);
-// 	}
-// 	if (teResult == TE_UNSUPPORTED)
-// 	{
-// 		this->status = NOT_IMPLEMENTED;
-// 		return (this->status);
-// 	}
-// 	if (version == "HTTP/1.0" && teResult != TE_ABSENT)
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return (this->status);
-// 	}
-// 	if (teResult == TE_CHUNKED && clResult == CL_VALID)
-// 	{
-// 		this->status = BAD_REQUEST;
-// 		return (this->status);
-// 	}
-// 	if (teResult == TE_CHUNKED)
-// 	{
-// 		chunkedStatus = ChunkedDecoder::inspect(
-// 			rawRequest,
-// 			bodyStart,
-// 			maxBodySize,
-// 			messageEnd);
-// 		if (chunkedStatus == CHUNKED_NEED_MORE_DATA)
-// 		{
-// 			this->status = NEED_MORE_DATA;
-// 			return (this->status);
-// 		}
-// 		if (chunkedStatus == CHUNKED_BODY_TOO_LARGE)
-// 		{
-// 			this->status = REQUEST_TOO_LARGE;
-// 			return (this->status);
-// 		}
-// 		if (chunkedStatus == CHUNKED_BAD_REQUEST)
-// 		{
-// 			this->status = BAD_REQUEST;
-// 			return (this->status);
-// 		}
-
-// 		this->status = COMPLETED;
-// 		return (this->status);
-// 	}
-
-// 	if (clResult == CL_VALID)
-// 	{
-// 		if (contentLength > maxBodySize)
-// 		{
-// 			this->status = REQUEST_TOO_LARGE;
-// 			return (this->status);
-// 		}
-
-// 		currentBodySize = rawRequest.length() - bodyStart;
-
-// 		if (currentBodySize < contentLength)
-// 		{
-// 			this->status = NEED_MORE_DATA;
-// 			return (this->status);
-// 		}
-// 	}
-
-// 	this->status = COMPLETED;
-// 	return (this->status);
-// }
-
-RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest,
-	size_t maxBodySize)
+RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
 {
 	RequestInspection		inspection;
 	std::string				requestLine;

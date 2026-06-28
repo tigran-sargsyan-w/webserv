@@ -452,19 +452,42 @@ int WebServ::run()
 					RequestParser parser;
 					RequestInspector inspector;
 
-					inspector.inspectRequest(curClient.getRawRequest(), configs[curClient.serverIndex].clientMaxBodySize);
-					if (inspector.status == COMPLETED)
+					// inspector.inspectRequest(curClient.getRawRequest(), configs[curClient.serverIndex].clientMaxBodySize);
+					// if (inspector.status == COMPLETED)
+					// {
+					// 	parser.parse(curClient.getRawRequest(), curClient.request);
+					// }
+					// else if (inspector.status == NEED_MORE_DATA)
+					// {
+					// 	++i;
+					// 	continue;
+					// }
+					// else
+					// {
+					// 	prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex], inspector.status);
+
+					// 	pollManager.setEvents(curFD, POLLOUT);
+					// 	++i;
+					// 	continue;
+					// }
+
+					RequestInspection inspection;
+
+					inspection = inspector.inspectRequest(curClient.getRawRequest(),
+						configs[curClient.serverIndex].clientMaxBodySize);
+					if (inspection.status == COMPLETED)
 					{
-						parser.parse(curClient.getRawRequest(), curClient.request);
+						parser.parse(curClient.getRawRequest(), curClient.request, inspection);
 					}
-					else if (inspector.status == NEED_MORE_DATA)
+					else if (inspection.status == NEED_MORE_DATA)
 					{
 						++i;
 						continue;
 					}
 					else
 					{
-						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex], inspector.status);
+						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex],
+							inspection.status);
 
 						pollManager.setEvents(curFD, POLLOUT);
 						++i;

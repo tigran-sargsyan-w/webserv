@@ -10,6 +10,7 @@ Client::Client(int fd)
       state(READING),
       serverIndex(0),
       bytesSent(0),
+      bodyBytesToDiscard(0),
       responseReady(false),
       cgiPid(-1),
       cgiStdinFd(-1),

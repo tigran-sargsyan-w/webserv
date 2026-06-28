@@ -34,11 +34,10 @@ RequestInspection::RequestInspection()
 	  isChunked(false),
 	  hasContentLength(false),
 	  contentLength(0),
-	  requestLine()
-{}
+	  requestLine() {}
 
 static RequestInspection finishInspection(RequestInspector &inspector,
-	RequestInspection &inspection, InspectRequestStatus status)
+										  RequestInspection &inspection, InspectRequestStatus status)
 {
 	inspection.status = status;
 	inspector.status = status;
@@ -143,16 +142,16 @@ void RequestInspector::inspectRequestLine(const std::string &requestLine, Reques
 
 RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
 {
-	RequestInspection		inspection;
-	std::string				requestLine;
-	std::stringstream		ss;
-	size_t					contentLength;
-	size_t					currentBodySize;
-	std::string				headers;
-	std::string				version;
-	TransferEncodingResult	teResult;
-	ChunkedDecodeStatus		chunkedStatus;
-	ContentLengthResult		clResult;
+	RequestInspection inspection;
+	std::string requestLine;
+	std::stringstream ss;
+	size_t contentLength;
+	size_t currentBodySize;
+	std::string headers;
+	std::string version;
+	TransferEncodingResult teResult;
+	ChunkedDecodeStatus chunkedStatus;
+	ContentLengthResult clResult;
 
 	if (rawRequest.empty())
 		return (finishInspection(*this, inspection, NEED_MORE_DATA));
@@ -165,12 +164,8 @@ RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest
 	if (this->status != COMPLETED)
 		return (finishInspection(*this, inspection, this->status));
 
-	if (!HttpMessageUtils::findHeaderEnd(rawRequest,
-			inspection.headerEnd,
-			inspection.bodyStart))
-	{
+	if (!HttpMessageUtils::findHeaderEnd(rawRequest, inspection.headerEnd, inspection.bodyStart))
 		return (finishInspection(*this, inspection, NEED_MORE_DATA));
-	}
 
 	if (inspection.headerEnd > MAX_HEADERS_SIZE)
 		return (finishInspection(*this, inspection, HEADER_TOO_LARGE));

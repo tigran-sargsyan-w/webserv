@@ -1,9 +1,9 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 # include "Request.hpp"
+# include "CgiSession.hpp"
 # include <cstddef>
-# include <ctime>
-# include <sys/types.h>
+
 
 enum ClientState
 {
@@ -42,18 +42,7 @@ class Client
     size_t bytesSent;
     size_t bodyBytesToDiscard;
     bool responseReady;
-    pid_t cgiPid;
-    int cgiStdinFd;
-    int cgiStdoutFd;
-
-    std::string cgiInputBuffer;
-    size_t cgiInputSent;
-    std::string cgiOutputBuffer;
-
-    bool cgiStdinClosed;
-    bool cgiStdoutClosed;
-    bool cgiFinished;
-    time_t cgiStartTime;
+    CgiSession cgi;
     //TODO: check if rawRequest is valid and finished before parsing
   private:
     std::string remoteAddr;

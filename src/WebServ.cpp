@@ -257,7 +257,6 @@ int WebServ::setup(std::vector<ServerConfig> servers)
 		}
 
 		// 3. Socket listening
-
 		if (listen(listeningSocket, 10) == -1)
 		{
 			std::cerr << "Error on socket " << i << " listening\n";
@@ -337,7 +336,7 @@ bool WebServ::isListeningFd(int fd)
 
 static bool hasActiveCgi(const Client &client)
 {
-	return (client.cgiPid > 0 || client.cgiStdinFd != -1 || client.cgiStdoutFd != -1);
+	return (client.cgi.isActive());
 }
 
 void WebServ::closeAndRemoveFd(int fd)

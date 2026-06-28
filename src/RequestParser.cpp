@@ -25,14 +25,13 @@ static void parseHeader(std::string &header, Request &request)
 	request.addHeader(key, value);
 }
 
-int	RequestParser::parse(const std::string &rawRequest, Request &req,
-	const RequestInspection &inspection)
+int RequestParser::parse(const std::string &rawRequest, Request &req, const RequestInspection &inspection)
 {
-	std::string			headerPart;
-	std::string			body;
-	std::string			headerLine;
-	std::istringstream	headerStream;
-	size_t				messageEnd;
+	std::string headerPart;
+	std::string body;
+	std::string headerLine;
+	std::istringstream headerStream;
+	size_t messageEnd;
 
 	if (inspection.status != COMPLETED)
 		return (1);
@@ -56,18 +55,14 @@ int	RequestParser::parse(const std::string &rawRequest, Request &req,
 
 	if (inspection.isChunked)
 	{
-		if (!ChunkedDecoder::decode(rawRequest,
-				inspection.bodyStart,
-				body,
-				messageEnd))
+		if (!ChunkedDecoder::decode(rawRequest, inspection.bodyStart, body, messageEnd))
 		{
 			return (1);
 		}
 	}
 	else if (inspection.hasContentLength)
 	{
-		body = rawRequest.substr(inspection.bodyStart,
-				inspection.contentLength);
+		body = rawRequest.substr(inspection.bodyStart,inspection.contentLength);
 	}
 	else
 	{
@@ -82,8 +77,8 @@ int	RequestParser::parse(const std::string &rawRequest, Request &req,
 	std::cout << "Parsed body: [" << req.getBody() << "]" << std::endl;
 
 	std::cout << "Parsed headers:" << std::endl;
-	for (std::map<std::string, std::string>::const_iterator it =
-			req.getHeaders().begin(); it != req.getHeaders().end(); ++it)
+	for (std::map<std::string, std::string>::const_iterator it = req.getHeaders().begin();
+		 it != req.getHeaders().end(); ++it)
 	{
 		std::cout << it->first << " = [" << it->second << "]" << std::endl;
 	}

@@ -2,6 +2,7 @@
 #define REQUEST_INSPECTOR_HPP
 
 #include "RequestLine.hpp"
+#include <cstddef>
 #include <string>
 
 enum InspectRequestStatus
@@ -17,13 +18,27 @@ enum InspectRequestStatus
 	INVALID
 };
 
+struct RequestInspection
+{
+	InspectRequestStatus status;
+	size_t headerEnd;
+	size_t bodyStart;
+	size_t messageEnd;
+	bool isChunked;
+	bool hasContentLength;
+	size_t contentLength;
+	RequestLine requestLine;
+
+	RequestInspection();
+};
+
 class RequestInspector
 {
 	public:
 		RequestInspector() : status(EMPTY), requestLineValid(false) {};
 		~RequestInspector() {};
 
-		InspectRequestStatus inspectRequest(const std::string &rawRequest, size_t maxBodySize);
+		RequestInspection inspectRequest(const std::string &rawRequest, size_t maxBodySize);
 		InspectRequestStatus status;
 
 	private:

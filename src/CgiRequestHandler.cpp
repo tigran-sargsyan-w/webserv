@@ -291,3 +291,103 @@ static bool headerNameEquals(const std::string &left, const std::string &right)
 	}
 	return (true);
 }
+
+static bool isContentHeader(const std::string &name)
+{
+	if (headerNameEquals(name, "Content-Length"))
+		return (true);
+
+	if (headerNameEquals(name, "Content-Type"))
+		return (true);
+
+	if (headerNameEquals(name, "Transfer-Encoding"))
+		return (true);
+
+	return (false);
+}
+
+static std::string buildCgiHttpHeaderName(const std::string &name)
+{
+	std::string result;
+	size_t i;
+
+	result = "HTTP_";
+	i = 0;
+	while (i < name.length())
+	{
+		if (name[i] == '-')
+			result += '_';
+		else
+			result += static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
+		i++;
+	}
+	return (result);
+}
+
+static void addHttpHeaderVariables(CgiContext &context, const Request &request)
+{
+	std::map<std::string, std::string>::const_iterator it;
+
+	it = request.getHeaders().begin();
+	while (it != request.getHeaders().end())
+	{
+		if (!isContentHeader(it->first))
+		{
+			context.httpHeaders.values[buildCgiHttpHeaderName(it->first)] = trimHeaderValue(it->second);
+		}
+		it++;
+	}
+}
+
+static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
+{
+	CgiContext context;
+
+	context.executable = cgiPath.executable;
+	context.scriptPath = cgiPath.scriptPath;
+	context.scriptFileName = PathUtils::getFileName(cgiPath.scriptPath);
+	context.workingDirectory = PathUtils::getDirectoryName(cgiPath.scriptPath);
+	context.requestBody = request.getBody();
+	std::cout << "CGI scriptPath: " << context.scriptPath << std::endl;
+	std::cout << "CGI scriptFileName: " << context.scriptFileName << std::endl;
+	std::cout << "CGI workingDirectory: " << context.workingDirectory << std::endl;
+	std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
+	addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
+	addHttpHeaderVariables(context, request);
+	addImplementationCgiVariables(context, request, route, cgiPath);
+	return (context);
+}
+
+CgiRequestHandler::CgiRequestHandler() {}
+
+CgiRequestHandler::CgiRequestHandler(const CgiRequestHandler &other)
+{
+	(void)other;
+}
+
+CgiRequestHandler &CgiRequestHandler::operator=(const CgiRequestHandler &other)
+{
+	(void)other;
+	return (*this);
+}
+
+CgiRequestHandler::~CgiRequestHandler() {}
+
+bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &route)
+{
+	CgiResolvedPath cgiPath;
+
+	cgiPath = resolveCgiPath(request, route);
+	return (cgiPath.isCgi);
+}
+
+CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
+{
+	CgiResolvedPath cgiPath;
+
+	cgiPath = resolveCgiPath(request, route);
+	if (!cgiPath.isCgi)
+		return (CgiContext());
+
+	return (buildCgiContext(request, route, server, remoteAddr, cgiPath));
+}

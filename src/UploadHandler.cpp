@@ -16,6 +16,14 @@ static Response buildCreatedResponse()
 	return (response);
 }
 
+static bool hasExplicitBodyFraming(const Request &request)
+{
+	const std::map<std::string, std::string> &headers = request.getHeaders();
+
+	return (headers.find("content-length") != headers.end()
+		|| headers.find("transfer-encoding") != headers.end());
+}
+
 static Response writeUploadedFile(const Request &request, const std::string &fullPath, const ServerConfig &server)
 {
 	std::ofstream file;
@@ -53,7 +61,7 @@ Response UploadHandler::handle(const Request &request, const RouteConfig &route,
 		return (ErrorResponseHandler::build(500, "Internal Server Error: Upload store not configured", server));
 
 	// 3. Check the body
-	if (request.getBody().empty())
+	if (request.getBody().empty() && !hasExplicitBodyFraming(request))
 		return (ErrorResponseHandler::build(400, "Bad request: Empty body", server));
 
 	// 4. Extraction and safety check of the filename

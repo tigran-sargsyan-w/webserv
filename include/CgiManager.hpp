@@ -34,7 +34,6 @@ private:
 	bool getClientFd(int cgiFd, int &clientFd) const;
 
     void closeCgiFd(int fd, PollManager &pollManager);
-    void resetState(Client &client);
 
     int writeToCgi(Client &client, PollManager &pollManager);
     int readFromCgi(Client &client, PollManager &pollManager);

@@ -1,10 +1,11 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 # include "Request.hpp"
+# include <cstddef>
 # include <ctime>
 # include <sys/types.h>
 
- enum ClientState
+enum ClientState
 {
   WRITING,
   READING,

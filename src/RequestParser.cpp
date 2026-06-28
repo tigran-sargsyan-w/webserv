@@ -5,10 +5,6 @@
 
 #include <sstream>
 #include <string>
-#include <cstring>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <iostream>
 #include <map>
 
@@ -62,7 +58,7 @@ int RequestParser::parse(const std::string &rawRequest, Request &req, const Requ
 	}
 	else if (inspection.hasContentLength)
 	{
-		body = rawRequest.substr(inspection.bodyStart,inspection.contentLength);
+		body = rawRequest.substr(inspection.bodyStart, inspection.contentLength);
 	}
 	else
 	{

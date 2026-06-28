@@ -84,6 +84,44 @@ int WebServ::readFromClient(Client &client)
 	return (0);
 }
 
+int WebServ::discardRequestBody(Client &client)
+{
+	ssize_t bytesRead;
+	char buffer[4096];
+	size_t readSize;
+
+	if (client.bodyBytesToDiscard == 0)
+	{
+		client.state = WRITING;
+		return (0);
+	}
+	readSize = sizeof(buffer);
+	if (client.bodyBytesToDiscard < readSize)
+		readSize = client.bodyBytesToDiscard;
+	bytesRead = recv(client.fd, buffer, readSize, 0);
+	if (bytesRead < 0)
+	{
+		std::cerr << "Failed to discard request body from client fd "
+				  << client.fd << std::endl;
+		client.state = CLOSING_CONNECTION;
+		return (1);
+	}
+	if (bytesRead == 0)
+	{
+		client.bodyBytesToDiscard = 0;
+		client.state = WRITING;
+		return (0);
+	}
+	if (static_cast<size_t>(bytesRead) >= client.bodyBytesToDiscard)
+	{
+		client.bodyBytesToDiscard = 0;
+		client.state = WRITING;
+	}
+	else
+		client.bodyBytesToDiscard -= static_cast<size_t>(bytesRead);
+	return (0);
+}
+
 int WebServ::SendToClient(Client &client)
 {
 	RequestDispatcher::Result dispatchResult;
@@ -94,7 +132,7 @@ int WebServ::SendToClient(Client &client)
 	if (!client.responseReady)
 	{
 		dispatchResult = RequestDispatcher::dispatch(client, configs[client.serverIndex],
-													 cgiManager, pollManager);
+											 cgiManager, pollManager);
 
 		if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
 			return (1);
@@ -354,6 +392,23 @@ static void prepareInspectorErrorResponse(Client &client, const ServerConfig &se
 	client.state = WRITING;
 }
 
+static void prepareBodyDiscard(Client &client, const RequestInspection &inspection)
+{
+	size_t currentBodySize;
+
+	client.bodyBytesToDiscard = 0;
+	if (!inspection.hasContentLength)
+		return;
+	currentBodySize = 0;
+	if (client.rawRequest.length() > inspection.bodyStart)
+		currentBodySize = client.rawRequest.length() - inspection.bodyStart;
+	if (currentBodySize < inspection.contentLength)
+	{
+		client.bodyBytesToDiscard = inspection.contentLength - currentBodySize;
+		client.state = DISCARDING_BODY;
+	}
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -424,6 +479,22 @@ int WebServ::run()
 				}
 
 				Client &curClient = clientIt->second;
+				if (curClient.state == DISCARDING_BODY)
+				{
+					if (pollFds[i].revents & POLLIN)
+					{
+						discardRequestBody(curClient);
+						if (curClient.state == CLOSING_CONNECTION)
+						{
+							closeAndRemoveFd(curFD);
+							continue;
+						}
+						if (curClient.state == WRITING)
+							pollManager.setEvents(curFD, POLLOUT);
+					}
+					++i;
+					continue;
+				}
 				if (curClient.state == CGI_WRITING || curClient.state == CGI_READING)
 				{
 					if (pollFds[i].revents & POLLIN)
@@ -468,8 +539,12 @@ int WebServ::run()
 					{
 						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex],
 							inspection.status);
-
-						pollManager.setEvents(curFD, POLLOUT);
+						if (inspection.status == REQUEST_TOO_LARGE)
+							prepareBodyDiscard(curClient, inspection);
+						if (curClient.state == DISCARDING_BODY)
+							pollManager.setEvents(curFD, POLLIN);
+						else
+							pollManager.setEvents(curFD, POLLOUT);
 						++i;
 						continue;
 					}

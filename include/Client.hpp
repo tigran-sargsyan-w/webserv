@@ -1,6 +1,7 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 # include "Request.hpp"
+# include <cstddef>
 # include <ctime>
 # include <sys/types.h>
 
@@ -8,6 +9,7 @@ enum ClientState
 {
   WRITING,
   READING,
+  DISCARDING_BODY,
   CGI_WRITING,
   CGI_READING,
   CLOSING_CONNECTION
@@ -38,6 +40,7 @@ class Client
     size_t serverIndex;
     std::string responseBuffer;
     size_t bytesSent;
+    size_t bodyBytesToDiscard;
     bool responseReady;
     pid_t cgiPid;
     int cgiStdinFd;

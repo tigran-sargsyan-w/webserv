@@ -6,8 +6,6 @@
 #include <string>
 #include <sstream>
 
-// const std::size_t MAX_HEADERS_SIZE = 32768;
-
 namespace
 {
 	enum ContentLengthResult
@@ -27,13 +25,6 @@ namespace
 
 	const std::size_t MAX_HEADERS_SIZE = 32768;
 }
-
-// enum ContentLengthResult
-// {
-// 	CL_ABSENT,
-// 	CL_VALID,
-// 	CL_INVALID
-// };
 
 RequestInspection::RequestInspection()
 	: status(EMPTY),
@@ -87,14 +78,6 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	contentLength = parsed;
 	return (CL_VALID);
 }
-
-// enum TransferEncodingResult
-// {
-// 	TE_ABSENT,
-// 	TE_CHUNKED,
-// 	TE_UNSUPPORTED,
-// 	TE_INVALID
-// };
 
 static TransferEncodingResult getTransferEncoding(const std::string &headers)
 {

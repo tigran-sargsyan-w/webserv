@@ -28,7 +28,7 @@ CgiManager::~CgiManager() {}
 CgiManager &CgiManager::operator=(const CgiManager &other)
 {
 	if (this != &other)
-		cgiFdToClientFd = other.cgiFdToClientFd;
+		fdRegistry = other.fdRegistry;
 	return (*this);
 }
 
@@ -60,46 +60,15 @@ static int setNonBlockingFd(int fd)
 
 bool CgiManager::isCgiFd(int fd) const
 {
-	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
-}
-
-void CgiManager::registerCgiFd(int cgiFd, int clientFd)
-{
-	cgiFdToClientFd[cgiFd] = clientFd;
-}
-
-void CgiManager::unregisterCgiFd(int cgiFd)
-{
-	cgiFdToClientFd.erase(cgiFd);
-}
-
-bool CgiManager::getClientFd(int cgiFd, int &clientFd) const
-{
-	std::map<int, int>::const_iterator it;
-
-	it = cgiFdToClientFd.find(cgiFd);
-	if (it == cgiFdToClientFd.end())
-		return (false);
-	clientFd = it->second;
-	return (true);
-}
-
-void CgiManager::closeCgiFd(int fd, PollManager &pollManager)
-{
-	if (fd == -1)
-		return;
-
-	close(fd);
-	pollManager.removeFd(fd);
-	unregisterCgiFd(fd);
+	return (fdRegistry.contains(fd));
 }
 
 void CgiManager::cleanup(Client &client, PollManager &pollManager)
 {
 	if (client.cgi.stdinFd != -1)
-		closeCgiFd(client.cgi.stdinFd, pollManager);
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
 	if (client.cgi.stdoutFd != -1)
-		closeCgiFd(client.cgi.stdoutFd, pollManager);
+		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
 	if (client.cgi.pid > 0)
 	{
 		kill(client.cgi.pid, SIGKILL);
@@ -115,7 +84,7 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 
 	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
-		closeCgiFd(client.cgi.stdinFd, pollManager);
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
 		client.cgi.stdinFd = -1;
 		client.cgi.stdinClosed = true;
 		return (0);
@@ -126,7 +95,7 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 
 	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
-		closeCgiFd(client.cgi.stdinFd, pollManager);
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
 		client.cgi.stdinFd = -1;
 		client.cgi.stdinClosed = true;
 	}
@@ -146,7 +115,7 @@ int CgiManager::readFromCgi(Client &client, PollManager &pollManager)
 		return (1);
 	if (result == CgiPipeIO::READ_EOF)
 	{
-		closeCgiFd(client.cgi.stdoutFd, pollManager);
+		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
 		client.cgi.stdoutFd = -1;
 		client.cgi.stdoutClosed = true;
 	}
@@ -263,14 +232,12 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	int clientFd;
 
 	fdRemoved = 0;
-	if (!getClientFd(cgiFd, clientFd))
+	if (!fdRegistry.getClientFd(cgiFd, clientFd))
 		return (1);
 	clientIt = clients.find(clientFd);
 	if (clientIt == clients.end())
 	{
-		close(cgiFd);
-		pollManager.removeFd(cgiFd);
-		unregisterCgiFd(cgiFd);
+		fdRegistry.closeFd(cgiFd, pollManager);
 		return (1);
 	}
 
@@ -280,14 +247,14 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	{
 		if (cgiFd == client.cgi.stdinFd)
 		{
-			closeCgiFd(client.cgi.stdinFd, pollManager);
+			fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
 			client.cgi.stdinFd = -1;
 			client.cgi.stdinClosed = true;
 			fdRemoved = 1;
 		}
 		else if (cgiFd == client.cgi.stdoutFd)
 		{
-			closeCgiFd(client.cgi.stdoutFd, pollManager);
+			fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
 			client.cgi.stdoutFd = -1;
 			client.cgi.stdoutClosed = true;
 			fdRemoved = 1;
@@ -380,7 +347,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 	client.cgi.finished = false;
 	client.cgi.startTime = std::time(NULL);
 
-	registerCgiFd(client.cgi.stdoutFd, client.fd);
+	fdRegistry.registerFd(client.cgi.stdoutFd, client.fd);
 	pollManager.addFd(client.cgi.stdoutFd, POLLIN);
 
 	if (client.cgi.inputBuffer.empty())
@@ -392,7 +359,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 	}
 	else
 	{
-		registerCgiFd(client.cgi.stdinFd, client.fd);
+		fdRegistry.registerFd(client.cgi.stdinFd, client.fd);
 		pollManager.addFd(client.cgi.stdinFd, POLLOUT);
 		client.state = CGI_WRITING;
 	}

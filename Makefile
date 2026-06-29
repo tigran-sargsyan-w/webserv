@@ -2,12 +2,13 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g
+RM = rm -f
 
 SRC_DIR = src
 OBJ_DIR = obj
 INC_DIR = include
 
-SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp RequestInspector.cpp Response.cpp utils.cpp CgiHandler.cpp CgiPipeIO.cpp Client.cpp ClientResponseApplier.cpp CgiSession.cpp CgiValidator.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp MimeTypes.cpp StaticFileHandler.cpp ErrorResponseBuilder.cpp RedirectHandler.cpp CgiRequestHandler.cpp ErrorPageResolver.cpp ErrorResponseHandler.cpp PollManager.cpp CgiManager.cpp ChunkedDecoder.cpp UriUtils.cpp PathUtils.cpp Router.cpp RequestDispatcher.cpp StoragePathResolver.cpp UploadHandler.cpp DeleteHandler.cpp HttpMessageUtils.cpp RequestLine.cpp
+SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp RequestInspector.cpp Response.cpp utils.cpp CgiHandler.cpp CgiFdRegistry.cpp CgiPipeIO.cpp Client.cpp ClientResponseApplier.cpp CgiSession.cpp CgiValidator.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp MimeTypes.cpp StaticFileHandler.cpp ErrorResponseBuilder.cpp RedirectHandler.cpp CgiRequestHandler.cpp ErrorPageResolver.cpp ErrorResponseHandler.cpp PollManager.cpp CgiManager.cpp ChunkedDecoder.cpp UriUtils.cpp PathUtils.cpp Router.cpp RequestDispatcher.cpp StoragePathResolver.cpp UploadHandler.cpp DeleteHandler.cpp HttpMessageUtils.cpp RequestLine.cpp
 
 SRCS = $(addprefix $(SRC_DIR)/, $(SRC_FILES))
 OBJS = $(addprefix $(OBJ_DIR)/, $(SRC_FILES:.cpp=.o))
@@ -25,10 +26,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -MMD -MP -I$(INC_DIR) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ_DIR)
+	$(RM) -r $(OBJ_DIR)
 
 fclean: clean
-	rm -rf $(NAME)
+	$(RM) $(NAME)
 
 re: fclean all
 

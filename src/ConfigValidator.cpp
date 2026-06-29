@@ -7,6 +7,8 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static std::runtime_error configError(const std::string &message)
 {
@@ -169,6 +171,18 @@ static void validateCgiConfig(const RouteConfig &route)
 	}
 }
 
+static void validateUploadStoreDirectory(const RouteConfig &route)
+{
+	struct stat pathStat;
+
+	if (stat(route.uploadStore.c_str(), &pathStat) != 0)
+		throw configError("location " + route.path + " upload_store does not exist or is inaccessible: " + route.uploadStore);
+	if (!S_ISDIR(pathStat.st_mode))
+		throw configError("location " + route.path + " upload_store is not a directory: " + route.uploadStore);
+	if (access(route.uploadStore.c_str(), W_OK) != 0)
+		throw configError("location " + route.path + " upload_store is not writable: " + route.uploadStore);
+}
+
 static void validateRoutePaths(const RouteConfig &route)
 {
 	if (!isValidLocationPath(route.path))
@@ -190,6 +204,8 @@ static void validateRoute(const RouteConfig &route)
 		throw configError("location " + route.path + " has upload_enable on but upload_store is missing");
 	if (!route.uploadEnable && !route.uploadStore.empty())
 		throw configError("location " + route.path + " has upload_store but upload_enable is off");
+	if (route.uploadEnable)
+		validateUploadStoreDirectory(route);
 	if (route.hasReturn && !isRedirectStatusCode(route.returnCode))
 		throw configError("location " + route.path + " has invalid redirect status code");
 	if (route.hasReturn && !isValidRedirectTarget(route.returnPath))

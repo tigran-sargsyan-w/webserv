@@ -1,6 +1,6 @@
 #include "ClientResponseApplier.hpp"
 
-void	ClientResponseApplier::apply(Client &client, const Response &response)
+void ClientResponseApplier::apply(Client &client, const Response &response)
 {
 	client.responseBuffer = response.toString();
 	client.bytesSent = 0;

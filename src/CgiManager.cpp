@@ -1,5 +1,6 @@
 #include "CgiManager.hpp"
 #include "CgiRequestHandler.hpp"
+#include "CgiPipeIO.hpp"
 #include "CgiValidator.hpp"
 #include "ErrorResponseHandler.hpp"
 #include "Response.hpp"
@@ -111,14 +112,10 @@ void CgiManager::cleanup(Client &client, PollManager &pollManager)
 
 int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 {
-	size_t remaining;
-	ssize_t bytesWritten;
-
 	if (client.cgi.stdinFd == -1 || client.cgi.stdinClosed)
 		return (0);
 
-	remaining = client.cgi.inputBuffer.size() - client.cgi.inputSent;
-	if (remaining == 0)
+	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
 		closeCgiFd(client.cgi.stdinFd, pollManager);
 		client.cgi.stdinFd = -1;
@@ -126,17 +123,10 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 		return (0);
 	}
 
-	bytesWritten = write(client.cgi.stdinFd, client.cgi.inputBuffer.c_str() + client.cgi.inputSent, remaining);
-
-	if (bytesWritten <= 0)
-	{
-		std::cerr << "Failed to write request body to CGI" << std::endl;
+	if (CgiPipeIO::writeToStdin(client.cgi) != 0)
 		return (1);
-	}
 
-	client.cgi.inputSent += static_cast<size_t>(bytesWritten);
-
-	if (client.cgi.inputSent >= client.cgi.inputBuffer.size())
+	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
 		closeCgiFd(client.cgi.stdinFd, pollManager);
 		client.cgi.stdinFd = -1;
@@ -148,27 +138,20 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 
 int CgiManager::readFromCgi(Client &client, PollManager &pollManager)
 {
-	char buffer[4096];
-	ssize_t bytesRead;
+	CgiPipeIO::ReadResult result;
 
 	if (client.cgi.stdoutFd == -1 || client.cgi.stdoutClosed)
 		return (0);
 
-	bytesRead = read(client.cgi.stdoutFd, buffer, sizeof(buffer));
-	if (bytesRead < 0)
-	{
-		std::cerr << "Failed to read CGI output" << std::endl;
+	result = CgiPipeIO::readFromStdout(client.cgi);
+	if (result == CgiPipeIO::READ_ERROR)
 		return (1);
-	}
-	if (bytesRead == 0)
+	if (result == CgiPipeIO::READ_EOF)
 	{
 		closeCgiFd(client.cgi.stdoutFd, pollManager);
 		client.cgi.stdoutFd = -1;
 		client.cgi.stdoutClosed = true;
-		return (0);
 	}
-
-	client.cgi.outputBuffer.append(buffer, static_cast<size_t>(bytesRead));
 	return (0);
 }
 

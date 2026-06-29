@@ -1,4 +1,5 @@
 #include "CgiManager.hpp"
+#include "ClientResponseApplier.hpp"
 #include "CgiRequestHandler.hpp"
 #include "CgiPipeIO.hpp"
 #include "CgiValidator.hpp"
@@ -36,10 +37,7 @@ static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, 
 	Response error;
 
 	error = ErrorResponseHandler::build(statusCode, CgiValidator::messageForStatus(statusCode), server);
-	client.responseBuffer = error.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+	ClientResponseApplier::apply(client, error);
 }
 
 static int setNonBlockingFd(int fd)
@@ -242,10 +240,7 @@ void CgiManager::finishResponse(Client &client, PollManager &pollManager)
 	Response response;
 
 	response = CgiRequestHandler::buildResponse(client.cgi.outputBuffer);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+	ClientResponseApplier::apply(client, response);
 	client.cgi.reset();
 	pollManager.setEvents(client.fd, POLLOUT);
 }
@@ -257,10 +252,7 @@ void CgiManager::failResponse(Client &client, int code, const std::string &messa
 
 	cleanup(client, pollManager);
 	response = ErrorResponseHandler::build(code, message, server);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+	ClientResponseApplier::apply(client, response);
 	pollManager.setEvents(client.fd, POLLOUT);
 }
 
@@ -357,10 +349,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 		Response error;
 
 		error = ErrorResponseHandler::build(502, "Bad Gateway", server);
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
+		ClientResponseApplier::apply(client, error);
 		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}
@@ -375,10 +364,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 		Response error;
 
 		error = ErrorResponseHandler::build(500, "Internal Server Error", server);
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
+		ClientResponseApplier::apply(client, error);
 		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}

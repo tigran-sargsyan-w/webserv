@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "CgiHandler.hpp"
+#include "ClientResponseApplier.hpp"
 #include "RequestDispatcher.hpp"
 #include "ErrorResponseHandler.hpp"
 
@@ -384,11 +385,7 @@ static void prepareInspectorErrorResponse(Client &client, const ServerConfig &se
 		statusCode = 400;
 
 	response = ErrorResponseHandler::build(statusCode, getInspectorErrorMessage(status), server);
-
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+	ClientResponseApplier::apply(client, response);
 }
 
 static void prepareBodyDiscard(Client &client, const RequestInspection &inspection)

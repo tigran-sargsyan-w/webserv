@@ -3,19 +3,19 @@
 #include <iostream>
 #include <unistd.h>
 
-bool	CgiPipeIO::hasInputFinished(const CgiSession &session)
+bool CgiPipeIO::hasInputFinished(const CgiSession &session)
 {
 	return (session.inputSent >= session.inputBuffer.size());
 }
 
-int	CgiPipeIO::writeToStdin(CgiSession &session)
+int CgiPipeIO::writeToStdin(CgiSession &session)
 {
-	size_t	remaining;
-	ssize_t	bytesWritten;
+	size_t remaining;
+	ssize_t bytesWritten;
 
 	remaining = session.inputBuffer.size() - session.inputSent;
 	bytesWritten = write(session.stdinFd,
-		session.inputBuffer.c_str() + session.inputSent, remaining);
+						 session.inputBuffer.c_str() + session.inputSent, remaining);
 	if (bytesWritten <= 0)
 	{
 		std::cerr << "Failed to write request body to CGI" << std::endl;
@@ -25,10 +25,10 @@ int	CgiPipeIO::writeToStdin(CgiSession &session)
 	return (0);
 }
 
-CgiPipeIO::ReadResult	CgiPipeIO::readFromStdout(CgiSession &session)
+CgiPipeIO::ReadResult CgiPipeIO::readFromStdout(CgiSession &session)
 {
-	char	buffer[4096];
-	ssize_t	bytesRead;
+	char buffer[4096];
+	ssize_t bytesRead;
 
 	bytesRead = read(session.stdoutFd, buffer, sizeof(buffer));
 	if (bytesRead < 0)

@@ -30,12 +30,6 @@ public:
 private:
 	CgiFdRegistry fdRegistry;
 
-	void registerCgiFd(int cgiFd, int clientFd);
-	void unregisterCgiFd(int cgiFd);
-	bool getClientFd(int cgiFd, int &clientFd) const;
-
-    void closeCgiFd(int fd, PollManager &pollManager);
-
     int writeToCgi(Client &client, PollManager &pollManager);
     int readFromCgi(Client &client, PollManager &pollManager);
     int checkFinished(Client &client);

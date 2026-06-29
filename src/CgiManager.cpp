@@ -28,7 +28,7 @@ CgiManager::~CgiManager() {}
 CgiManager &CgiManager::operator=(const CgiManager &other)
 {
 	if (this != &other)
-		cgiFdToClientFd = other.cgiFdToClientFd;
+		fdRegistry = other.fdRegistry;
 	return (*this);
 }
 
@@ -60,38 +60,27 @@ static int setNonBlockingFd(int fd)
 
 bool CgiManager::isCgiFd(int fd) const
 {
-	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
+	return (fdRegistry.contains(fd));
 }
 
 void CgiManager::registerCgiFd(int cgiFd, int clientFd)
 {
-	cgiFdToClientFd[cgiFd] = clientFd;
+	fdRegistry.registerFd(cgiFd, clientFd);
 }
 
 void CgiManager::unregisterCgiFd(int cgiFd)
 {
-	cgiFdToClientFd.erase(cgiFd);
+	fdRegistry.unregisterFd(cgiFd);
 }
 
 bool CgiManager::getClientFd(int cgiFd, int &clientFd) const
 {
-	std::map<int, int>::const_iterator it;
-
-	it = cgiFdToClientFd.find(cgiFd);
-	if (it == cgiFdToClientFd.end())
-		return (false);
-	clientFd = it->second;
-	return (true);
+	return (fdRegistry.getClientFd(cgiFd, clientFd));
 }
 
 void CgiManager::closeCgiFd(int fd, PollManager &pollManager)
 {
-	if (fd == -1)
-		return;
-
-	close(fd);
-	pollManager.removeFd(fd);
-	unregisterCgiFd(fd);
+	fdRegistry.closeFd(fd, pollManager);
 }
 
 void CgiManager::cleanup(Client &client, PollManager &pollManager)
@@ -268,9 +257,7 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	clientIt = clients.find(clientFd);
 	if (clientIt == clients.end())
 	{
-		close(cgiFd);
-		pollManager.removeFd(cgiFd);
-		unregisterCgiFd(cgiFd);
+		closeCgiFd(cgiFd, pollManager);
 		return (1);
 	}
 

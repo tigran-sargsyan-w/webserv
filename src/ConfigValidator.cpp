@@ -7,6 +7,8 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static std::runtime_error configError(const std::string &message)
 {
@@ -130,10 +132,7 @@ static void validateServerUniqueness(const Config &config)
 
 		if (keys.find(key) != keys.end())
 		{
-			throw configError("duplicate server block for "
-				+ server.listen.host + ":"
-				+ toString(server.listen.port)
-				+ " with server_name '" + server.serverName + "'");
+			throw configError("duplicate server block for " + server.listen.host + ":" + toString(server.listen.port) + " with server_name '" + server.serverName + "'");
 		}
 		keys.insert(key);
 	}
@@ -169,6 +168,17 @@ static void validateCgiConfig(const RouteConfig &route)
 	}
 }
 
+static void validateUploadStoreDirectory(const RouteConfig &route)
+{
+	struct stat pathStat;
+	if (stat(route.uploadStore.c_str(), &pathStat) != 0)
+		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " does not exist");
+	else if (!S_ISDIR(pathStat.st_mode))
+		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not a directory");
+	else if (access(route.uploadStore.c_str(), W_OK | X_OK) != 0)
+		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not accessible or writable");
+}
+
 static void validateRoutePaths(const RouteConfig &route)
 {
 	if (!isValidLocationPath(route.path))
@@ -190,6 +200,8 @@ static void validateRoute(const RouteConfig &route)
 		throw configError("location " + route.path + " has upload_enable on but upload_store is missing");
 	if (!route.uploadEnable && !route.uploadStore.empty())
 		throw configError("location " + route.path + " has upload_store but upload_enable is off");
+	if (route.uploadEnable)
+		validateUploadStoreDirectory(route);
 	if (route.hasReturn && !isRedirectStatusCode(route.returnCode))
 		throw configError("location " + route.path + " has invalid redirect status code");
 	if (route.hasReturn && !isValidRedirectTarget(route.returnPath))
@@ -248,15 +260,15 @@ void ConfigValidator::validate(const Config &config)
 void ConfigValidator::debugPrintValidation(const Config &config)
 {
 	std::cout << ConfigDebug::validator << "[validator] config is valid"
-		<< ConfigDebug::reset << "\n";
+			  << ConfigDebug::reset << "\n";
 	std::cout << ConfigDebug::validator << "  servers: "
-		<< config.servers.size() << ConfigDebug::reset << "\n";
+			  << config.servers.size() << ConfigDebug::reset << "\n";
 	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
 	{
 		const ServerConfig &server = config.servers[serverIndex];
 
 		std::cout << ConfigDebug::validator << "  server #"
-			<< serverIndex << " routes: " << server.routes.size()
-			<< ConfigDebug::reset << "\n";
+				  << serverIndex << " routes: " << server.routes.size()
+				  << ConfigDebug::reset << "\n";
 	}
 }

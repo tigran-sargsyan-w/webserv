@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGI · webserv</title>
+<meta name="description" content="CGI demo page for webserv.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// CGI</span>
+  <h1>CGI demo</h1>
+  <p class="lead" style="color:var(--muted)">
+    webserv can execute external interpreters such as Python or PHP and
+    stream their output back to the client.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="grid">
+    <div class="card">
+      <h3>▶ Run a script (GET)</h3>
+      <p>Direct hit on <code>/cgi-bin/test.py</code>.</p>
+      <p style="margin-top:0.75rem"><a class="btn" href="/cgi-bin/test.py">Open /cgi-bin/test.py</a></p>
+    </div>
+
+    <div class="card">
+      <h3>🔎 GET with query string</h3>
+      <form class="form" action="/cgi-bin/test.py" method="GET" style="gap:0.5rem">
+        <div class="field">
+          <label for="qname">name</label>
+          <input id="qname" class="input" type="text" name="name" value="evaluator">
+        </div>
+        <div><button class="btn btn-primary" type="submit">▶ GET /cgi-bin/test.py</button></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>📨 POST to a CGI script</h3>
+      <form class="form" action="/cgi-bin/post.py" method="POST" style="gap:0.5rem">
+        <div class="field">
+          <label for="payload">payload</label>
+          <input id="payload" class="input" type="text" name="payload" value="hello-cgi">
+        </div>
+        <div><button class="btn btn-primary" type="submit">▶ POST /cgi-bin/post.py</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h3>ℹ Heads-up</h3>
+      <p>
+        These routes depend on a <code>cgi_pass</code> / <code>cgi_extension</code>
+        block in your <code>webserv.conf</code> and on the scripts existing on disk.
+        If a route returns <code>404</code>, check the config and the
+        <code>cgi-bin/</code> directory.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

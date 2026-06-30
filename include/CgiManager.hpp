@@ -1,6 +1,7 @@
 #ifndef CGIMANAGER_HPP
 #define CGIMANAGER_HPP
 
+#include "CgiFdRegistry.hpp"
 #include "Client.hpp"
 #include "PollManager.hpp"
 #include "Config.hpp"
@@ -27,14 +28,7 @@ public:
     int startForClient(Client &client, const RouteConfig &route, const ServerConfig &server, PollManager &pollManager);
 
 private:
-	std::map<int, int> cgiFdToClientFd;
-
-	void registerCgiFd(int cgiFd, int clientFd);
-	void unregisterCgiFd(int cgiFd);
-	bool getClientFd(int cgiFd, int &clientFd) const;
-
-    void closeCgiFd(int fd, PollManager &pollManager);
-    void resetState(Client &client);
+	CgiFdRegistry fdRegistry;
 
     int writeToCgi(Client &client, PollManager &pollManager);
     int readFromCgi(Client &client, PollManager &pollManager);

@@ -8,13 +8,13 @@
 class RequestHandler
 {
 	public:
-		RequestHandler ();
-		~RequestHandler ();
+		static Response handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server);
 
-		static Response handleRequest (const Request &request, const RouteConfig &route, const ServerConfig &server);
-		static Response handleStatic (const Request &request, const RouteConfig &route, const ServerConfig &server);
-		static Response handlePost (const Request &request, const RouteConfig &route, const ServerConfig &server);
-		static Response handleHttpDelete (const Request &request, const RouteConfig &route, const ServerConfig &server);
+	private:
+		RequestHandler();
+		RequestHandler(const RequestHandler &other);
+		RequestHandler &operator=(const RequestHandler &other);
+		~RequestHandler();
 };
 
 #endif

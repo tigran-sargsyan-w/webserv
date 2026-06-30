@@ -1,65 +1,48 @@
 #include "RequestInspector.hpp"
+#include "ChunkedDecoder.hpp"
+#include "HttpMessageUtils.hpp"
+#include "utils.hpp"
 
 #include <string>
 #include <sstream>
 
-const std::size_t MAX_HEADERS_SIZE = 32768;
-const std::size_t MAX_REQUEST_LINE_SIZE = 8192;
-// const std::size_t MAX_HEADER_FIELD_SIZE = 8192;
-
-static size_t findHeaderEnd(const std::string &rawRequest, size_t &bodyStart)
+namespace
 {
-	size_t headerEnd;
-
-	headerEnd = rawRequest.find("\r\n\r\n");
-	if (headerEnd != std::string::npos)
+	enum ContentLengthResult
 	{
-		bodyStart = headerEnd + 4;
-		return (headerEnd);
-	}
+		CL_ABSENT,
+		CL_VALID,
+		CL_INVALID
+	};
 
-	headerEnd = rawRequest.find("\n\n");
-	if (headerEnd != std::string::npos)
+	enum TransferEncodingResult
 	{
-		bodyStart = headerEnd + 2;
-		return (headerEnd);
-	}
+		TE_ABSENT,
+		TE_CHUNKED,
+		TE_UNSUPPORTED,
+		TE_INVALID
+	};
 
-	bodyStart = std::string::npos;
-	return (std::string::npos);
+	const std::size_t MAX_HEADERS_SIZE = 32768;
 }
 
-static void trimLeft(std::string &value)
+RequestInspection::RequestInspection()
+	: status(EMPTY),
+	  headerEnd(std::string::npos),
+	  bodyStart(std::string::npos),
+	  messageEnd(std::string::npos),
+	  isChunked(false),
+	  hasContentLength(false),
+	  contentLength(0),
+	  requestLine() {}
+
+static RequestInspection finishInspection(RequestInspector &inspector,
+										  RequestInspection &inspection, InspectRequestStatus status)
 {
-	while (!value.empty() && (value[0] == ' ' || value[0] == '\t'))
-		value.erase(0, 1);
+	inspection.status = status;
+	inspector.status = status;
+	return (inspection);
 }
-
-static bool parseSize(const std::string &text, size_t &value)
-{
-	const size_t maxBeforeMul = static_cast<size_t>(-1) / 10;
-
-	if (text.empty())
-		return (false);
-
-	value = 0;
-	for (size_t i = 0; i < text.length(); ++i)
-	{
-		if (text[i] < '0' || text[i] > '9')
-			return (false);
-		if (value > maxBeforeMul)
-			return (false);
-		value = value * 10 + (text[i] - '0');
-	}
-	return (true);
-}
-
-enum ContentLengthResult
-{
-	CL_ABSENT,
-	CL_VALID,
-	CL_INVALID
-};
 
 static ContentLengthResult getContentLength(const std::string &headers, size_t &contentLength)
 {
@@ -67,31 +50,22 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	std::string line;
 	std::string key;
 	std::string value;
-	size_t colon;
 	bool found = false;
 	size_t parsed = 0;
 
 	stream.str(headers);
 	while (std::getline(stream, line))
 	{
-		if (!line.empty() && line[line.length() - 1] == '\r')
-			line.erase(line.length() - 1);
-
-		colon = line.find(':');
-		if (colon == std::string::npos)
+		if (!HttpMessageUtils::splitHeaderLine(line, key, value))
 			continue;
+		key = toLowerCase(key);
+		HttpMessageUtils::trimLeft(value);
 
-		key = line.substr(0, colon);
-		value = line.substr(colon + 1);
-		trimLeft(value);
-
-		if (key == "Content-Length")
+		if (key == "content-length")
 		{
 			size_t current = 0;
-			// invalid CL (letters, signs...)
-			if (!parseSize(value, current))
+			if (!HttpMessageUtils::parseSize(value, current))
 				return (CL_INVALID);
-			// conflicting CLs
 			if (found && current != parsed)
 				return (CL_INVALID);
 			parsed = current;
@@ -104,120 +78,161 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	return (CL_VALID);
 }
 
-void RequestInspector::inspectRequestLine(const std::string &requestLine)
+static TransferEncodingResult getTransferEncoding(const std::string &headers)
 {
-	std::stringstream ss;
-	std::string method;
-	std::string uri;
-	std::string version;
-	std::string extra;
+	std::istringstream stream;
+	std::string line;
+	std::string key;
+	std::string value;
+	bool found;
 
-	if (requestLine.size() > MAX_REQUEST_LINE_SIZE)
+	stream.str(headers);
+	found = false;
+
+	while (std::getline(stream, line))
 	{
-		this->status = URI_TOO_LONG;
-		return;
+		if (!HttpMessageUtils::splitHeaderLine(line, key, value))
+			continue;
+		key = toLowerCase(key);
+		HttpMessageUtils::trimHeaderValue(value);
+
+		if (key != "transfer-encoding")
+			continue;
+
+		if (found)
+			return (TE_INVALID);
+
+		found = true;
+		value = toLowerCase(value);
+
+		if (value.empty())
+			return (TE_INVALID);
+
+		if (value == "chunked")
+			return (TE_CHUNKED);
+
+		return (TE_UNSUPPORTED);
 	}
 
-	ss << requestLine;
-	if (!(ss >> method >> uri >> version))
+	return (TE_ABSENT);
+}
+
+static InspectRequestStatus toInspectStatus(RequestLineStatus status)
+{
+	if (status == REQUEST_LINE_OK)
+		return (COMPLETED);
+	if (status == REQUEST_LINE_URI_TOO_LONG)
+		return (URI_TOO_LONG);
+	if (status == REQUEST_LINE_NOT_IMPLEMENTED)
+		return (NOT_IMPLEMENTED);
+	return (BAD_REQUEST);
+}
+
+void RequestInspector::inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine)
+{
+	requestLineValid = false;
+	if (!parsedLine.parse(requestLine))
 	{
-		this->status = BAD_REQUEST;
+		this->status = toInspectStatus(parsedLine.getStatus());
 		return;
 	}
-
-	if (ss >> extra)
-	{
-		this->status = BAD_REQUEST;
-		return;
-	}
-
-	if (method != "GET" && method != "POST" && method != "DELETE")
-	{
-		this->status = NOT_IMPLEMENTED;
-		return;
-	}
-
-	if (uri.empty() || uri[0] != '/')
-	{
-		this->status = BAD_REQUEST;
-		return;
-	}
-
-	if (version != "HTTP/1.1" && version != "HTTP/1.0")
-	{
-		this->status = BAD_REQUEST;
-		return;
-	}
-
 	requestLineValid = true;
 	this->status = COMPLETED;
 }
 
-InspectRequestStatus RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
+RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
 {
+	RequestInspection inspection;
 	std::string requestLine;
 	std::stringstream ss;
-	size_t headerEnd;
-	size_t bodyStart;
 	size_t contentLength;
 	size_t currentBodySize;
 	std::string headers;
+	std::string version;
+	TransferEncodingResult teResult;
+	ChunkedDecodeStatus chunkedStatus;
+	ContentLengthResult clResult;
 
 	if (rawRequest.empty())
-	{
-		this->status = NEED_MORE_DATA;
-		return (this->status);
-	}
+		return (finishInspection(*this, inspection, NEED_MORE_DATA));
 
 	ss << rawRequest;
 	if (!std::getline(ss, requestLine))
-	{
-		this->status = NEED_MORE_DATA;
-		return (this->status);
-	}
+		return (finishInspection(*this, inspection, NEED_MORE_DATA));
 
-	inspectRequestLine(requestLine);
+	inspectRequestLine(requestLine, inspection.requestLine);
 	if (this->status != COMPLETED)
-		return (this->status);
+		return (finishInspection(*this, inspection, this->status));
 
-	headerEnd = findHeaderEnd(rawRequest, bodyStart);
-	if (headerEnd == std::string::npos)
-	{
-		this->status = NEED_MORE_DATA;
-		return (this->status);
-	}
+	if (!HttpMessageUtils::findHeaderEnd(rawRequest, inspection.headerEnd, inspection.bodyStart))
+		return (finishInspection(*this, inspection, NEED_MORE_DATA));
 
-	if (headerEnd > MAX_HEADERS_SIZE)
-	{
-		this->status = HEADER_TOO_LARGE;
-		return (this->status);
-	}
+	if (inspection.headerEnd > MAX_HEADERS_SIZE)
+		return (finishInspection(*this, inspection, HEADER_TOO_LARGE));
 
-	headers = rawRequest.substr(0, headerEnd);
+	headers = rawRequest.substr(0, inspection.headerEnd);
+
 	contentLength = 0;
-	ContentLengthResult clResult = getContentLength(headers, contentLength);
+	clResult = getContentLength(headers, contentLength);
+	teResult = getTransferEncoding(headers);
+	version = inspection.requestLine.getVersion();
 
 	if (clResult == CL_INVALID)
-	{
-		this->status = BAD_REQUEST;
-		return this->status;
-	}
+		return (finishInspection(*this, inspection, BAD_REQUEST));
+
+	if (teResult == TE_INVALID)
+		return (finishInspection(*this, inspection, BAD_REQUEST));
+
+	if (teResult == TE_UNSUPPORTED)
+		return (finishInspection(*this, inspection, NOT_IMPLEMENTED));
+
+	if (version == "HTTP/1.0" && teResult != TE_ABSENT)
+		return (finishInspection(*this, inspection, BAD_REQUEST));
+
+	if (teResult == TE_CHUNKED && clResult == CL_VALID)
+		return (finishInspection(*this, inspection, BAD_REQUEST));
+
 	if (clResult == CL_VALID)
 	{
-		if (contentLength > maxBodySize)
-		{
-			this->status = REQUEST_TOO_LARGE;
-			return (this->status);
-		}
-
-		currentBodySize = rawRequest.length() - bodyStart;
-		if (currentBodySize < contentLength)
-		{
-			this->status = NEED_MORE_DATA;
-			return (this->status);
-		}
+		inspection.hasContentLength = true;
+		inspection.contentLength = contentLength;
 	}
 
-	this->status = COMPLETED;
-	return (this->status);
+	inspection.isChunked = (teResult == TE_CHUNKED);
+
+	if (inspection.isChunked)
+	{
+		chunkedStatus = ChunkedDecoder::inspect(
+			rawRequest,
+			inspection.bodyStart,
+			maxBodySize,
+			inspection.messageEnd);
+
+		if (chunkedStatus == CHUNKED_NEED_MORE_DATA)
+			return (finishInspection(*this, inspection, NEED_MORE_DATA));
+
+		if (chunkedStatus == CHUNKED_BODY_TOO_LARGE)
+			return (finishInspection(*this, inspection, REQUEST_TOO_LARGE));
+
+		if (chunkedStatus == CHUNKED_BAD_REQUEST)
+			return (finishInspection(*this, inspection, BAD_REQUEST));
+
+		return (finishInspection(*this, inspection, COMPLETED));
+	}
+
+	if (inspection.hasContentLength)
+	{
+		if (inspection.contentLength > maxBodySize)
+			return (finishInspection(*this, inspection, REQUEST_TOO_LARGE));
+
+		currentBodySize = rawRequest.length() - inspection.bodyStart;
+		if (currentBodySize < inspection.contentLength)
+			return (finishInspection(*this, inspection, NEED_MORE_DATA));
+
+		inspection.messageEnd = inspection.bodyStart + inspection.contentLength;
+		return (finishInspection(*this, inspection, COMPLETED));
+	}
+
+	inspection.messageEnd = rawRequest.length();
+	return (finishInspection(*this, inspection, COMPLETED));
 }

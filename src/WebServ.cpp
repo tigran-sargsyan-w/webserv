@@ -1,6 +1,5 @@
 #include "WebServ.hpp"
 #include "Request.hpp"
-#include "RequestHandler.hpp"
 #include "RequestInspector.hpp"
 #include "RequestParser.hpp"
 #include "Response.hpp"
@@ -16,7 +15,8 @@
 #include <utility>
 
 #include "CgiHandler.hpp"
-#include "CgiRequestHandler.hpp"
+#include "ClientResponseApplier.hpp"
+#include "RequestDispatcher.hpp"
 #include "ErrorResponseHandler.hpp"
 
 #include <ctime>
@@ -68,105 +68,75 @@ int WebServ::readFromClient(Client &client)
 	ssize_t bytesRead;
 	char buffer[4096];
 
-	bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
-	if (bytesRead == -1)
-		return 1;
-	else if (bytesRead == 0)
+	bytesRead = recv(client.fd, buffer, sizeof(buffer), 0);
+	if (bytesRead < 0)
+		return (1);
+	if (bytesRead == 0)
 	{
-		std::cout << "Client closed connection\n";
+		std::cout << "Client closed connection" << std::endl;
 		client.state = CLOSING_CONNECTION;
+		return (0);
 	}
-	else
-	{
-		client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
-		// std::cout << "Request from client:\n\n" << client.rawRequest <<
-		// std::endl;
-	}
-
+	client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
 	return (0);
 }
 
-static bool routeMatchesPath(const std::string &routePath, const std::string &requestPath)
+int WebServ::discardRequestBody(Client &client)
 {
-	if (routePath == "/")
-		return (true);
+	ssize_t bytesRead;
+	char buffer[4096];
+	size_t readSize;
 
-	if (requestPath == routePath)
-		return (true);
-
-	if (requestPath.find(routePath) != 0)
-		return (false);
-
-	if (requestPath.length() > routePath.length() &&
-		requestPath[routePath.length()] == '/')
-		return (true);
-
-	return (false);
-}
-
-static const RouteConfig &findMatchingRoute(const ServerConfig &serverConfig, const std::string &requestPath)
-{
-	const RouteConfig *bestRoute = NULL;
-	size_t bestLength = 0;
-
-	for (std::vector<RouteConfig>::const_iterator it =
-			 serverConfig.routes.begin();
-		 it != serverConfig.routes.end();
-		 ++it)
+	if (client.bodyBytesToDiscard == 0)
 	{
-		if (routeMatchesPath(it->path, requestPath) &&
-			it->path.length() > bestLength)
-		{
-			bestRoute = &(*it);
-			bestLength = it->path.length();
-		}
+		client.state = WRITING;
+		return (0);
 	}
-
-	if (bestRoute != NULL)
-		return (*bestRoute);
-
-	return (serverConfig.routes.front());
-}
-
-static std::string getPathWithoutQuery(const std::string &path)
-{
-	size_t questionMark = path.find('?');
-
-	if (questionMark == std::string::npos)
-		return (path);
-	return (path.substr(0, questionMark));
+	readSize = sizeof(buffer);
+	if (client.bodyBytesToDiscard < readSize)
+		readSize = client.bodyBytesToDiscard;
+	bytesRead = recv(client.fd, buffer, readSize, 0);
+	if (bytesRead < 0)
+	{
+		std::cerr << "Failed to discard request body from client fd "
+				  << client.fd << std::endl;
+		client.state = CLOSING_CONNECTION;
+		return (1);
+	}
+	if (bytesRead == 0)
+	{
+		client.bodyBytesToDiscard = 0;
+		client.state = WRITING;
+		return (0);
+	}
+	if (static_cast<size_t>(bytesRead) >= client.bodyBytesToDiscard)
+	{
+		client.bodyBytesToDiscard = 0;
+		client.state = WRITING;
+	}
+	else
+		client.bodyBytesToDiscard -= static_cast<size_t>(bytesRead);
+	return (0);
 }
 
 int WebServ::SendToClient(Client &client)
 {
+	RequestDispatcher::Result dispatchResult;
 	ssize_t bytesSent;
 	size_t remaining;
 	const char *data;
 
 	if (!client.responseReady)
 	{
-		std::string cleanPath = getPathWithoutQuery(client.request.getPath());
+		dispatchResult = RequestDispatcher::dispatch(client, configs[client.serverIndex],
+													 cgiManager, pollManager);
 
-		const RouteConfig &route = findMatchingRoute(configs[client.serverIndex], cleanPath);
-
-		std::cout << "Matched route: " << route.path << std::endl;
-
-		if (CgiRequestHandler::isCgiRequest(client.request, route))
-		{
-			if (cgiManager.startForClient(client, route, configs[client.serverIndex], pollManager) != 0)
-				return (1);
+		if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
+			return (1);
+		if (dispatchResult == RequestDispatcher::ASYNC_STARTED)
 			return (0);
-		}
-
-		Response response = RequestHandler::handleRequest(client.request, route, configs[client.serverIndex]);
-
-		client.responseBuffer = response.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-
-		std::cout << "Response to client:\n\n"
-				  << client.responseBuffer << std::endl;
 	}
+
 	if (client.bytesSent >= client.responseBuffer.size())
 	{
 		client.state = CLOSING_CONNECTION;
@@ -177,14 +147,13 @@ int WebServ::SendToClient(Client &client)
 	data = client.responseBuffer.c_str() + client.bytesSent;
 	bytesSent = send(client.fd, data, remaining, 0);
 
-	if (bytesSent == -1)
+	if (bytesSent <= 0)
 	{
-		std::cout << "send: " << strerror(errno) << std::endl;
-		return (1);
+		if (bytesSent == -1)
+			return (1);
+		if (bytesSent == 0)
+			return (0);
 	}
-
-	if (bytesSent == 0)
-		return (0);
 
 	client.bytesSent += static_cast<size_t>(bytesSent);
 
@@ -285,7 +254,6 @@ int WebServ::setup(std::vector<ServerConfig> servers)
 		}
 
 		// 3. Socket listening
-
 		if (listen(listeningSocket, 10) == -1)
 		{
 			std::cerr << "Error on socket " << i << " listening\n";
@@ -365,7 +333,7 @@ bool WebServ::isListeningFd(int fd)
 
 static bool hasActiveCgi(const Client &client)
 {
-	return (client.cgiPid > 0 || client.cgiStdinFd != -1 || client.cgiStdoutFd != -1);
+	return (client.cgi.isActive());
 }
 
 void WebServ::closeAndRemoveFd(int fd)
@@ -413,11 +381,24 @@ static void prepareInspectorErrorResponse(Client &client, const ServerConfig &se
 		statusCode = 400;
 
 	response = ErrorResponseHandler::build(statusCode, getInspectorErrorMessage(status), server);
+	ClientResponseApplier::apply(client, response);
+}
 
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+static void prepareBodyDiscard(Client &client, const RequestInspection &inspection)
+{
+	size_t currentBodySize;
+
+	client.bodyBytesToDiscard = 0;
+	if (!inspection.hasContentLength)
+		return;
+	currentBodySize = 0;
+	if (client.rawRequest.length() > inspection.bodyStart)
+		currentBodySize = client.rawRequest.length() - inspection.bodyStart;
+	if (currentBodySize < inspection.contentLength)
+	{
+		client.bodyBytesToDiscard = inspection.contentLength - currentBodySize;
+		client.state = DISCARDING_BODY;
+	}
 }
 
 int WebServ::run()
@@ -490,6 +471,22 @@ int WebServ::run()
 				}
 
 				Client &curClient = clientIt->second;
+				if (curClient.state == DISCARDING_BODY)
+				{
+					if (pollFds[i].revents & POLLIN)
+					{
+						discardRequestBody(curClient);
+						if (curClient.state == CLOSING_CONNECTION)
+						{
+							closeAndRemoveFd(curFD);
+							continue;
+						}
+						if (curClient.state == WRITING)
+							pollManager.setEvents(curFD, POLLOUT);
+					}
+					++i;
+					continue;
+				}
 				if (curClient.state == CGI_WRITING || curClient.state == CGI_READING)
 				{
 					if (pollFds[i].revents & POLLIN)
@@ -517,22 +514,29 @@ int WebServ::run()
 
 					RequestParser parser;
 					RequestInspector inspector;
+					RequestInspection inspection;
 
-					inspector.inspectRequest(curClient.getRawRequest(), configs[curClient.serverIndex].clientMaxBodySize);
-					if (inspector.status == COMPLETED)
+					inspection = inspector.inspectRequest(curClient.getRawRequest(),
+														  configs[curClient.serverIndex].clientMaxBodySize);
+					if (inspection.status == COMPLETED)
 					{
-						parser.parse(curClient.getRawRequest(), curClient.request);
+						parser.parse(curClient.getRawRequest(), curClient.request, inspection);
 					}
-					else if (inspector.status == NEED_MORE_DATA)
+					else if (inspection.status == NEED_MORE_DATA)
 					{
 						++i;
 						continue;
 					}
 					else
 					{
-						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex], inspector.status);
-
-						pollManager.setEvents(curFD, POLLOUT);
+						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex],
+													  inspection.status);
+						if (inspection.status == REQUEST_TOO_LARGE)
+							prepareBodyDiscard(curClient, inspection);
+						if (curClient.state == DISCARDING_BODY)
+							pollManager.setEvents(curFD, POLLIN);
+						else
+							pollManager.setEvents(curFD, POLLOUT);
 						++i;
 						continue;
 					}

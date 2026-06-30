@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forms · webserv</title>
+<meta name="description" content="POST form demo for webserv.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// POST · application/x-www-form-urlencoded</span>
+  <h1>POST form demo</h1>
+  <p class="lead" style="color:var(--muted)">Submit a small form and watch the live JSON preview.</p>
+</section>
+
+<section class="section container">
+  <div class="grid" style="grid-template-columns: 1fr 1fr">
+    <form class="form" action="/post-demo" method="POST" data-preview-form>
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" class="input" type="text" name="name" placeholder="ada" required>
+      </div>
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" class="textarea" name="message" placeholder="hello, webserv!"></textarea>
+      </div>
+      <div>
+        <button class="btn btn-primary" type="submit">▶ Submit POST</button>
+      </div>
+    </form>
+    <div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">request preview</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt"></span>cat body.json</div>
+          <pre style="margin:0.5rem 0 0;color:var(--text)" data-preview-output>{}</pre>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:0.9rem;margin-top:0.75rem">
+        The preview is just a JS helper — the form still submits a real <code>POST</code> to <code>/post-demo</code>.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

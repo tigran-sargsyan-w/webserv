@@ -129,6 +129,9 @@ int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
 
     if (pid == 0)
     {
+		if (signal(SIGPIPE, SIG_DFL) == SIG_ERR)
+			_exit(1);
+
         close(stdinPipe[1]);
         close(stdoutPipe[0]);
 

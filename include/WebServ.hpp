@@ -35,6 +35,7 @@ private:
 	CgiManager cgiManager;
 
 	int setNonBlocking(int fd);
+	int discardRequestBody(Client &client);
 	void closeAndRemoveFd(int fd);
 	std::vector<ServerConfig> configs;
 	std::map<int, size_t> listenerFdToIndex;

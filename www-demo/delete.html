@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DELETE · webserv</title>
+<meta name="description" content="Send a DELETE request to the webserv server.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// DELETE</span>
+  <h1>DELETE request demo</h1>
+  <p class="lead" style="color:var(--muted)">
+    HTML forms don't speak <code>DELETE</code>, so this page uses
+    <code>fetch()</code> to send the request directly.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="form">
+    <div class="field">
+      <label for="path">Resource path</label>
+      <input id="path" class="input" type="text" value="/uploads/sample.txt" data-delete-path>
+    </div>
+    <div>
+      <button class="btn btn-danger" data-delete-btn>🗑 Send DELETE request</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 style="font-size:1.1rem">Response</h2>
+    <div class="result empty" data-delete-result>Waiting for a request...</div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h3>ℹ How it works</h3>
+      <p>
+        Clicking the button runs roughly:
+        <code>fetch(path, &#123; method: "DELETE" &#125;)</code>.
+        The server should reply with <code>200</code>, <code>204</code>
+        or <code>404</code> depending on whether the resource exists and
+        the route allows the <code>DELETE</code> method.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

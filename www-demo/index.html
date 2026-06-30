@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webserv — C++98 HTTP server demo</title>
+<meta name="description" content="Demo site for webserv, a C++98 HTTP server built for the 42 School curriculum.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="hero container">
+  <span class="eyebrow">// 42 school project</span>
+  <h1><span class="accent">webserv</span> — A C++98 HTTP Server</h1>
+  <p class="lead">
+    A small, non-blocking HTTP/1.1 server written from scratch in C++98.
+    Inspired by NGINX, built to learn sockets, parsing, CGI and configuration-driven routing.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="#try">▶ Try the demo</a>
+    <a class="btn" href="/features.html">View features</a>
+    <a class="btn" href="/about.html">About the project</a>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="grid" style="grid-template-columns: 1.2fr 1fr; align-items:start;">
+    <div>
+      <h2>What it does</h2>
+      <p class="sub">Configuration-driven HTTP server with support for the methods and behaviors required by the 42 webserv subject.</p>
+      <ul class="feature-list">
+        <li><span class="method get">GET</span> Serve static files from configured roots.</li>
+        <li><span class="method post">POST</span> Accept form submissions and uploads.</li>
+        <li><span class="method delete">DELETE</span> Remove resources on disk.</li>
+        <li><span class="method get">CGI</span> Execute Python / PHP scripts and pipe their output.</li>
+        <li><span class="method get">AUTO</span> Generate directory listings when index files are missing.</li>
+      </ul>
+    </div>
+    <div class="terminal" aria-hidden="false">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">webserv — status</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt"></span>status<span class="cursor"></span></div>
+        <div class="row"><span class="k">server</span><span class="v ok">● online</span></div>
+        <div class="row"><span class="k">protocol</span><span class="v">HTTP/1.1</span></div>
+        <div class="row"><span class="k">language</span><span class="v">C++98</span></div>
+        <div class="row"><span class="k">i/o model</span><span class="v">non-blocking (poll)</span></div>
+        <div class="row"><span class="k">methods</span><span class="v">GET, POST, DELETE</span></div>
+        <div class="row"><span class="k">cgi</span><span class="v ok">enabled</span></div>
+        <div class="row"><span class="k">uptime</span><span class="v" data-uptime>00:00:00</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section container">
+  <h2>Core features</h2>
+  <p class="sub">Each card maps to a real requirement from the webserv subject.</p>
+  <div class="grid">
+    <div class="card"><h3>⚡ Non-blocking I/O</h3><p>A single <code>poll()</code> loop multiplexes every client, accept and CGI pipe — no thread per connection.</p></div>
+    <div class="card"><h3>📄 Static serving</h3><p>Serve HTML, CSS, JS and assets from any configured root with proper MIME types.</p></div>
+    <div class="card"><h3>🔁 GET / POST / DELETE</h3><p>The three methods required by the subject are fully parsed and routed.</p></div>
+    <div class="card"><h3>📤 File uploads</h3><p>Parse <code>multipart/form-data</code> and store uploads in a configured directory.</p></div>
+    <div class="card"><h3>🐍 CGI support</h3><p>Execute Python or PHP scripts and stream their stdout back to the client.</p></div>
+    <div class="card"><h3>🚧 Custom error pages</h3><p>Per-server <code>error_page</code> directives, with consistent styling.</p></div>
+    <div class="card"><h3>📂 Autoindex</h3><p>Auto-generated directory listings when no index file is present.</p></div>
+    <div class="card"><h3>🔌 Multiple ports</h3><p>Bind several listen blocks with different configurations on the same binary.</p></div>
+  </div>
+</section>
+
+<section id="try" class="section container">
+  <h2>Try the demo</h2>
+  <p class="sub">Each button exercises a specific webserv feature. Behavior depends on your <code>webserv.conf</code>.</p>
+  <div class="grid">
+    <a class="card" href="/upload.html"><h3>📤 Upload a file</h3><p>POST a file via <code>multipart/form-data</code>.</p></a>
+    <a class="card" href="/forms.html"><h3>📝 Submit a form</h3><p>POST URL-encoded data to a configured route.</p></a>
+    <a class="card" href="/delete.html"><h3>🗑 DELETE a resource</h3><p>Send a DELETE request from the browser.</p></a>
+    <a class="card" href="/cgi.html"><h3>🐍 Run a CGI script</h3><p>Hit <code>/cgi-bin/test.py</code> with GET or POST.</p></a>
+    <a class="card" href="/autoindex.html"><h3>📂 Browse a directory</h3><p>See the autoindex in action.</p></a>
+    <a class="card" href="/redirect.html"><h3>🔀 Follow a redirect</h3><p>HTTP 301/302 response from config.</p></a>
+    <a class="card" href="/errors/404.html"><h3>🚧 View an error page</h3><p>Preview the custom 404 template.</p></a>
+    <a class="card" href="/files/"><h3>📁 Static files index</h3><p>Try the configured <code>/files/</code> root.</p></a>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

@@ -175,8 +175,8 @@ static void validateUploadStoreDirectory(const RouteConfig &route)
 		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " does not exist");
 	else if (!S_ISDIR(pathStat.st_mode))
 		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not a directory");
-	else if (access(route.uploadStore.c_str(), W_OK) != 0)
-		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not writable");
+	else if (access(route.uploadStore.c_str(), W_OK | X_OK) != 0)
+		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not accessible or writable");
 }
 
 static void validateRoutePaths(const RouteConfig &route)

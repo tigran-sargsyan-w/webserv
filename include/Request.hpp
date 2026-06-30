@@ -13,7 +13,7 @@ class Request
         void setMethod(const std::string& method) { this->method = method; };
         void setPath(const std::string& path) { this->path = path; };
         void setVersion(const std::string& version) { this->version = version; };
-        void addHeader(const std::string& key, const std::string& value) { this->headers[key] = value; };
+        void addHeader(const std::string &key, const std::string &value);
         void setBody(const std::string& body) { this->body = body; };
         void setIsCgi() { this->isCgi = true; };
         void setValid() { this->valid = true; };

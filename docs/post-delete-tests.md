@@ -17,6 +17,18 @@ The goal is to verify that every possible outcome of `handlePost` and `handleHtt
 - a non-empty request body
 - a valid, safe filename in the request path
 
+### Upload authorization (per route)
+
+Before `handlePost` runs, `handleRequest` checks that the HTTP method is listed in the route `methods` directive.
+
+| Situation | Where it is checked | Expected status |
+|-----------|---------------------|-----------------|
+| `POST` not in `methods` (e.g. `/static`) | `validateMethod` in `handleRequest` | `405 Method Not Allowed` + `Allow` header |
+| `POST` allowed but `upload_enable off` (e.g. `/`) | `handlePost` | `403 Forbidden` |
+| `POST` allowed and `upload_enable on` with valid `upload_store` (e.g. `/uploads`) | `handlePost` | `201 Created` (if body and path are valid) |
+
+With `configs/default.conf`, you do **not** need an extra `location /no-upload`: `location /` already has `methods GET POST DELETE` and `upload_enable off`.
+
 ### DELETE
 
 `handleHttpDelete` deletes a file from `uploadStore`. It requires:
@@ -114,7 +126,9 @@ hello world
 
 ---
 
-### 3.2 Upload disabled on route
+### 3.2 Upload authorization (per route)
+
+#### 3.2.a POST not in route methods
 
 ```bash
 curl -X POST http://localhost:8080/static/test.txt \
@@ -128,20 +142,16 @@ HTTP/1.1 405 Method Not Allowed
 Allow: GET
 ```
 
-Note: this returns 405 before reaching `handlePost` because POST is not in the route's allowed methods. To test the `upload_enable off` check specifically, add a route with POST allowed but `upload_enable off`:
+Rejection happens in `validateMethod` before `handlePost` is even called.
 
-```conf
-location /no-upload {
-    methods GET POST;
-    root ./www/static;
-    upload_enable off;
-}
-```
+---
 
-Then:
+#### 3.2.b POST allowed but upload_enable off
+
+With `configs/default.conf`, `location /` has `methods GET POST DELETE` and `upload_enable off`, so it covers this case directly. No extra route needed.
 
 ```bash
-curl -X POST http://localhost:8080/no-upload/test.txt \
+curl -X POST http://localhost:8080/test.txt \
   --data-binary "hello" -v
 ```
 
@@ -154,6 +164,8 @@ HTTP/1.1 403 Forbidden
 ```html
 <html><body><h1>403 Forbidden: Upload is disabled for this route</h1></body></html>
 ```
+
+This is checked inside `handlePost` after method validation passes.
 
 ---
 
@@ -197,6 +209,13 @@ HTTP/1.1 400 Bad Request
 
 ### 3.5 Path traversal with `..` (plain)
 
+Check the size before:
+```bash
+wc -c /etc/passwd
+```
+
+Then do the test:
+
 ```bash
 curl -X POST "http://localhost:8080/uploads/../etc/passwd" \
   --data-binary "hack" --path-as-is -v
@@ -212,10 +231,10 @@ HTTP/1.1 400 Bad Request
 <html><body><h1>400 Bad Request: Invalid file name</h1></body></html>
 ```
 
-Verify nothing was written:
+Verify nothing was written by checking the size after is identical to the size before:
 
 ```bash
-cat /etc/passwd
+wc -c /etc/passwd
 ```
 
 The file must not have been modified.
@@ -638,6 +657,8 @@ curl -X POST http://localhost:8080/uploads --data-binary "edge case" -v
 
 # DELETE
 curl -X DELETE http://localhost:8080/uploads/test.txt -v
+curl -X POST http://localhost:8080/static/test.txt --data-binary "hello" -v
+curl -X POST http://localhost:8080/test.txt --data-binary "hello" -v
 curl -X DELETE http://localhost:8080/uploads/doesnotexist.txt -v
 curl -X DELETE http://localhost:8080/uploads/ -v
 curl -X DELETE "http://localhost:8080/uploads/..%2Fetc%2Fpasswd" --path-as-is -v
@@ -648,6 +669,8 @@ Expected summary:
 | Request | Expected status | Purpose |
 |---|---|---|
 | `POST /uploads/test.txt` with body | `201 Created` | Normal upload |
+| `POST /static/test.txt` with body | `405 Method Not Allowed` | POST not in route methods |
+| `POST /test.txt` with body | `403 Forbidden` | upload_enable off |
 | `POST /uploads/` with body | `400 Bad Request` | Empty filename |
 | `POST /uploads/test.txt` empty body | `400 Bad Request` | Empty body |
 | `POST /uploads/..%2Fetc%2Fpasswd` | `400 Bad Request` | Traversal blocked |

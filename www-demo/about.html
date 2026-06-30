@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About · webserv</title>
+<meta name="description" content="About the webserv 42 School project.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// about</span>
+  <h1>About webserv</h1>
+  <p class="lead" style="color:var(--muted);max-width:680px">
+    webserv is a project from the 42 School cursus. The goal is to build
+    an HTTP/1.1 server in C++98, with no high-level networking libraries,
+    and to learn how production web servers really work under the hood.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="grid">
+    <div class="card">
+      <h3>🎯 Goal</h3>
+      <p>Implement a configuration-driven HTTP server inspired by NGINX, using only the C++98 standard and POSIX sockets.</p>
+    </div>
+    <div class="card">
+      <h3>📚 What we learned</h3>
+      <p>HTTP message parsing, non-blocking I/O with <code>poll()</code>, CGI execution, multipart bodies and edge cases in real-world clients.</p>
+    </div>
+    <div class="card">
+      <h3>🧱 Architecture</h3>
+      <p>A single-threaded event loop. Every socket — listeners, clients and CGI pipes — goes through the same <code>poll()</code> array.</p>
+    </div>
+    <div class="card">
+      <h3>⚙ Configuration</h3>
+      <p>A custom config format describing servers, listen ports, server names, routes, methods, redirects, CGI and error pages.</p>
+    </div>
+    <div class="card">
+      <h3>🧪 Compliance</h3>
+      <p>Tested against real browsers and against <code>curl</code> / <code>siege</code> for robustness, partial reads, chunked bodies and slow clients.</p>
+    </div>
+    <div class="card">
+      <h3>🏫 Context</h3>
+      <p>This site is the demo we use during peer evaluation. It exercises each required feature with a dedicated page.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

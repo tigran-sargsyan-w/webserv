@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autoindex · webserv</title>
+<meta name="description" content="Directory autoindex demo for webserv.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// autoindex</span>
+  <h1>Autoindex / directory listing</h1>
+  <p class="lead" style="color:var(--muted)">
+    When a directory has no index file and <code>autoindex on;</code> is set,
+    the server should generate an HTML listing of its contents.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="grid" style="grid-template-columns: 1fr 1fr">
+    <a class="card" href="/files/">
+      <h3>📁 Browse <code>/files/</code></h3>
+      <p>Configured demo directory. Should show a generated listing if no index file is present.</p>
+    </a>
+    <a class="card" href="/public/">
+      <h3>📁 Browse <code>/public/</code></h3>
+      <p>Alternate directory you can wire up in your config to test autoindex on a second route.</p>
+    </a>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h3>ℹ How to enable</h3>
+      <p>In your config, on the matching <code>location</code> block:</p>
+      <pre style="margin:0.6rem 0 0;color:var(--accent);font-family:var(--mono);font-size:0.9rem">location /files/ &#123;
+    root        ./www;
+    autoindex   on;
+&#125;</pre>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

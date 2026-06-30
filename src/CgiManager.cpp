@@ -1,11 +1,13 @@
 #include "CgiManager.hpp"
+#include "ClientResponseApplier.hpp"
 #include "CgiRequestHandler.hpp"
+#include "CgiPipeIO.hpp"
+#include "CgiValidator.hpp"
 #include "ErrorResponseHandler.hpp"
 #include "Response.hpp"
 #include "CgiHandler.hpp"
 
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <ctime>
 #include <iostream>
 #include <signal.h>
@@ -26,87 +28,16 @@ CgiManager::~CgiManager() {}
 CgiManager &CgiManager::operator=(const CgiManager &other)
 {
 	if (this != &other)
-		cgiFdToClientFd = other.cgiFdToClientFd;
+		fdRegistry = other.fdRegistry;
 	return (*this);
-}
-
-static std::string getCgiValidationMessage(int statusCode)
-{
-	if (statusCode == 403)
-		return ("Forbidden");
-	if (statusCode == 404)
-		return ("Not Found");
-	if (statusCode == 502)
-		return ("Bad Gateway");
-	return ("Internal Server Error");
 }
 
 static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, int statusCode)
 {
 	Response error;
 
-	error = ErrorResponseHandler::build(statusCode, getCgiValidationMessage(statusCode), server);
-	client.responseBuffer = error.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-}
-
-static int checkCgiScriptPath(const std::string &scriptPath)
-{
-	struct stat scriptStat;
-
-	if (scriptPath.empty())
-		return (404);
-
-	if (stat(scriptPath.c_str(), &scriptStat) == -1)
-	{
-		if (errno == ENOENT || errno == ENOTDIR)
-			return (404);
-		return (403);
-	}
-
-	if (S_ISDIR(scriptStat.st_mode))
-		return (403);
-
-	if (access(scriptPath.c_str(), R_OK) == -1)
-		return (403);
-
-	return (0);
-}
-
-static int checkCgiExecutablePath(const std::string &executablePath)
-{
-	struct stat executableStat;
-
-	if (executablePath.empty())
-		return (502);
-
-	if (stat(executablePath.c_str(), &executableStat) == -1)
-		return (502);
-
-	if (S_ISDIR(executableStat.st_mode))
-		return (502);
-
-	if (access(executablePath.c_str(), X_OK) == -1)
-		return (502);
-
-	return (0);
-}
-
-static int validateCgiContext(const CgiContext &context)
-{
-	int statusCode;
-
-	statusCode = checkCgiScriptPath(context.scriptPath);
-	if (statusCode != 0)
-		return (statusCode);
-
-	statusCode = checkCgiExecutablePath(context.executable);
-	if (statusCode != 0)
-		return (statusCode);
-
-	return (0);
+	error = ErrorResponseHandler::build(statusCode, CgiValidator::messageForStatus(statusCode), server);
+	ClientResponseApplier::apply(client, error);
 }
 
 static int setNonBlockingFd(int fd)
@@ -129,104 +60,44 @@ static int setNonBlockingFd(int fd)
 
 bool CgiManager::isCgiFd(int fd) const
 {
-	return (cgiFdToClientFd.find(fd) != cgiFdToClientFd.end());
-}
-
-void CgiManager::registerCgiFd(int cgiFd, int clientFd)
-{
-	cgiFdToClientFd[cgiFd] = clientFd;
-}
-
-void CgiManager::unregisterCgiFd(int cgiFd)
-{
-	cgiFdToClientFd.erase(cgiFd);
-}
-
-bool CgiManager::getClientFd(int cgiFd, int &clientFd) const
-{
-	std::map<int, int>::const_iterator it;
-
-	it = cgiFdToClientFd.find(cgiFd);
-	if (it == cgiFdToClientFd.end())
-		return (false);
-	clientFd = it->second;
-	return (true);
-}
-
-void CgiManager::closeCgiFd(int fd, PollManager &pollManager)
-{
-	if (fd == -1)
-		return;
-
-	close(fd);
-	pollManager.removeFd(fd);
-	unregisterCgiFd(fd);
-}
-
-void CgiManager::resetState(Client &client)
-{
-	client.cgiPid = -1;
-	client.cgiStdinFd = -1;
-	client.cgiStdoutFd = -1;
-	client.cgiInputBuffer.clear();
-	client.cgiInputSent = 0;
-	client.cgiOutputBuffer.clear();
-	client.cgiStdinClosed = true;
-	client.cgiStdoutClosed = true;
-	client.cgiFinished = false;
-	client.cgiStartTime = 0;
+	return (fdRegistry.contains(fd));
 }
 
 void CgiManager::cleanup(Client &client, PollManager &pollManager)
 {
-	if (client.cgiStdinFd != -1)
-		closeCgiFd(client.cgiStdinFd, pollManager);
-	if (client.cgiStdoutFd != -1)
-		closeCgiFd(client.cgiStdoutFd, pollManager);
-	if (client.cgiPid > 0)
+	if (client.cgi.stdinFd != -1)
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
+	if (client.cgi.stdoutFd != -1)
+		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
+	if (client.cgi.pid > 0)
 	{
-		kill(client.cgiPid, SIGKILL);
-		waitpid(client.cgiPid, NULL, 0);
+		kill(client.cgi.pid, SIGKILL);
+		waitpid(client.cgi.pid, NULL, 0);
 	}
-	resetState(client);
+	client.cgi.reset();
 }
 
 int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 {
-	size_t remaining;
-	ssize_t bytesWritten;
-
-	if (client.cgiStdinFd == -1 || client.cgiStdinClosed)
+	if (client.cgi.stdinFd == -1 || client.cgi.stdinClosed)
 		return (0);
 
-	remaining = client.cgiInputBuffer.size() - client.cgiInputSent;
-	if (remaining == 0)
+	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
-		closeCgiFd(client.cgiStdinFd, pollManager);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
+		client.cgi.stdinFd = -1;
+		client.cgi.stdinClosed = true;
 		return (0);
 	}
 
-	bytesWritten = write(client.cgiStdinFd, client.cgiInputBuffer.c_str() + client.cgiInputSent, remaining);
-
-	if (bytesWritten == -1)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
+	if (CgiPipeIO::writeToStdin(client.cgi) != 0)
 		return (1);
-	}
 
-	if (bytesWritten == 0)
-		return (0);
-
-	client.cgiInputSent += static_cast<size_t>(bytesWritten);
-
-	if (client.cgiInputSent >= client.cgiInputBuffer.size())
+	if (CgiPipeIO::hasInputFinished(client.cgi))
 	{
-		closeCgiFd(client.cgiStdinFd, pollManager);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
+		client.cgi.stdinFd = -1;
+		client.cgi.stdinClosed = true;
 	}
 
 	return (0);
@@ -234,29 +105,20 @@ int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
 
 int CgiManager::readFromCgi(Client &client, PollManager &pollManager)
 {
-	char buffer[4096];
-	ssize_t bytesRead;
+	CgiPipeIO::ReadResult result;
 
-	if (client.cgiStdoutFd == -1 || client.cgiStdoutClosed)
+	if (client.cgi.stdoutFd == -1 || client.cgi.stdoutClosed)
 		return (0);
 
-	bytesRead = read(client.cgiStdoutFd, buffer, sizeof(buffer));
-	if (bytesRead == -1)
-	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-			return (0);
+	result = CgiPipeIO::readFromStdout(client.cgi);
+	if (result == CgiPipeIO::READ_ERROR)
 		return (1);
-	}
-
-	if (bytesRead == 0)
+	if (result == CgiPipeIO::READ_EOF)
 	{
-		closeCgiFd(client.cgiStdoutFd, pollManager);
-		client.cgiStdoutFd = -1;
-		client.cgiStdoutClosed = true;
-		return (0);
+		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
+		client.cgi.stdoutFd = -1;
+		client.cgi.stdoutClosed = true;
 	}
-
-	client.cgiOutputBuffer.append(buffer, bytesRead);
 	return (0);
 }
 
@@ -265,17 +127,17 @@ int CgiManager::checkFinished(Client &client)
 	int status;
 	pid_t result;
 
-	if (client.cgiPid <= 0)
+	if (client.cgi.pid <= 0)
 		return (0);
 
-	result = waitpid(client.cgiPid, &status, WNOHANG);
+	result = waitpid(client.cgi.pid, &status, WNOHANG);
 	if (result == 0)
 		return (0);
-	if (result != client.cgiPid)
+	if (result != client.cgi.pid)
 		return (1);
 
-	client.cgiPid = -1;
-	client.cgiFinished = true;
+	client.cgi.pid = -1;
+	client.cgi.finished = true;
 
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		return (0);
@@ -302,9 +164,9 @@ int CgiManager::getPollTimeoutMs(const std::map<int, Client> &clients) const
 	{
 		const Client &client = it->second;
 
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		if (client.cgi.pid > 0 && client.cgi.startTime > 0)
 		{
-			elapsed = static_cast<int>(now - client.cgiStartTime);
+			elapsed = static_cast<int>(now - client.cgi.startTime);
 			remaining = CGI_TIMEOUT_SECONDS - elapsed;
 
 			if (remaining <= 0)
@@ -329,9 +191,9 @@ int CgiManager::checkTimeouts(std::map<int, Client> &clients, const std::vector<
 	{
 		Client &client = it->second;
 
-		if (client.cgiPid > 0 && client.cgiStartTime > 0)
+		if (client.cgi.pid > 0 && client.cgi.startTime > 0)
 		{
-			if (now - client.cgiStartTime >= CGI_TIMEOUT_SECONDS)
+			if (now - client.cgi.startTime >= CGI_TIMEOUT_SECONDS)
 			{
 				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
 				failResponse(client, 504, "Gateway Timeout", configs, pollManager);
@@ -346,12 +208,9 @@ void CgiManager::finishResponse(Client &client, PollManager &pollManager)
 {
 	Response response;
 
-	response = CgiRequestHandler::buildResponse(client.cgiOutputBuffer);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
-	resetState(client);
+	response = CgiRequestHandler::buildResponse(client.cgi.outputBuffer);
+	ClientResponseApplier::apply(client, response);
+	client.cgi.reset();
 	pollManager.setEvents(client.fd, POLLOUT);
 }
 
@@ -362,10 +221,7 @@ void CgiManager::failResponse(Client &client, int code, const std::string &messa
 
 	cleanup(client, pollManager);
 	response = ErrorResponseHandler::build(code, message, server);
-	client.responseBuffer = response.toString();
-	client.bytesSent = 0;
-	client.responseReady = true;
-	client.state = WRITING;
+	ClientResponseApplier::apply(client, response);
 	pollManager.setEvents(client.fd, POLLOUT);
 }
 
@@ -376,14 +232,12 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	int clientFd;
 
 	fdRemoved = 0;
-	if (!getClientFd(cgiFd, clientFd))
+	if (!fdRegistry.getClientFd(cgiFd, clientFd))
 		return (1);
 	clientIt = clients.find(clientFd);
 	if (clientIt == clients.end())
 	{
-		close(cgiFd);
-		pollManager.removeFd(cgiFd);
-		unregisterCgiFd(cgiFd);
+		fdRegistry.closeFd(cgiFd, pollManager);
 		return (1);
 	}
 
@@ -391,41 +245,41 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 
 	if (revents & (POLLERR | POLLHUP | POLLNVAL))
 	{
-		if (cgiFd == client.cgiStdinFd)
+		if (cgiFd == client.cgi.stdinFd)
 		{
-			closeCgiFd(client.cgiStdinFd, pollManager);
-			client.cgiStdinFd = -1;
-			client.cgiStdinClosed = true;
+			fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
+			client.cgi.stdinFd = -1;
+			client.cgi.stdinClosed = true;
 			fdRemoved = 1;
 		}
-		else if (cgiFd == client.cgiStdoutFd)
+		else if (cgiFd == client.cgi.stdoutFd)
 		{
-			closeCgiFd(client.cgiStdoutFd, pollManager);
-			client.cgiStdoutFd = -1;
-			client.cgiStdoutClosed = true;
+			fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
+			client.cgi.stdoutFd = -1;
+			client.cgi.stdoutClosed = true;
 			fdRemoved = 1;
 		}
 	}
 
-	if ((revents & POLLOUT) && cgiFd == client.cgiStdinFd)
+	if ((revents & POLLOUT) && cgiFd == client.cgi.stdinFd)
 	{
 		if (writeToCgi(client, pollManager) != 0)
 		{
 			failResponse(client, 502, "Bad Gateway", configs, pollManager);
 			return (1);
 		}
-		else if (client.cgiStdinFd == -1)
+		else if (client.cgi.stdinFd == -1)
 			fdRemoved = 1;
 	}
 
-	if ((revents & POLLIN) && cgiFd == client.cgiStdoutFd)
+	if ((revents & POLLIN) && cgiFd == client.cgi.stdoutFd)
 	{
 		if (readFromCgi(client, pollManager) != 0)
 		{
 			failResponse(client, 502, "Bad Gateway", configs, pollManager);
 			return (1);
 		}
-		else if (client.cgiStdoutFd == -1)
+		else if (client.cgi.stdoutFd == -1)
 			fdRemoved = 1;
 	}
 
@@ -435,7 +289,7 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 		return (1);
 	}
 
-	if (client.cgiStdoutClosed && client.cgiFinished)
+	if (client.cgi.stdoutClosed && client.cgi.finished)
 		finishResponse(client, pollManager);
 
 	return (fdRemoved);
@@ -449,7 +303,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 
 	context = CgiRequestHandler::buildContext(client.request, route, server, client.getRemoteAddr());
 
-	validationStatus = validateCgiContext(context);
+	validationStatus = CgiValidator::validate(context);
 	if (validationStatus != 0)
 	{
 		prepareCgiErrorResponse(client, server, validationStatus);
@@ -462,10 +316,7 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 		Response error;
 
 		error = ErrorResponseHandler::build(502, "Bad Gateway", server);
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
+		ClientResponseApplier::apply(client, error);
 		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}
@@ -480,39 +331,36 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 		Response error;
 
 		error = ErrorResponseHandler::build(500, "Internal Server Error", server);
-		client.responseBuffer = error.toString();
-		client.bytesSent = 0;
-		client.responseReady = true;
-		client.state = WRITING;
+		ClientResponseApplier::apply(client, error);
 		pollManager.setEvents(client.fd, POLLOUT);
 		return (1);
 	}
 
-	client.cgiPid = process.pid;
-	client.cgiStdinFd = process.stdinFd;
-	client.cgiStdoutFd = process.stdoutFd;
-	client.cgiInputBuffer = context.requestBody;
-	client.cgiInputSent = 0;
-	client.cgiOutputBuffer.clear();
-	client.cgiStdinClosed = false;
-	client.cgiStdoutClosed = false;
-	client.cgiFinished = false;
-	client.cgiStartTime = std::time(NULL);
+	client.cgi.pid = process.pid;
+	client.cgi.stdinFd = process.stdinFd;
+	client.cgi.stdoutFd = process.stdoutFd;
+	client.cgi.inputBuffer = context.requestBody;
+	client.cgi.inputSent = 0;
+	client.cgi.outputBuffer.clear();
+	client.cgi.stdinClosed = false;
+	client.cgi.stdoutClosed = false;
+	client.cgi.finished = false;
+	client.cgi.startTime = std::time(NULL);
 
-	registerCgiFd(client.cgiStdoutFd, client.fd);
-	pollManager.addFd(client.cgiStdoutFd, POLLIN);
+	fdRegistry.registerFd(client.cgi.stdoutFd, client.fd);
+	pollManager.addFd(client.cgi.stdoutFd, POLLIN);
 
-	if (client.cgiInputBuffer.empty())
+	if (client.cgi.inputBuffer.empty())
 	{
-		close(client.cgiStdinFd);
-		client.cgiStdinFd = -1;
-		client.cgiStdinClosed = true;
+		close(client.cgi.stdinFd);
+		client.cgi.stdinFd = -1;
+		client.cgi.stdinClosed = true;
 		client.state = CGI_READING;
 	}
 	else
 	{
-		registerCgiFd(client.cgiStdinFd, client.fd);
-		pollManager.addFd(client.cgiStdinFd, POLLOUT);
+		fdRegistry.registerFd(client.cgi.stdinFd, client.fd);
+		pollManager.addFd(client.cgi.stdinFd, POLLOUT);
 		client.state = CGI_WRITING;
 	}
 

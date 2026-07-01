@@ -7,8 +7,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-void	CgiCompletionHandler::cleanup(Client &client, PollManager &pollManager,
-	CgiFdRegistry &fdRegistry)
+void CgiCompletionHandler::cleanup(Client &client, PollManager &pollManager, CgiFdRegistry &fdRegistry)
 {
 	if (client.cgi.stdinFd != -1)
 		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
@@ -22,7 +21,7 @@ void	CgiCompletionHandler::cleanup(Client &client, PollManager &pollManager,
 	client.cgi.reset();
 }
 
-void	CgiCompletionHandler::finish(Client &client, PollManager &pollManager)
+void CgiCompletionHandler::finish(Client &client, PollManager &pollManager)
 {
 	Response response;
 
@@ -32,9 +31,8 @@ void	CgiCompletionHandler::finish(Client &client, PollManager &pollManager)
 	pollManager.setEvents(client.fd, POLLOUT);
 }
 
-void	CgiCompletionHandler::fail(Client &client, int code,
-	const std::string &message, const std::vector<ServerConfig> &configs,
-	PollManager &pollManager, CgiFdRegistry &fdRegistry)
+void CgiCompletionHandler::fail(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs,
+								PollManager &pollManager, CgiFdRegistry &fdRegistry)
 {
 	const ServerConfig &server = configs[client.serverIndex];
 
@@ -42,9 +40,8 @@ void	CgiCompletionHandler::fail(Client &client, int code,
 	error(client, code, message, server, pollManager);
 }
 
-void	CgiCompletionHandler::error(Client &client, int code,
-	const std::string &message, const ServerConfig &server,
-	PollManager &pollManager)
+void CgiCompletionHandler::error(Client &client, int code, const std::string &message, const ServerConfig &server,
+								 PollManager &pollManager)
 {
 	Response response;
 

@@ -221,16 +221,38 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	return (response);
 }
 
-static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
+static Response tryServeDirectoryIndex(const std::string &fullPath,
+	const std::string &indexName)
 {
 	std::string indexPath;
+	if (indexName.empty())
+		return (Response());
+	indexPath = PathUtils::join(fullPath, indexName);
+	if (!isRegularFile(indexPath))
+		return (Response());
+	return (buildFileResponse(indexPath));
+}
 
-	if (!route.index.empty())
-	{
-		indexPath = PathUtils::join(fullPath, route.index);
-		if (isRegularFile(indexPath))
-			return (buildFileResponse(indexPath));
-	}
+static Response tryServeConfiguredIndexFiles(const std::string &fullPath,
+	const RouteConfig &route, const ServerConfig &server)
+{
+	Response response;
+	response = tryServeDirectoryIndex(fullPath, route.index);
+	if (response.getStatusCode() != 0)
+		return (response);
+	response = tryServeDirectoryIndex(fullPath, server.index);
+	if (response.getStatusCode() != 0)
+		return (response);
+	return (Response());
+}
+
+static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
+{
+	Response response;
+
+	response = tryServeConfiguredIndexFiles(fullPath, route, server);
+	if (response.getStatusCode() != 0)
+		return (response);
 	if (route.autoindex)
 		return (buildAutoindexResponse(requestPath, fullPath, server));
 	return (ErrorResponseHandler::build(403, "Forbidden", server));

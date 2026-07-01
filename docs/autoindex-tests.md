@@ -56,6 +56,9 @@ printf "world\n" > www/static/listing-test/b.txt
 mkdir -p www/static/with-index
 printf "<h1>Index works</h1>" > www/static/with-index/index.html
 
+mkdir -p www/static/server-index-test
+printf "<h1>Server index fallback works</h1>\n" > www/static/server-index-test/index.html
+
 mkdir -p www/static/sort-test/assets
 mkdir -p www/static/sort-test/css
 mkdir -p www/static/sort-test/scripts
@@ -214,6 +217,28 @@ Body:
 ```
 
 Purpose: `index.html` has priority over autoindex.
+
+---
+
+## 7bis. Test: server index fallback when location has no index
+
+```bash
+curl -i http://localhost:8080/server-index-test/
+```
+
+Expected:
+
+```http
+HTTP/1.1 200 OK
+```
+
+Body:
+
+```html
+<h1>Server index fallback works</h1>
+```
+
+Purpose: when a location does not define `index`, the server-level `index` (`index.html`) is used for directory requests.
 
 ---
 
@@ -585,6 +610,7 @@ curl -i http://localhost:8080/no-such-file
 curl -i http://localhost:8080/static/
 curl -i http://localhost:8080/static/listing-test/
 curl -i http://localhost:8080/static/with-index/
+curl -i http://localhost:8080/server-index-test/
 curl -i http://localhost:8080/static/listing-test/a.txt
 curl -i http://localhost:8080/uploads/
 curl -i http://localhost:8080/static/not-found/
@@ -623,6 +649,7 @@ Expected summary:
 | `/static/`                          |        `200 OK` | Autoindex enabled                                           |
 | `/static/listing-test/`             |        `200 OK` | Nested autoindex                                            |
 | `/static/with-index/`               |        `200 OK` | Index file priority                                         |
+| `/server-index-test/`               |        `200 OK` | Server-level index fallback                                 |
 | `/static/listing-test/a.txt`        |        `200 OK` | Static file serving                                         |
 | `/uploads/`                         | `403 Forbidden` | Autoindex disabled                                          |
 | `/static/not-found/`                | `404 Not Found` | Missing directory                                           |

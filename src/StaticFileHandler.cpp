@@ -233,6 +233,19 @@ static Response tryServeDirectoryIndex(const std::string &fullPath,
 	return (buildFileResponse(indexPath));
 }
 
+static Response tryServeConfiguredIndexFiles(const std::string &fullPath,
+	const RouteConfig &route, const ServerConfig &server)
+{
+	Response response;
+	response = tryServeDirectoryIndex(fullPath, route.index);
+	if (response.getStatusCode() != 0)
+		return (response);
+	response = tryServeDirectoryIndex(fullPath, server.index);
+	if (response.getStatusCode() != 0)
+		return (response);
+	return (Response());
+}
+
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string indexPath;

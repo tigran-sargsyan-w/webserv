@@ -221,6 +221,18 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	return (response);
 }
 
+static Response tryServeDirectoryIndex(const std::string &fullPath,
+	const std::string &indexName)
+{
+	std::string indexPath;
+	if (indexName.empty())
+		return (Response());
+	indexPath = PathUtils::join(fullPath, indexName);
+	if (!isRegularFile(indexPath))
+		return (Response());
+	return (buildFileResponse(indexPath));
+}
+
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string indexPath;

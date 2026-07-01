@@ -8,7 +8,7 @@ SRC_DIR = src
 OBJ_DIR = obj
 INC_DIR = include
 
-SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp RequestInspector.cpp Response.cpp utils.cpp CgiCompletionHandler.cpp CgiHandler.cpp CgiFdRegistry.cpp CgiPipeIO.cpp Client.cpp ClientResponseApplier.cpp CgiSession.cpp CgiValidator.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp MimeTypes.cpp StaticFileHandler.cpp ErrorResponseBuilder.cpp RedirectHandler.cpp CgiRequestHandler.cpp ErrorPageResolver.cpp ErrorResponseHandler.cpp PollManager.cpp CgiManager.cpp ChunkedDecoder.cpp UriUtils.cpp PathUtils.cpp Router.cpp RequestDispatcher.cpp StoragePathResolver.cpp UploadHandler.cpp DeleteHandler.cpp HttpMessageUtils.cpp RequestLine.cpp
+SRC_FILES = main.cpp WebServ.cpp RequestParser.cpp Request.cpp RequestHandler.cpp RequestInspector.cpp Response.cpp utils.cpp CgiCompletionHandler.cpp CgiHandler.cpp CgiFdRegistry.cpp CgiPipeIO.cpp CgiTimeoutHandler.cpp Client.cpp ClientResponseApplier.cpp CgiSession.cpp CgiValidator.cpp ConfigLexer.cpp ConfigParser.cpp ConfigValidator.cpp HttpMethod.cpp MimeTypes.cpp StaticFileHandler.cpp ErrorResponseBuilder.cpp RedirectHandler.cpp CgiRequestHandler.cpp ErrorPageResolver.cpp ErrorResponseHandler.cpp PollManager.cpp CgiManager.cpp ChunkedDecoder.cpp UriUtils.cpp PathUtils.cpp Router.cpp RequestDispatcher.cpp StoragePathResolver.cpp UploadHandler.cpp DeleteHandler.cpp HttpMessageUtils.cpp RequestLine.cpp
 
 SRCS = $(addprefix $(SRC_DIR)/, $(SRC_FILES))
 OBJS = $(addprefix $(OBJ_DIR)/, $(SRC_FILES:.cpp=.o))

@@ -2,6 +2,7 @@
 #include "CgiCompletionHandler.hpp"
 #include "CgiRequestHandler.hpp"
 #include "CgiPipeIO.hpp"
+#include "CgiTimeoutHandler.hpp"
 #include "CgiValidator.hpp"
 #include "CgiHandler.hpp"
 
@@ -126,64 +127,15 @@ int CgiManager::checkFinished(Client &client)
 	return (1);
 }
 
-// No active CGI          → return -1
-// CGI already expired    → return 0
-// CGI available, N left  → return N * 1000
 int CgiManager::getPollTimeoutMs(const std::map<int, Client> &clients) const
 {
-	std::map<int, Client>::const_iterator it;
-	time_t now;
-	int shortestTimeout;
-	int elapsed;
-	int remaining;
-
-	shortestTimeout = -1;
-	now = std::time(NULL);
-
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		const Client &client = it->second;
-
-		if (client.cgi.pid > 0 && client.cgi.startTime > 0)
-		{
-			elapsed = static_cast<int>(now - client.cgi.startTime);
-			remaining = CGI_TIMEOUT_SECONDS - elapsed;
-
-			if (remaining <= 0)
-				return (0);
-
-			if (shortestTimeout == -1 || remaining * 1000 < shortestTimeout)
-				shortestTimeout = remaining * 1000;
-		}
-		++it;
-	}
-	return (shortestTimeout);
+	return (CgiTimeoutHandler::getPollTimeoutMs(clients));
 }
 
 int CgiManager::checkTimeouts(std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)
 {
-	std::map<int, Client>::iterator it;
-	time_t now;
-
-	now = std::time(NULL);
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		Client &client = it->second;
-
-		if (client.cgi.pid > 0 && client.cgi.startTime > 0)
-		{
-			if (now - client.cgi.startTime >= CGI_TIMEOUT_SECONDS)
-			{
-				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
-				CgiCompletionHandler::fail(client, 504, "Gateway Timeout",
-					configs, pollManager, fdRegistry);
-			}
-		}
-		++it;
-	}
-	return (0);
+	return (CgiTimeoutHandler::handleTimeouts(clients, configs,
+		pollManager, fdRegistry));
 }
 
 int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)

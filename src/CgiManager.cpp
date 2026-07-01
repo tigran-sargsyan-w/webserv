@@ -1,10 +1,8 @@
 #include "CgiManager.hpp"
-#include "ClientResponseApplier.hpp"
+#include "CgiCompletionHandler.hpp"
 #include "CgiRequestHandler.hpp"
 #include "CgiPipeIO.hpp"
 #include "CgiValidator.hpp"
-#include "ErrorResponseHandler.hpp"
-#include "Response.hpp"
 #include "CgiHandler.hpp"
 
 #include <fcntl.h>
@@ -32,14 +30,6 @@ CgiManager &CgiManager::operator=(const CgiManager &other)
 	return (*this);
 }
 
-static void prepareCgiErrorResponse(Client &client, const ServerConfig &server, int statusCode)
-{
-	Response error;
-
-	error = ErrorResponseHandler::build(statusCode, CgiValidator::messageForStatus(statusCode), server);
-	ClientResponseApplier::apply(client, error);
-}
-
 static int setNonBlockingFd(int fd)
 {
 	int flags;
@@ -65,16 +55,7 @@ bool CgiManager::isCgiFd(int fd) const
 
 void CgiManager::cleanup(Client &client, PollManager &pollManager)
 {
-	if (client.cgi.stdinFd != -1)
-		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
-	if (client.cgi.stdoutFd != -1)
-		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
-	if (client.cgi.pid > 0)
-	{
-		kill(client.cgi.pid, SIGKILL);
-		waitpid(client.cgi.pid, NULL, 0);
-	}
-	client.cgi.reset();
+	CgiCompletionHandler::cleanup(client, pollManager, fdRegistry);
 }
 
 int CgiManager::writeToCgi(Client &client, PollManager &pollManager)
@@ -196,33 +177,13 @@ int CgiManager::checkTimeouts(std::map<int, Client> &clients, const std::vector<
 			if (now - client.cgi.startTime >= CGI_TIMEOUT_SECONDS)
 			{
 				std::cout << "CGI timeout for client fd " << client.fd << std::endl;
-				failResponse(client, 504, "Gateway Timeout", configs, pollManager);
+				CgiCompletionHandler::fail(client, 504, "Gateway Timeout",
+					configs, pollManager, fdRegistry);
 			}
 		}
 		++it;
 	}
 	return (0);
-}
-
-void CgiManager::finishResponse(Client &client, PollManager &pollManager)
-{
-	Response response;
-
-	response = CgiRequestHandler::buildResponse(client.cgi.outputBuffer);
-	ClientResponseApplier::apply(client, response);
-	client.cgi.reset();
-	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void CgiManager::failResponse(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs, PollManager &pollManager)
-{
-	const ServerConfig &server = configs[client.serverIndex];
-	Response response;
-
-	cleanup(client, pollManager);
-	response = ErrorResponseHandler::build(code, message, server);
-	ClientResponseApplier::apply(client, response);
-	pollManager.setEvents(client.fd, POLLOUT);
 }
 
 int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)
@@ -265,7 +226,8 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	{
 		if (writeToCgi(client, pollManager) != 0)
 		{
-			failResponse(client, 502, "Bad Gateway", configs, pollManager);
+			CgiCompletionHandler::fail(client, 502, "Bad Gateway",
+				configs, pollManager, fdRegistry);
 			return (1);
 		}
 		else if (client.cgi.stdinFd == -1)
@@ -276,7 +238,8 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 	{
 		if (readFromCgi(client, pollManager) != 0)
 		{
-			failResponse(client, 502, "Bad Gateway", configs, pollManager);
+			CgiCompletionHandler::fail(client, 502, "Bad Gateway",
+				configs, pollManager, fdRegistry);
 			return (1);
 		}
 		else if (client.cgi.stdoutFd == -1)
@@ -285,12 +248,13 @@ int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &cli
 
 	if (checkFinished(client) != 0)
 	{
-		failResponse(client, 502, "Bad Gateway", configs, pollManager);
+		CgiCompletionHandler::fail(client, 502, "Bad Gateway",
+			configs, pollManager, fdRegistry);
 		return (1);
 	}
 
 	if (client.cgi.stdoutClosed && client.cgi.finished)
-		finishResponse(client, pollManager);
+		CgiCompletionHandler::finish(client, pollManager);
 
 	return (fdRemoved);
 }
@@ -306,18 +270,15 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 	validationStatus = CgiValidator::validate(context);
 	if (validationStatus != 0)
 	{
-		prepareCgiErrorResponse(client, server, validationStatus);
-		pollManager.setEvents(client.fd, POLLOUT);
+		CgiCompletionHandler::validationError(client, server,
+			validationStatus, pollManager);
 		return (0);
 	}
 
 	if (CgiHandler::startCgi(context, process) != 0)
 	{
-		Response error;
-
-		error = ErrorResponseHandler::build(502, "Bad Gateway", server);
-		ClientResponseApplier::apply(client, error);
-		pollManager.setEvents(client.fd, POLLOUT);
+		CgiCompletionHandler::error(client, 502, "Bad Gateway",
+			server, pollManager);
 		return (1);
 	}
 
@@ -327,12 +288,8 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 		close(process.stdoutFd);
 		kill(process.pid, SIGKILL);
 		waitpid(process.pid, NULL, 0);
-
-		Response error;
-
-		error = ErrorResponseHandler::build(500, "Internal Server Error", server);
-		ClientResponseApplier::apply(client, error);
-		pollManager.setEvents(client.fd, POLLOUT);
+		CgiCompletionHandler::error(client, 500, "Internal Server Error",
+			server, pollManager);
 		return (1);
 	}
 

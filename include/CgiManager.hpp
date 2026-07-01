@@ -27,10 +27,6 @@ public:
 
 private:
 	CgiFdRegistry fdRegistry;
-
-    int writeToCgi(Client &client, PollManager &pollManager);
-    int readFromCgi(Client &client, PollManager &pollManager);
-    int checkFinished(Client &client);
 };
 
 #endif

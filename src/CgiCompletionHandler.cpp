@@ -1,6 +1,5 @@
 #include "CgiCompletionHandler.hpp"
 #include "CgiRequestHandler.hpp"
-#include "CgiValidator.hpp"
 #include "ClientResponseApplier.hpp"
 #include "ErrorResponseHandler.hpp"
 #include "Response.hpp"
@@ -52,11 +51,4 @@ void	CgiCompletionHandler::error(Client &client, int code,
 	response = ErrorResponseHandler::build(code, message, server);
 	ClientResponseApplier::apply(client, response);
 	pollManager.setEvents(client.fd, POLLOUT);
-}
-
-void	CgiCompletionHandler::validationError(Client &client,
-	const ServerConfig &server, int statusCode, PollManager &pollManager)
-{
-	error(client, statusCode, CgiValidator::messageForStatus(statusCode),
-		server, pollManager);
 }

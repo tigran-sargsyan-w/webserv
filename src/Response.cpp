@@ -7,7 +7,7 @@
 
 #include "utils.hpp"
 
-Response::Response () {}
+Response::Response () : statusCode(0) {}
 
 Response::~Response () {}
 

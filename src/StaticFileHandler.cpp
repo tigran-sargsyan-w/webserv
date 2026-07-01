@@ -248,14 +248,11 @@ static Response tryServeConfiguredIndexFiles(const std::string &fullPath,
 
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
 {
-	std::string indexPath;
+	Response response;
 
-	if (!route.index.empty())
-	{
-		indexPath = PathUtils::join(fullPath, route.index);
-		if (isRegularFile(indexPath))
-			return (buildFileResponse(indexPath));
-	}
+	response = tryServeConfiguredIndexFiles(fullPath, route, server);
+	if (response.getStatusCode() != 0)
+		return (response);
 	if (route.autoindex)
 		return (buildAutoindexResponse(requestPath, fullPath, server));
 	return (ErrorResponseHandler::build(403, "Forbidden", server));

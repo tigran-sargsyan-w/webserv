@@ -270,8 +270,8 @@ int CgiManager::startForClient(Client &client, const RouteConfig &route, const S
 	validationStatus = CgiValidator::validate(context);
 	if (validationStatus != 0)
 	{
-		CgiCompletionHandler::validationError(client, server,
-			validationStatus, pollManager);
+		CgiCompletionHandler::error(client, validationStatus,
+			CgiValidator::messageForStatus(validationStatus), server, pollManager);
 		return (0);
 	}
 

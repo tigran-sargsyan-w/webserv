@@ -19,8 +19,6 @@ class CgiCompletionHandler
 					PollManager &pollManager, CgiFdRegistry &fdRegistry);
 		static void	error(Client &client, int code, const std::string &message,
 					const ServerConfig &server, PollManager &pollManager);
-		static void	validationError(Client &client, const ServerConfig &server,
-					int statusCode, PollManager &pollManager);
 
 	private:
 		CgiCompletionHandler();

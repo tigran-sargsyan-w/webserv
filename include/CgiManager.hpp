@@ -9,8 +9,6 @@
 #include <string>
 #include <map>
 
-static const int CGI_TIMEOUT_SECONDS = 10;
-
 class CgiManager
 {
 public:

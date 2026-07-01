@@ -33,8 +33,6 @@ private:
     int writeToCgi(Client &client, PollManager &pollManager);
     int readFromCgi(Client &client, PollManager &pollManager);
     int checkFinished(Client &client);
-    void finishResponse(Client &client, PollManager &pollManager);
-    void failResponse(Client &client, int code, const std::string &message, const std::vector<ServerConfig> &configs, PollManager &pollManager);
 };
 
 #endif

@@ -2,7 +2,7 @@
 #include "CgiCompletionHandler.hpp"
 #include "CgiRequestHandler.hpp"
 #include "CgiPipeIO.hpp"
-#include "CgiTimeout.hpp"
+#include "CgiTimeoutHandler.hpp"
 #include "CgiValidator.hpp"
 #include "CgiHandler.hpp"
 
@@ -129,29 +129,13 @@ int CgiManager::checkFinished(Client &client)
 
 int CgiManager::getPollTimeoutMs(const std::map<int, Client> &clients) const
 {
-	return (CgiTimeout::getPollTimeoutMs(clients, CGI_TIMEOUT_SECONDS));
+	return (CgiTimeoutHandler::getPollTimeoutMs(clients));
 }
 
 int CgiManager::checkTimeouts(std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)
 {
-	std::map<int, Client>::iterator it;
-	time_t now;
-
-	now = std::time(NULL);
-	it = clients.begin();
-	while (it != clients.end())
-	{
-		Client &client = it->second;
-
-		if (CgiTimeout::isExpired(client, now, CGI_TIMEOUT_SECONDS))
-		{
-			std::cout << "CGI timeout for client fd " << client.fd << std::endl;
-			CgiCompletionHandler::fail(client, 504, "Gateway Timeout",
-				configs, pollManager, fdRegistry);
-		}
-		++it;
-	}
-	return (0);
+	return (CgiTimeoutHandler::handleTimeouts(clients, configs,
+		pollManager, fdRegistry));
 }
 
 int CgiManager::handleEvent(int cgiFd, short revents, std::map<int, Client> &clients, const std::vector<ServerConfig> &configs, PollManager &pollManager)

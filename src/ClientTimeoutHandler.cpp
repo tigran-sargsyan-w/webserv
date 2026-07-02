@@ -30,6 +30,28 @@ int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 	return (shortestTimeout);
 }
 
+void	ClientTimeoutHandler::collectExpiredClients(
+	const std::map<int, Client> &clients, int timeoutSeconds,
+	std::vector<int> &expiredFds)
+{
+	std::map<int, Client>::const_iterator	it;
+	time_t					now;
+	now = std::time(NULL);
+	it = clients.begin();
+	while (it != clients.end())
+	{
+		const Client	&client = it->second;
+		if (isExpired(client, now, timeoutSeconds))
+		{
+			std::cout << "Client timeout for fd " << client.fd
+				<< " after " << timeoutSeconds << "s of inactivity"
+				<< std::endl;
+			expiredFds.push_back(client.fd);
+		}
+		++it;
+	}
+}
+
 bool	ClientTimeoutHandler::isExpired(const Client &client, time_t now,
 	int timeoutSeconds)
 {

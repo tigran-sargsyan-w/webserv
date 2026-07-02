@@ -1,8 +1,5 @@
 #include "WebServ.hpp"
-#include "Request.hpp"
-#include "RequestInspector.hpp"
-#include "RequestParser.hpp"
-#include "Response.hpp"
+#include "ClientEventHandler.hpp"
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
@@ -13,16 +10,6 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <utility>
-
-#include "CgiHandler.hpp"
-#include "ClientResponseApplier.hpp"
-#include "RequestDispatcher.hpp"
-#include "ErrorResponseHandler.hpp"
-
-#include <ctime>
-#include <signal.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 
 WebServ::WebServ()
 {
@@ -60,110 +47,6 @@ int WebServ::setNonBlocking(int fd)
 		std::cerr << "fcntl: " << strerror(errno) << "\n";
 		return (1);
 	}
-	return (0);
-}
-
-int WebServ::readFromClient(Client &client)
-{
-	ssize_t	bytesRead;
-	char	buffer[4096];
-
-	bytesRead = recv(client.fd, buffer, sizeof(buffer), 0);
-	if (bytesRead < 0)
-	{
-		std::cerr << "Failed to read from client fd " << client.fd << std::endl;
-		client.state = CLOSING_CONNECTION;
-		return (1);
-	}
-	if (bytesRead == 0)
-	{
-		std::cout << "Client closed connection" << std::endl;
-		client.state = CLOSING_CONNECTION;
-		return (0);
-	}
-	client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
-	return (0);
-}
-
-int WebServ::discardRequestBody(Client &client)
-{
-	ssize_t bytesRead;
-	char buffer[4096];
-	size_t readSize;
-
-	if (client.bodyBytesToDiscard == 0)
-	{
-		client.state = WRITING;
-		return (0);
-	}
-	readSize = sizeof(buffer);
-	if (client.bodyBytesToDiscard < readSize)
-		readSize = client.bodyBytesToDiscard;
-	bytesRead = recv(client.fd, buffer, readSize, 0);
-	if (bytesRead < 0)
-	{
-		std::cerr << "Failed to discard request body from client fd "
-				  << client.fd << std::endl;
-		client.state = CLOSING_CONNECTION;
-		return (1);
-	}
-	if (bytesRead == 0)
-	{
-		client.bodyBytesToDiscard = 0;
-		client.state = WRITING;
-		return (0);
-	}
-	if (static_cast<size_t>(bytesRead) >= client.bodyBytesToDiscard)
-	{
-		client.bodyBytesToDiscard = 0;
-		client.state = WRITING;
-	}
-	else
-		client.bodyBytesToDiscard -= static_cast<size_t>(bytesRead);
-	return (0);
-}
-
-int WebServ::SendToClient(Client &client)
-{
-	RequestDispatcher::Result dispatchResult;
-	ssize_t bytesSent;
-	size_t remaining;
-	const char *data;
-
-	if (!client.responseReady)
-	{
-		dispatchResult = RequestDispatcher::dispatch(client, configs[client.serverIndex],
-											 cgiManager, pollManager);
-
-		if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
-			return (1);
-		if (dispatchResult == RequestDispatcher::ASYNC_STARTED)
-			return (0);
-	}
-
-	if (client.bytesSent >= client.responseBuffer.size())
-	{
-		client.state = CLOSING_CONNECTION;
-		return (0);
-	}
-
-	remaining = client.responseBuffer.size() - client.bytesSent;
-	data = client.responseBuffer.c_str() + client.bytesSent;
-	bytesSent = send(client.fd, data, remaining, 0);
-
-	if (bytesSent <= 0)
-	{
-		std::cerr << "Failed to send response to client fd "
-				  << client.fd << std::endl;
-		client.state = CLOSING_CONNECTION;
-		return (1);
-	}
-
-	client.bytesSent += static_cast<size_t>(bytesSent);
-
-	if (client.bytesSent >= client.responseBuffer.size())
-		client.state = CLOSING_CONNECTION;
-
 	return (0);
 }
 
@@ -360,49 +243,10 @@ void WebServ::closeAndRemoveFd(int fd)
 	listenerFdToIndex.erase(fd);
 }
 
-static std::string getInspectorErrorMessage(InspectRequestStatus status)
+static bool shouldCloseClient(ClientEventHandler::Result result)
 {
-	if (status == BAD_REQUEST)
-		return ("Bad Request");
-	if (status == REQUEST_TOO_LARGE)
-		return ("Payload Too Large");
-	if (status == URI_TOO_LONG)
-		return ("URI Too Long");
-	if (status == HEADER_TOO_LARGE)
-		return ("Request Header Fields Too Large");
-	if (status == NOT_IMPLEMENTED)
-		return ("Not Implemented");
-	return ("Bad Request");
-}
-
-static void prepareInspectorErrorResponse(Client &client, const ServerConfig &server, InspectRequestStatus status)
-{
-	Response response;
-	int statusCode;
-
-	statusCode = static_cast<int>(status);
-	if (statusCode < 400 || statusCode > 599)
-		statusCode = 400;
-
-	response = ErrorResponseHandler::build(statusCode, getInspectorErrorMessage(status), server);
-	ClientResponseApplier::apply(client, response);
-}
-
-static void prepareBodyDiscard(Client &client, const RequestInspection &inspection)
-{
-	size_t currentBodySize;
-
-	client.bodyBytesToDiscard = 0;
-	if (!inspection.hasContentLength)
-		return;
-	currentBodySize = 0;
-	if (client.rawRequest.length() > inspection.bodyStart)
-		currentBodySize = client.rawRequest.length() - inspection.bodyStart;
-	if (currentBodySize < inspection.contentLength)
-	{
-		client.bodyBytesToDiscard = inspection.contentLength - currentBodySize;
-		client.state = DISCARDING_BODY;
-	}
+	return (result == ClientEventHandler::CLIENT_SHOULD_CLOSE
+		|| result == ClientEventHandler::EVENT_FAILED);
 }
 
 int WebServ::run()
@@ -474,89 +318,15 @@ int WebServ::run()
 					continue;
 				}
 
+				ClientEventHandler::Result result;
 				Client &curClient = clientIt->second;
-				if (curClient.state == DISCARDING_BODY)
+
+				result = ClientEventHandler::handle(curClient, pollFds[i].revents,
+					configs[curClient.serverIndex], cgiManager, pollManager);
+				if (shouldCloseClient(result))
 				{
-					if (pollFds[i].revents & POLLIN)
-					{
-						discardRequestBody(curClient);
-						if (curClient.state == CLOSING_CONNECTION)
-						{
-							closeAndRemoveFd(curFD);
-							continue;
-						}
-						if (curClient.state == WRITING)
-							pollManager.setEvents(curFD, POLLOUT);
-					}
-					++i;
+					closeAndRemoveFd(curFD);
 					continue;
-				}
-				if (curClient.state == CGI_WRITING || curClient.state == CGI_READING)
-				{
-					if (pollFds[i].revents & POLLIN)
-					{
-						readFromClient(curClient);
-						if (curClient.state == CLOSING_CONNECTION)
-						{
-							closeAndRemoveFd(curFD);
-							continue;
-						}
-						curClient.rawRequest.clear();
-					}
-					++i;
-					continue;
-				}
-				if (pollFds[i].revents & POLLIN)
-				{
-					curClient.state = READING;
-					readFromClient(curClient);
-					if (curClient.state == CLOSING_CONNECTION)
-					{
-						closeAndRemoveFd(curFD);
-						continue;
-					}
-
-					RequestParser parser;
-					RequestInspector inspector;
-					RequestInspection inspection;
-
-					inspection = inspector.inspectRequest(curClient.getRawRequest(),
-						configs[curClient.serverIndex].clientMaxBodySize);
-					if (inspection.status == COMPLETED)
-					{
-						parser.parse(curClient.getRawRequest(), curClient.request, inspection);
-					}
-					else if (inspection.status == NEED_MORE_DATA)
-					{
-						++i;
-						continue;
-					}
-					else
-					{
-						prepareInspectorErrorResponse(curClient, configs[curClient.serverIndex],
-							inspection.status);
-						if (inspection.status == REQUEST_TOO_LARGE)
-							prepareBodyDiscard(curClient, inspection);
-						if (curClient.state == DISCARDING_BODY)
-							pollManager.setEvents(curFD, POLLIN);
-						else
-							pollManager.setEvents(curFD, POLLOUT);
-						++i;
-						continue;
-					}
-
-					// TODO: if request is valid set as POLLOUT
-					pollManager.setEvents(curFD, POLLOUT);
-				}
-				if (pollFds[i].revents & POLLOUT)
-				{
-					curClient.state = WRITING;
-					SendToClient(curClient);
-					if (curClient.state == CLOSING_CONNECTION)
-					{
-						closeAndRemoveFd(curFD);
-						continue;
-					}
 				}
 			}
 			++i;

@@ -20,8 +20,6 @@ public:
 	WebServ(const WebServ &other);
 	~WebServ();
 	WebServ &operator=(const WebServ &other);
-	int readFromClient(Client &client);
-	int SendToClient(Client &client);
 
 	int setup(std::vector<ServerConfig> servers);
 	int run();
@@ -35,7 +33,6 @@ private:
 	CgiManager cgiManager;
 
 	int setNonBlocking(int fd);
-	int discardRequestBody(Client &client);
 	void closeAndRemoveFd(int fd);
 	std::vector<ServerConfig> configs;
 	std::map<int, size_t> listenerFdToIndex;

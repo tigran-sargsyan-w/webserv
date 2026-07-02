@@ -5,11 +5,6 @@
 
 namespace
 {
-	bool hasActiveCgi(const Client &client)
-	{
-		return (client.cgi.isActive());
-	}
-
 	bool shouldCloseClient(ClientEventHandler::Result result)
 	{
 		return (result == ClientEventHandler::CLIENT_SHOULD_CLOSE
@@ -25,7 +20,7 @@ namespace
 		clientIt = clients.find(fd);
 		if (clientIt != clients.end())
 		{
-			if (hasActiveCgi(clientIt->second))
+			if (clientIt->second.cgi.isActive())
 			{
 				std::cout << "Cleaning CGI for disconnected client fd "
 					<< fd << std::endl;

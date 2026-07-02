@@ -6,6 +6,7 @@
 #include "PollManager.hpp"
 #include <cstddef>
 #include <map>
+#include <string>
 #include <vector>
 
 class ListenerSocketHandler

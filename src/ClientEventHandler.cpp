@@ -39,6 +39,7 @@ namespace
 			return (0);
 		}
 		client.rawRequest.append(buffer, static_cast<size_t>(bytesRead));
+		client.touchActivity();
 		return (0);
 	}
 
@@ -77,6 +78,7 @@ namespace
 		}
 		else
 			client.bodyBytesToDiscard -= static_cast<size_t>(bytesRead);
+		client.touchActivity();
 		return (0);
 	}
 
@@ -113,6 +115,7 @@ namespace
 			return (1);
 		}
 		client.bytesSent += static_cast<size_t>(bytesSent);
+		client.touchActivity();
 		if (client.bytesSent >= client.responseBuffer.size())
 			client.state = CLOSING_CONNECTION;
 		return (0);

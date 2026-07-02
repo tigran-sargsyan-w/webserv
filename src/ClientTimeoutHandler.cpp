@@ -1,7 +1,5 @@
 #include "ClientTimeoutHandler.hpp"
 
-# include <ctime>
-
 bool	ClientTimeoutHandler::isExpired(const Client &client, time_t now,
 	int timeoutSeconds)
 {

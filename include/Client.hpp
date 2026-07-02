@@ -2,6 +2,7 @@
 # define CLIENT_HPP
 # include "Request.hpp"
 # include "CgiSession.hpp"
+# include <ctime>
 # include <cstddef>
 
 
@@ -43,6 +44,7 @@ class Client
     size_t bodyBytesToDiscard;
     bool responseReady;
     CgiSession cgi;
+    time_t lastActivity;
     //TODO: check if rawRequest is valid and finished before parsing
   private:
     std::string remoteAddr;

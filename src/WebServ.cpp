@@ -1,5 +1,5 @@
 #include "WebServ.hpp"
-#include "ReadyFdHandler.hpp"
+#include "PollEventHandler.hpp"
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -63,9 +63,9 @@ int WebServ::run()
 		size_t i = 0;
 		while (i < pollFds.size())
 		{
-			if (ReadyFdHandler::handle(pollFds[i], clients, configs,
+			if (PollEventHandler::handle(pollFds[i], clients, configs,
 					cgiManager, listenerSocketHandler, pollManager)
-				== ReadyFdHandler::ADVANCE_INDEX)
+				== PollEventHandler::ADVANCE_INDEX)
 				++i;
 		}
 	}

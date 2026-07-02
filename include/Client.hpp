@@ -26,6 +26,7 @@ class Client
     std::string& getRawRequest() { return this->rawRequest; };
     const std::string &getRemoteAddr() const { return (this->remoteAddr); };
     void setRemoteAddr(const std::string &remoteAddr) {this->remoteAddr = remoteAddr;};
+    void touchActivity();
 
     void setFd(int fd) { this->fd = fd; };
     void setRequest(Request& request) { this->request = request; };

@@ -14,3 +14,8 @@ Client::Client(int fd)
       bodyBytesToDiscard(0),
       responseReady(false),
       lastActivity(std::time(NULL)) {}
+
+void Client::touchActivity()
+{
+  lastActivity = std::time(NULL);
+}

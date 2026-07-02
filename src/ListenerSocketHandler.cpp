@@ -5,6 +5,7 @@
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sstream>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -81,6 +82,7 @@ int ListenerSocketHandler::bindSockAddress(int listeningSocket,
 	std::stringstream	ss;
 	std::string		portStr;
 	const char		*hostCstr;
+	int				ret;
 
 	res = NULL;
 	std::memset(&hints, 0, sizeof(hints));
@@ -92,9 +94,11 @@ int ListenerSocketHandler::bindSockAddress(int listeningSocket,
 	hostCstr = NULL;
 	if (!config.listen.host.empty())
 		hostCstr = config.listen.host.c_str();
-	if (getaddrinfo(hostCstr, portStr.c_str(), &hints, &res))
+	ret = getaddrinfo(hostCstr, portStr.c_str(), &hints, &res);
+	if (ret)
 	{
-		std::cerr << "getaddrinfo: " << gai_strerror(errno) << "\n";
+		std::cerr << "getaddrinfo: " << gai_strerror(ret) << "\n";
+		close(listeningSocket);
 		return (1);
 	}
 	if (bind(listeningSocket, res->ai_addr, res->ai_addrlen) == -1)

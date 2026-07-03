@@ -2,12 +2,10 @@
 #define WEBSERV_HPP
 
 #include "CgiManager.hpp"
-#include "Client.hpp"
 #include "Config.hpp"
 #include "ListenerSocketHandler.hpp"
 #include "PollManager.hpp"
 #include "ConnectionManager.hpp"
-#include <map>
 #include <vector>
 
 class WebServ

@@ -1,5 +1,4 @@
 #include "WebServ.hpp"
-#include "ClientTimeoutHandler.hpp"
 #include "PollEventHandler.hpp"
 #include <cerrno>
 #include <cstring>

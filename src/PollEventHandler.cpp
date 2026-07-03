@@ -3,30 +3,30 @@
 #include <iostream>
 #include <unistd.h>
 
-static void closeAndRemoveFd(int fd, std::map<int, Client> &clients,
-	CgiManager &cgiManager, ListenerSocketHandler &listenerSocketHandler,
-	PollManager &pollManager)
-{
-	std::map<int, Client>::iterator clientIt;
-
-	clientIt = clients.find(fd);
-	if (clientIt != clients.end())
-	{
-		if (clientIt->second.cgi.isActive())
-		{
-			std::cout << "Cleaning CGI for disconnected client fd "
-				<< fd << std::endl;
-			cgiManager.cleanup(clientIt->second, pollManager);
-		}
-		clients.erase(clientIt);
-	}
-	close(fd);
-	pollManager.removeFd(fd);
-	listenerSocketHandler.removeFd(fd);
-}
-
 namespace
 {
+	void closeAndRemoveFd(int fd, std::map<int, Client> &clients,
+		CgiManager &cgiManager, ListenerSocketHandler &listenerSocketHandler,
+		PollManager &pollManager)
+	{
+		std::map<int, Client>::iterator clientIt;
+	
+		clientIt = clients.find(fd);
+		if (clientIt != clients.end())
+		{
+			if (clientIt->second.cgi.isActive())
+			{
+				std::cout << "Cleaning CGI for disconnected client fd "
+					<< fd << std::endl;
+				cgiManager.cleanup(clientIt->second, pollManager);
+			}
+			clients.erase(clientIt);
+		}
+		close(fd);
+		pollManager.removeFd(fd);
+		listenerSocketHandler.removeFd(fd);
+	}
+
 	bool shouldCloseClient(ClientEventHandler::Result result)
 	{
 		return (result == ClientEventHandler::CLIENT_SHOULD_CLOSE

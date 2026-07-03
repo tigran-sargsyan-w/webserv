@@ -70,6 +70,17 @@ static bool shouldCloseClient(ClientEventHandler::Result result)
 		|| result == ClientEventHandler::EVENT_FAILED);
 }
 
+static int combinePollTimeoutMs(int first, int second)
+{
+	if (first == 0 || second == 0)
+		return (0);
+	if (first < 0)
+		return (second);
+	if (second < 0)
+		return (first);
+	return (second);
+}
+
 void enforceClientTimeouts()
 {
 	std::vector<int>	expiredFds;

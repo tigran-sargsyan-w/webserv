@@ -350,6 +350,7 @@ void ConfigParser::debugPrintConfig(const Config &config)
 		std::cout << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
+		std::cout << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
 		for (std::map<int, std::string>::const_iterator errorPageIt = server.errorPages.begin(); errorPageIt != server.errorPages.end(); ++errorPageIt)
 			std::cout << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
 		for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)

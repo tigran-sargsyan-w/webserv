@@ -30,7 +30,6 @@ private:
 	std::vector<ServerConfig> configs;
 
 	void enforceClientTimeouts();
-
 };
 
 #endif

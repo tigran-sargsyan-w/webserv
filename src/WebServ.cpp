@@ -55,11 +55,11 @@ void WebServ::enforceClientTimeouts()
 	std::vector<int>	expiredFds;
 	size_t			i;
 
-	ClientTimeoutHandler::collectExpiredClients(clients, configs, expiredFds);
+	ClientTimeoutHandler::collectExpiredClients(connectionManager.getClients(), configs, expiredFds);
 	i = 0;
 	while (i < expiredFds.size())
 	{
-		PollEventHandler::disconnectClient(expiredFds[i], clients,
+		PollEventHandler::disconnectClient(expiredFds[i], connectionManager.getClients(),
 			cgiManager, listenerSocketHandler, pollManager);
 		++i;
 	}
@@ -81,8 +81,8 @@ int WebServ::run()
 		int pollTimeout;
 		int ready;
 
-		cgiPollTimeout = cgiManager.getPollTimeoutMs(clients);
-		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(clients, configs);
+		cgiPollTimeout = cgiManager.getPollTimeoutMs(connectionManager.getClients());
+		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(connectionManager.getClients(), configs);
 		pollTimeout = combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout);
 		ready = poll(&pollFds[0], pollFds.size(), pollTimeout);
 
@@ -93,7 +93,7 @@ int WebServ::run()
 			std::cerr << "poll: " << strerror(errno) << std::endl;
 			return (1);
 		}
-		cgiManager.checkTimeouts(clients, configs, pollManager);
+		cgiManager.checkTimeouts(connectionManager.getClients(), configs, pollManager);
 		enforceClientTimeouts();
 		if (ready == 0)
 			continue;
@@ -101,7 +101,7 @@ int WebServ::run()
 		size_t i = 0;
 		while (i < pollFds.size())
 		{
-			if (PollEventHandler::handle(pollFds[i], clients, configs,
+			if (PollEventHandler::handle(pollFds[i], connectionManager.getClients(), configs,
 					cgiManager, listenerSocketHandler, pollManager)
 				== PollEventHandler::ADVANCE_INDEX)
 				++i;

@@ -128,6 +128,8 @@ int WebServ::run()
 		// Check CGI timeouts on each loop iteration
 		cgiManager.checkTimeouts(clients, configs, pollManager);
 
+		enforceClientTimeouts();
+
 		// No events, continue polling
 		if (ready == 0)
 			continue;

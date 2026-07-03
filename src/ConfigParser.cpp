@@ -144,6 +144,16 @@ void ConfigParser::parseServerDirective(ServerConfig &server)
 		expectSemicolon();
 		return;
 	}
+	if (directive.value == "client_timeout")
+	{
+		int timeout = 0;
+
+		if (!toInt(expectWord("Expected client_timeout value").value, timeout))
+			throw error(previous(), "Invalid client_timeout value");
+		server.clientTimeout = timeout;
+		expectSemicolon();
+		return;
+	}
 	throw error(directive, "Unknown server directive: " + directive.value);
 }
 

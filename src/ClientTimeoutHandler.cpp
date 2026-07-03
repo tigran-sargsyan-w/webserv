@@ -6,7 +6,7 @@ int	ClientTimeoutHandler::getTimeoutSeconds(const Client &client,
 	const std::vector<ServerConfig> &configs)
 {
 	if (client.serverIndex >= configs.size())
-		return (CLIENT_TIMEOUT_SECONDS);
+		return (30);
 	return (configs[client.serverIndex].clientTimeout);
 }
 
@@ -27,7 +27,7 @@ int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 		if (!client.cgi.isActive())
 		{
             int timeoutSeconds;
-            
+
             timeoutSeconds = getTimeoutSeconds(client, configs);
 			elapsed = static_cast<int>(now - client.lastActivity);
 			remaining = timeoutSeconds - elapsed;

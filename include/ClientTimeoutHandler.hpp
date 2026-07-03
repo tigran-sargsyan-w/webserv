@@ -8,8 +8,6 @@
 # include <map>
 # include <vector>
 
-static const int CLIENT_TIMEOUT_SECONDS = 30;
-
 class ClientTimeoutHandler
 {
 	public:

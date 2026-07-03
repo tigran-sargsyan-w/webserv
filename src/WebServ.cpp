@@ -81,13 +81,13 @@ int WebServ::run()
 		connectionManager.enforceTimeouts(configs, cgiManager, listenerSocketHandler, pollManager);
 		if (ready == 0)
 			continue;
-		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+		std::cout << "Sockets Ready - " << ready << "\n"
+				  << std::endl;
 		size_t i = 0;
 		while (i < pollFds.size())
 		{
 			if (PollEventHandler::handle(pollFds[i], connectionManager.getClients(), configs,
-					cgiManager, listenerSocketHandler, pollManager)
-				== PollEventHandler::ADVANCE_INDEX)
+										 cgiManager, listenerSocketHandler, pollManager) == PollEventHandler::ADVANCE_INDEX)
 				++i;
 		}
 	}

@@ -6,12 +6,12 @@ ConnectionManager::ConnectionManager() {}
 
 std::map<int, Client> &ConnectionManager::getClients()
 {
-	return (clients);
+    return (clients);
 }
 
 const std::map<int, Client> &ConnectionManager::getClients() const
 {
-	return (clients);
+    return (clients);
 }
 
 int ConnectionManager::getPollTimeoutMs(
@@ -32,7 +32,7 @@ void ConnectionManager::enforceTimeouts(
     while (i < expiredFds.size())
     {
         PollEventHandler::disconnectClient(expiredFds[i], clients,
-            cgiManager, listenerSocketHandler, pollManager);
+                                           cgiManager, listenerSocketHandler, pollManager);
         ++i;
     }
 }

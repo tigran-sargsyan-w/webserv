@@ -22,8 +22,8 @@ namespace
 
 	int readFromClient(Client &client)
 	{
-		ssize_t	bytesRead;
-		char	buffer[4096];
+		ssize_t bytesRead;
+		char buffer[4096];
 
 		bytesRead = recv(client.fd, buffer, sizeof(buffer), 0);
 		if (bytesRead < 0)
@@ -45,9 +45,9 @@ namespace
 
 	int discardRequestBody(Client &client)
 	{
-		ssize_t	bytesRead;
-		char	buffer[4096];
-		size_t	readSize;
+		ssize_t bytesRead;
+		char buffer[4096];
+		size_t readSize;
 
 		if (client.bodyBytesToDiscard == 0)
 		{
@@ -61,7 +61,7 @@ namespace
 		if (bytesRead < 0)
 		{
 			std::cerr << "Failed to discard request body from client fd "
-				<< client.fd << std::endl;
+					  << client.fd << std::endl;
 			client.state = CLOSING_CONNECTION;
 			return (1);
 		}
@@ -83,17 +83,17 @@ namespace
 	}
 
 	int sendToClient(Client &client, const ServerConfig &server,
-		CgiManager &cgiManager, PollManager &pollManager)
+					 CgiManager &cgiManager, PollManager &pollManager)
 	{
-		RequestDispatcher::Result	dispatchResult;
-		ssize_t					bytesSent;
-		size_t					remaining;
-		const char				*data;
+		RequestDispatcher::Result dispatchResult;
+		ssize_t bytesSent;
+		size_t remaining;
+		const char *data;
 
 		if (!client.responseReady)
 		{
 			dispatchResult = RequestDispatcher::dispatch(client, server,
-				cgiManager, pollManager);
+														 cgiManager, pollManager);
 			if (dispatchResult == RequestDispatcher::DISPATCH_FAILED)
 				return (1);
 			if (dispatchResult == RequestDispatcher::ASYNC_STARTED)
@@ -110,7 +110,7 @@ namespace
 		if (bytesSent <= 0)
 		{
 			std::cerr << "Failed to send response to client fd "
-				<< client.fd << std::endl;
+					  << client.fd << std::endl;
 			client.state = CLOSING_CONNECTION;
 			return (1);
 		}
@@ -137,22 +137,22 @@ namespace
 	}
 
 	void prepareInspectorErrorResponse(Client &client,
-		const ServerConfig &server, InspectRequestStatus status)
+									   const ServerConfig &server, InspectRequestStatus status)
 	{
-		Response	response;
-		int			statusCode;
+		Response response;
+		int statusCode;
 
 		statusCode = static_cast<int>(status);
 		if (statusCode < 400 || statusCode > 599)
 			statusCode = 400;
 		response = ErrorResponseHandler::build(statusCode,
-			getInspectorErrorMessage(status), server);
+											   getInspectorErrorMessage(status), server);
 		ClientResponseApplier::apply(client, response);
 	}
 
 	void prepareBodyDiscard(Client &client, const RequestInspection &inspection)
 	{
-		size_t	currentBodySize;
+		size_t currentBodySize;
 
 		client.bodyBytesToDiscard = 0;
 		if (!inspection.hasContentLength)
@@ -168,7 +168,7 @@ namespace
 	}
 
 	ClientEventHandler::Result handleDiscardingBody(Client &client,
-		short revents, PollManager &pollManager)
+													short revents, PollManager &pollManager)
 	{
 		if (revents & POLLIN)
 		{
@@ -182,7 +182,7 @@ namespace
 	}
 
 	ClientEventHandler::Result handleActiveCgiClient(Client &client,
-		short revents)
+													 short revents)
 	{
 		if (revents & POLLIN)
 		{
@@ -195,14 +195,14 @@ namespace
 	}
 
 	ReadEventResult inspectClientRequest(Client &client,
-		const ServerConfig &server, PollManager &pollManager)
+										 const ServerConfig &server, PollManager &pollManager)
 	{
-		RequestParser		parser;
-		RequestInspector	inspector;
-		RequestInspection	inspection;
+		RequestParser parser;
+		RequestInspector inspector;
+		RequestInspection inspection;
 
 		inspection = inspector.inspectRequest(client.getRawRequest(),
-			server.clientMaxBodySize);
+											  server.clientMaxBodySize);
 		if (inspection.status == COMPLETED)
 		{
 			parser.parse(client.getRawRequest(), client.request, inspection);
@@ -222,7 +222,7 @@ namespace
 	}
 
 	ReadEventResult handleReadEvent(Client &client,
-		const ServerConfig &server, PollManager &pollManager)
+									const ServerConfig &server, PollManager &pollManager)
 	{
 		client.state = READING;
 		readFromClient(client);
@@ -232,8 +232,8 @@ namespace
 	}
 
 	ClientEventHandler::Result handleWriteEvent(Client &client,
-		const ServerConfig &server, CgiManager &cgiManager,
-		PollManager &pollManager)
+												const ServerConfig &server, CgiManager &cgiManager,
+												PollManager &pollManager)
 	{
 		client.state = WRITING;
 		sendToClient(client, server, cgiManager, pollManager);
@@ -244,10 +244,10 @@ namespace
 }
 
 ClientEventHandler::Result ClientEventHandler::handle(Client &client,
-	short revents, const ServerConfig &server, CgiManager &cgiManager,
-	PollManager &pollManager)
+													  short revents, const ServerConfig &server, CgiManager &cgiManager,
+													  PollManager &pollManager)
 {
-	ReadEventResult	readResult;
+	ReadEventResult readResult;
 
 	if (client.state == DISCARDING_BODY)
 		return (handleDiscardingBody(client, revents, pollManager));

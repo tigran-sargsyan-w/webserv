@@ -1034,6 +1034,7 @@ Then run each config file:
 ./webserv configs/invalid/empty_root_value.conf
 ./webserv configs/invalid/empty_error_page_path.conf
 ./webserv configs/invalid/null_byte_root.conf
+./webserv configs/invalid/client-timeout-zero.conf
 ```
 
 The following configs are valid and should start the server:
@@ -1092,6 +1093,7 @@ Expected summary:
 | `null_byte_root.conf`                    |           fails | null byte in path                   |
 | `invalid_cgi_relative_executable.conf`   |           fails | CGI executable must be absolute     |
 | `invalid_cgi_executable_directory.conf`  |           fails | CGI executable cannot end with `/`  |
+| invalid_client_max_body_size.conf        |           fails | invalid body size value             |
 
 ---
 

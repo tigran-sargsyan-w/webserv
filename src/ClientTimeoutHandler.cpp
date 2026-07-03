@@ -49,11 +49,13 @@ void	ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &cl
 	while (it != clients.end())
 	{
 		const Client	&client = it->second;
+        int		timeoutSeconds;
+
+        timeoutSeconds = getTimeoutSeconds(client, configs);
 		if (isExpired(client, now, timeoutSeconds))
 		{
-			std::cout << "Client timeout for fd " << client.fd
-				<< " after " << timeoutSeconds << "s of inactivity"
-				<< std::endl;
+			std::cout << "Client timeout for fd " << client.fd << " after " 
+                << timeoutSeconds << "s of inactivity" << std::endl;
 			expiredFds.push_back(client.fd);
 		}
 		++it;

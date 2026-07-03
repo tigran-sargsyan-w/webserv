@@ -110,11 +110,13 @@ int WebServ::run()
 
 		int cgiPollTimeout;
 		int clientPollTimeout;
+		int pollTimeout;
 
 		cgiPollTimeout = cgiManager.getPollTimeoutMs(clients);
 		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(clients, CLIENT_TIMEOUT_SECONDS);
+		pollTimeout = combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout);
 
-		int ready = poll(&pollFds[0], pollFds.size(), combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout));
+		int ready = poll(&pollFds[0], pollFds.size(), pollTimeout);
 
 		if (ready < 0)
 		{

@@ -13,9 +13,9 @@ class ClientTimeoutHandler
 {
 	public:
 		static int	getPollTimeoutMs(const std::map<int, Client> &clients,
-					int timeoutSeconds);
+                    const std::vector<ServerConfig> &configs);
 		static void	collectExpiredClients(const std::map<int, Client> &clients,
-					int timeoutSeconds, std::vector<int> &expiredFds);
+                    const std::vector<ServerConfig> &configs, std::vector<int> &expiredFds);
 
 	private:
 		ClientTimeoutHandler();

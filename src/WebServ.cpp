@@ -78,6 +78,8 @@ static int combinePollTimeoutMs(int first, int second)
 		return (second);
 	if (second < 0)
 		return (first);
+	if (first < second)
+		return (first);
 	return (second);
 }
 

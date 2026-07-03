@@ -6,6 +6,8 @@ The goal is to verify that stalled or malicious clients cannot keep connections 
 
 This feature is separate from CGI timeout handling. CGI scripts are covered by `CgiTimeoutHandler` and `docs/cgi-tests.md`. Client request timeout applies to inactive client connections during request reading, body discarding, or response sending.
 
+Invalid `client_timeout` values are covered in `docs/config-validator-tests.md` (sections 9b and 9c).
+
 Covered features:
 
 * per-client `lastActivity` timestamp storage;
@@ -55,7 +57,7 @@ make re
 | ---- | ------- |
 | `configs/default.conf` | production-like config with `client_timeout 30;` |
 | `configs/test-client-timeout.conf` | short timeout (`5s`) on port `8098` for faster tests |
-| `configs/client-timeout-zero.conf` | invalid config used to verify validator rejection |
+| `configs/invalid/client-timeout-zero.conf` | invalid config used to verify validator rejection |
 
 ### Default timeout values
 
@@ -69,39 +71,7 @@ Clients with an active CGI session are not closed by the client timeout handler.
 
 ---
 
-## 3. Test: invalid `client_timeout 0` is rejected
-
-Purpose: verify that invalid timeout values are rejected during startup validation.
-
-Config file:
-
-```txt
-configs/client-timeout-zero.conf
-```
-
-Run:
-
-```bash
-./webserv configs/client-timeout-zero.conf
-```
-
-Expected:
-
-* the server does **not** start listening;
-* startup fails with a configuration validation error;
-* the error message mentions `client_timeout`.
-
-Example expected message shape:
-
-```txt
-Config validation error: server 0 requires client_timeout greater than 0
-```
-
-Purpose: confirms that timeout configuration is validated before runtime.
-
----
-
-## 4. Test: server starts with valid `client_timeout`
+## 3. Test: server starts with valid `client_timeout`
 
 Purpose: verify that a valid timeout value is accepted.
 
@@ -134,7 +104,7 @@ Purpose: confirms that adding `client_timeout` did not break normal server start
 
 ---
 
-## 5. Test: stalled incomplete client is closed
+## 4. Test: stalled incomplete client is closed
 
 Purpose: verify that a client sending an incomplete request is disconnected after the configured timeout.
 
@@ -198,7 +168,7 @@ Purpose:
 
 ---
 
-## 6. Test: server still works after client timeout
+## 5. Test: server still works after client timeout
 
 Purpose: verify that closing a timed-out client does not break the server.
 
@@ -225,7 +195,7 @@ Purpose: confirms that the server remains usable after enforcing a client timeou
 
 ---
 
-## 7. Test: stalled client does not block other clients
+## 6. Test: stalled client does not block other clients
 
 Purpose: verify that one incomplete client does not prevent the event loop from serving other requests.
 
@@ -277,7 +247,7 @@ Purpose: confirms that timeout handling does not break the non-blocking `poll()`
 
 ---
 
-## 8. Automated Python test suite
+## 7. Automated Python test suite
 
 Purpose: run the timeout regression checks in one command.
 
@@ -327,7 +297,7 @@ Exit code:
 
 ---
 
-## 9. Test: activity refresh resets the timeout
+## 8. Test: activity refresh resets the timeout
 
 Purpose: verify that real client I/O refreshes `lastActivity` and prevents premature timeout.
 
@@ -372,27 +342,7 @@ Purpose: confirms that timeout is based on inactivity, not only on connection ag
 
 ---
 
-## 10. Test: invalid client_timeout value
-
-### Command
-```bash
-./webserv configs/invalid/client-timeout-zero.conf
-```
-
-Expected:
-
-The server should not start.
-
-Expected error should mention `client_timeout`, for example:
-```bash
-Config validation error: server 0 requires client_timeout greater than 0
-```
-
-Purpose: checks that non-positive client timeout values are rejected.
-
----
-
-## 11. Test: default config timeout on port 8080
+## 9. Test: default config timeout on port 8080
 
 Purpose: verify the production-like timeout value in `configs/default.conf`.
 
@@ -437,7 +387,7 @@ Purpose: confirms that the configurable `client_timeout` value from `default.con
 
 ---
 
-## 12. What these tests do not cover
+## 10. What these tests do not cover
 
 These tests intentionally do **not** replace CGI timeout coverage.
 
@@ -451,7 +401,7 @@ Use `docs/cgi-tests.md` for those cases.
 
 ---
 
-## 13. Quick regression checklist
+## 11. Quick regression checklist
 
 Before opening or merging the PR, run:
 
@@ -497,7 +447,7 @@ Expected summary:
 
 ---
 
-## 14. Issue subtask mapping
+## 12. Issue subtask mapping
 
 | Issue subtask | Covered by |
 | ------------- | ---------- |

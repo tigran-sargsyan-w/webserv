@@ -12,6 +12,7 @@ Covered features:
 * `listen` host and port validation;
 * required server `root`;
 * required `client_max_body_size`;
+* `client_timeout` range validation;
 * `error_page` status code and path validation;
 * `location` path validation;
 * duplicate `location` detection;
@@ -219,6 +220,44 @@ Expected error should mention an invalid size value.
 ### Purpose
 
 Checks that non-numeric body size values are rejected.
+
+---
+
+## 9b. Test: invalid client_timeout value (zero)
+
+### Command
+```bash
+./webserv configs/invalid/client-timeout-zero.conf
+```
+
+### Expected result
+The server should not start.
+Expected error should mention `client_timeout`, for example:
+```bash
+Config validation error: server 0 requires client_timeout greater than 0
+```
+
+### Purpose
+Checks that non-positive client timeout values are rejected.
+
+---
+
+## 9c. Test: client_timeout above maximum
+
+### Command
+```bash
+./webserv configs/invalid/client-timeout-too-large.conf
+```
+
+### Expected result
+The server should not start.
+Expected error should mention `client_timeout`, for example:
+```bash
+Config validation error: server 0 requires client_timeout at most 3600
+```
+
+### Purpose
+Checks that excessively large timeout values are rejected before poll timeout conversion.
 
 ---
 
@@ -1035,6 +1074,7 @@ Then run each config file:
 ./webserv configs/invalid/empty_error_page_path.conf
 ./webserv configs/invalid/null_byte_root.conf
 ./webserv configs/invalid/client-timeout-zero.conf
+./webserv configs/invalid/client-timeout-too-large.conf
 ```
 
 The following configs are valid and should start the server:
@@ -1061,6 +1101,8 @@ Expected summary:
 | `missing_server_root.conf`               |           fails | required server root                |
 | `missing_client_max_body_size.conf`      |           fails | required body size limit            |
 | `invalid_client_max_body_size.conf`      |           fails | invalid body size value             |
+| `client-timeout-zero.conf`               |           fails | client_timeout must be over 0       |
+| `client-timeout-too-large.conf`          |           fails | client_timeout must be at most 3600 |
 | `invalid_listen_port.conf`               |           fails | invalid port range                  |
 | `invalid_listen_host.conf`               |           fails | invalid listen host                 |
 | `invalid_location_path.conf`             |           fails | location must start with `/`        |
@@ -1093,7 +1135,7 @@ Expected summary:
 | `null_byte_root.conf`                    |           fails | null byte in path                   |
 | `invalid_cgi_relative_executable.conf`   |           fails | CGI executable must be absolute     |
 | `invalid_cgi_executable_directory.conf`  |           fails | CGI executable cannot end with `/`  |
-| invalid_client_max_body_size.conf        |           fails | invalid body size value             |
+| `invalid_client_max_body_size.conf`      |           fails | invalid body size value             |
 
 ---
 

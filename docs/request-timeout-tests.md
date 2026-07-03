@@ -12,6 +12,7 @@ Covered features:
 * inactivity detection in the main `poll()` loop;
 * safe client disconnection through `closeAndRemoveFd()`;
 * configurable `client_timeout` server directive;
+* `client_timeout` validation;
 * timeout logging for debugging;
 * slow or incomplete client regression tests.
 
@@ -371,7 +372,27 @@ Purpose: confirms that timeout is based on inactivity, not only on connection ag
 
 ---
 
-## 10. Test: default config timeout on port 8080
+## 10. Test: invalid client_timeout value
+
+### Command
+```bash
+./webserv configs/invalid/client-timeout-zero.conf
+```
+
+Expected:
+
+The server should not start.
+
+Expected error should mention `client_timeout`, for example:
+```bash
+Config validation error: server 0 requires client_timeout greater than 0
+```
+
+Purpose: checks that non-positive client timeout values are rejected.
+
+---
+
+## 11. Test: default config timeout on port 8080
 
 Purpose: verify the production-like timeout value in `configs/default.conf`.
 
@@ -416,7 +437,7 @@ Purpose: confirms that the configurable `client_timeout` value from `default.con
 
 ---
 
-## 11. What these tests do not cover
+## 12. What these tests do not cover
 
 These tests intentionally do **not** replace CGI timeout coverage.
 
@@ -430,7 +451,7 @@ Use `docs/cgi-tests.md` for those cases.
 
 ---
 
-## 12. Quick regression checklist
+## 13. Quick regression checklist
 
 Before opening or merging the PR, run:
 
@@ -476,7 +497,7 @@ Expected summary:
 
 ---
 
-## 13. Issue subtask mapping
+## 14. Issue subtask mapping
 
 | Issue subtask | Covered by |
 | ------------- | ---------- |

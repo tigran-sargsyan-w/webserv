@@ -31,6 +31,8 @@ private:
 	std::vector<ServerConfig> configs;
 	std::map<int, Client> clients;
 
+	void enforceClientTimeouts();
+
 };
 
 #endif

@@ -70,7 +70,7 @@ static bool shouldCloseClient(ClientEventHandler::Result result)
 		|| result == ClientEventHandler::EVENT_FAILED);
 }
 
-static void enforceClientTimeouts(WebServ &server, std::map<int, Client> &clients)
+void enforceClientTimeouts()
 {
 	std::vector<int>	expiredFds;
 	size_t			i;
@@ -79,7 +79,7 @@ static void enforceClientTimeouts(WebServ &server, std::map<int, Client> &client
 	i = 0;
 	while (i < expiredFds.size())
 	{
-		server.closeAndRemoveFd(expiredFds[i]);
+		closeAndRemoveFd(expiredFds[i]);
 		++i;
 	}
 }

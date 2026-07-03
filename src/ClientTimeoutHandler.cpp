@@ -2,6 +2,14 @@
 
 #include <iostream>
 
+int	ClientTimeoutHandler::getTimeoutSeconds(const Client &client,
+	const std::vector<ServerConfig> &configs)
+{
+	if (client.serverIndex >= configs.size())
+		return (CLIENT_TIMEOUT_SECONDS);
+	return (configs[client.serverIndex].clientTimeout);
+}
+
 int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 	int timeoutSeconds)
 {

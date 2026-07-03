@@ -19,8 +19,8 @@ class ClientTimeoutHandler
 
 	private:
 		ClientTimeoutHandler();
-		static bool	isExpired(const Client &client, time_t now,
-					int timeoutSeconds);
+		static bool	isExpired(const Client &client, time_t now, int timeoutSeconds);
+        static int	getTimeoutSeconds(const Client &client, const std::vector<ServerConfig> &configs);
 };
 
 #endif

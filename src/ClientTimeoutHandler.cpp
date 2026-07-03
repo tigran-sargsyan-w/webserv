@@ -11,7 +11,7 @@ int	ClientTimeoutHandler::getTimeoutSeconds(const Client &client,
 }
 
 int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
-	int timeoutSeconds)
+	const std::vector<ServerConfig> &configs)
 {
 	std::map<int, Client>::const_iterator	it;
 	time_t					now;
@@ -38,9 +38,8 @@ int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 	return (shortestTimeout);
 }
 
-void	ClientTimeoutHandler::collectExpiredClients(
-	const std::map<int, Client> &clients, int timeoutSeconds,
-	std::vector<int> &expiredFds)
+void	ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &clients, 
+    const std::vector<ServerConfig> &configs, std::vector<int> &expiredFds)
 {
 	std::map<int, Client>::const_iterator	it;
 	time_t					now;

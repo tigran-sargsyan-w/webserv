@@ -408,6 +408,16 @@ print("HELLO_FROM_REGRESSION_CGI")
 """,
         )
         self.write(
+            self.www1 / "cgi-bin" / "hello.sh",
+            """#!/bin/sh
+echo "Content-Type: text/plain"
+echo ""
+echo "HELLO_FROM_SHELL_CGI"
+echo "REQUEST_METHOD=$REQUEST_METHOD"
+echo "QUERY_STRING=$QUERY_STRING"
+""",
+        )
+        self.write(
             self.www1 / "cgi-bin" / "env.py",
             """#!/usr/bin/env python3
 import os
@@ -548,6 +558,7 @@ print("THIS_SHOULD_NOT_BE_RETURNED")
         autoindex off;
         upload_enable off;
         cgi .py /usr/bin/python3;
+        cgi .sh /bin/sh;
     }}
 
     location /redirect-me {{
@@ -931,6 +942,20 @@ class RegressionSuite:
             "200 and CGI output",
             lambda: self._checked_get(
                 "/cgi-bin/hello.py", 200, ("HELLO_FROM_REGRESSION_CGI",)
+            ),
+        )
+        self.run_case(
+            "CGI shell type",
+            "cgi",
+            "200 and shell CGI output",
+            lambda: self._checked_get(
+                "/cgi-bin/hello.sh?mode=multi",
+                200,
+                (
+                    "HELLO_FROM_SHELL_CGI",
+                    "REQUEST_METHOD=GET",
+                    "QUERY_STRING=mode=multi",
+                ),
             ),
         )
         self.run_case(

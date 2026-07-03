@@ -6,6 +6,7 @@
 #include "Config.hpp"
 #include "ListenerSocketHandler.hpp"
 #include "PollManager.hpp"
+#include "ConnectionManager.hpp"
 #include <map>
 #include <vector>
 
@@ -23,10 +24,10 @@ public:
 private:
 	PollManager pollManager;
 	CgiManager cgiManager;
+	ConnectionManager connectionManager;
 	ListenerSocketHandler listenerSocketHandler;
 
 	std::vector<ServerConfig> configs;
-	std::map<int, Client> clients;
 
 	void enforceClientTimeouts();
 

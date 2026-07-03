@@ -26,6 +26,7 @@ int	ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 		const Client	&client = it->second;
 		if (!client.cgi.isActive())
 		{
+            timeoutSeconds = getTimeoutSeconds(client, configs);
 			elapsed = static_cast<int>(now - client.lastActivity);
 			remaining = timeoutSeconds - elapsed;
 			if (remaining <= 0)

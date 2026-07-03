@@ -7,8 +7,6 @@
 #include "ListenerSocketHandler.hpp"
 #include "PollManager.hpp"
 #include <map>
-#include <poll.h>
-#include <unistd.h>
 #include <vector>
 
 class WebServ
@@ -27,7 +25,6 @@ private:
 	CgiManager cgiManager;
 	ListenerSocketHandler listenerSocketHandler;
 
-	void closeAndRemoveFd(int fd);
 	std::vector<ServerConfig> configs;
 	std::map<int, Client> clients;
 

@@ -244,6 +244,8 @@ static void validateServer(const ServerConfig &server, size_t serverIndex)
 	validateServerPaths(server, serverIndex);
 	if (server.clientMaxBodySize == 0)
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_max_body_size greater than 0");
+	if (server.clientTimeout <= 0)
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_timeout greater than 0");
 	validateErrorPages(server, serverIndex);
 	validateRoutes(server, serverIndex);
 }

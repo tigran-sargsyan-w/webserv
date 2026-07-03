@@ -1,11 +1,13 @@
 #include "WebServ.hpp"
 #include "ClientEventHandler.hpp"
+#include "ClientTimeoutHandler.hpp"
 #include <cerrno>
 #include <cstring>
 #include <iostream>
 #include <poll.h>
 #include <sys/poll.h>
 #include <unistd.h>
+#include <vector>
 
 WebServ::WebServ()
 {

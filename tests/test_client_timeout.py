@@ -17,7 +17,7 @@ def request_bytes(host: str, path: str = "/") -> bytes:
 
 
 def get_response(host: str, port: int, timeout: float = 3.0) -> tuple[int, bool]:
-  """Returns (status_code, success)."""
+    """Returns (status_code, success)."""
     payload = request_bytes(host)
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.sendall(payload)

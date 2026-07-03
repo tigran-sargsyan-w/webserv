@@ -28,8 +28,6 @@ private:
 	ListenerSocketHandler listenerSocketHandler;
 
 	std::vector<ServerConfig> configs;
-
-	void enforceClientTimeouts();
 };
 
 #endif

@@ -50,21 +50,6 @@ static int combinePollTimeoutMs(int first, int second)
 	return (second);
 }
 
-void WebServ::enforceClientTimeouts()
-{
-	std::vector<int>	expiredFds;
-	size_t			i;
-
-	ClientTimeoutHandler::collectExpiredClients(connectionManager.getClients(), configs, expiredFds);
-	i = 0;
-	while (i < expiredFds.size())
-	{
-		PollEventHandler::disconnectClient(expiredFds[i], connectionManager.getClients(),
-			cgiManager, listenerSocketHandler, pollManager);
-		++i;
-	}
-}
-
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -82,7 +67,7 @@ int WebServ::run()
 		int ready;
 
 		cgiPollTimeout = cgiManager.getPollTimeoutMs(connectionManager.getClients());
-		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(connectionManager.getClients(), configs);
+		clientPollTimeout = connectionManager.getPollTimeoutMs(configs);
 		pollTimeout = combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout);
 		ready = poll(&pollFds[0], pollFds.size(), pollTimeout);
 
@@ -94,7 +79,7 @@ int WebServ::run()
 			return (1);
 		}
 		cgiManager.checkTimeouts(connectionManager.getClients(), configs, pollManager);
-		enforceClientTimeouts();
+		connectionManager.enforceTimeouts(configs, cgiManager, listenerSocketHandler, pollManager);
 		if (ready == 0)
 			continue;
 		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;

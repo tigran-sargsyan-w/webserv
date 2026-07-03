@@ -408,7 +408,7 @@ Before opening or merging the PR, run:
 ```bash
 make re
 
-./webserv configs/client-timeout-zero.conf
+./webserv configs/invalid/client-timeout-zero.conf
 python3 tests/test_client_timeout.py --host 127.0.0.1 --port 8098 --client-timeout 5
 curl -i http://127.0.0.1:8080/
 ```
@@ -453,7 +453,7 @@ Expected summary:
 | ------------- | ---------- |
 | Store last activity timestamps per client | `Client::lastActivity`, `Client::touchActivity()` |
 | Detect inactive connections | `ClientTimeoutHandler::getPollTimeoutMs()`, `isExpired()` |
-| Close timed-out clients safely | `WebServ::enforceClientTimeouts()`, `closeAndRemoveFd()` |
+| Close timed-out clients safely | `ConnectionManager::enforceTimeouts(), PollEventHandler::disconnectClient()` |
 | Add configurable timeout values | `client_timeout` in config parser and validator |
 | Log or expose timeout events for debugging | `Client timeout for fd ...` log line |
 | Test timeout behavior with slow clients | sections 5–8 and `tests/test_client_timeout.py` |

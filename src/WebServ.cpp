@@ -87,7 +87,7 @@ void WebServ::enforceClientTimeouts()
 {
 	std::vector<int>	expiredFds;
 	size_t			i;
-	ClientTimeoutHandler::collectExpiredClients(clients, CLIENT_TIMEOUT_SECONDS, expiredFds);
+	ClientTimeoutHandler::collectExpiredClients(clients, configs, expiredFds);
 	i = 0;
 	while (i < expiredFds.size())
 	{
@@ -112,7 +112,7 @@ int WebServ::run()
 		int pollTimeout;
 
 		cgiPollTimeout = cgiManager.getPollTimeoutMs(clients);
-		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(clients, CLIENT_TIMEOUT_SECONDS);
+		clientPollTimeout = ClientTimeoutHandler::getPollTimeoutMs(clients, configs);
 		pollTimeout = combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout);
 
 		int ready = poll(&pollFds[0], pollFds.size(), pollTimeout);

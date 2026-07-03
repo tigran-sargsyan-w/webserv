@@ -2,6 +2,7 @@
 # define CLIENT_TIMEOUT_HANDLER_HPP
 
 # include "Client.hpp"
+# include "Config.hpp"
 
 # include <ctime>
 # include <map>

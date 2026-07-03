@@ -83,12 +83,11 @@ static int combinePollTimeoutMs(int first, int second)
 	return (second);
 }
 
-void enforceClientTimeouts()
+void WebServ::enforceClientTimeouts()
 {
 	std::vector<int>	expiredFds;
 	size_t			i;
-	ClientTimeoutHandler::collectExpiredClients(clients,
-		CLIENT_TIMEOUT_SECONDS, expiredFds);
+	ClientTimeoutHandler::collectExpiredClients(clients, CLIENT_TIMEOUT_SECONDS, expiredFds);
 	i = 0;
 	while (i < expiredFds.size())
 	{

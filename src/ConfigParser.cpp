@@ -144,6 +144,16 @@ void ConfigParser::parseServerDirective(ServerConfig &server)
 		expectSemicolon();
 		return;
 	}
+	if (directive.value == "client_timeout")
+	{
+		int timeout = 0;
+
+		if (!toInt(expectWord("Expected client_timeout value").value, timeout))
+			throw error(previous(), "Invalid client_timeout value");
+		server.clientTimeout = timeout;
+		expectSemicolon();
+		return;
+	}
 	throw error(directive, "Unknown server directive: " + directive.value);
 }
 
@@ -340,6 +350,7 @@ void ConfigParser::debugPrintConfig(const Config &config)
 		std::cout << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
+		std::cout << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
 		for (std::map<int, std::string>::const_iterator errorPageIt = server.errorPages.begin(); errorPageIt != server.errorPages.end(); ++errorPageIt)
 			std::cout << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
 		for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)

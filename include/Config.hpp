@@ -6,7 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
-# include "HttpMethod.hpp"
+#include "HttpMethod.hpp"
 
 struct ListenConfig
 {
@@ -48,8 +48,9 @@ struct ServerConfig
 	size_t clientMaxBodySize;
 	std::map<int, std::string> errorPages;
 	std::vector<RouteConfig> routes;
+	int clientTimeout;
 
-	ServerConfig() : clientMaxBodySize(0) {}
+	ServerConfig() : clientMaxBodySize(0), clientTimeout(30) {}
 };
 
 struct Config

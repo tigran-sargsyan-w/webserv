@@ -12,22 +12,27 @@
 
 class PollEventHandler
 {
-	public:
-		enum Result
-		{
-			ADVANCE_INDEX,
-			KEEP_INDEX
-		};
+public:
+	enum Result
+	{
+		ADVANCE_INDEX,
+		KEEP_INDEX
+	};
 
-		static Result handle(const pollfd &pollFd,
-			std::map<int, Client> &clients,
-			const std::vector<ServerConfig> &configs,
-			CgiManager &cgiManager,
-			ListenerSocketHandler &listenerSocketHandler,
-			PollManager &pollManager);
+	static Result handle(const pollfd &pollFd,
+						 std::map<int, Client> &clients,
+						 const std::vector<ServerConfig> &configs,
+						 CgiManager &cgiManager,
+						 ListenerSocketHandler &listenerSocketHandler,
+						 PollManager &pollManager);
+	static void disconnectClient(int fd,
+								 std::map<int, Client> &clients,
+								 CgiManager &cgiManager,
+								 ListenerSocketHandler &listenerSocketHandler,
+								 PollManager &pollManager);
 
-	private:
-		PollEventHandler();
+private:
+	PollEventHandler();
 };
 
 #endif

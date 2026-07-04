@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 #include <poll.h>
+#include <vector>
 
 WebServ::WebServ()
 {
@@ -35,6 +36,19 @@ int WebServ::setup(std::vector<ServerConfig> servers)
 	return (listenerSocketHandler.setup(configs, pollManager));
 }
 
+static int combinePollTimeoutMs(int first, int second)
+{
+	if (first == 0 || second == 0)
+		return (0);
+	if (first < 0)
+		return (second);
+	if (second < 0)
+		return (first);
+	if (first < second)
+		return (first);
+	return (second);
+}
+
 int WebServ::run()
 {
 	std::cout << "WebServ run called!\n";
@@ -46,8 +60,15 @@ int WebServ::run()
 		if (pollManager.empty())
 			return (1);
 
-		int ready = poll(&pollFds[0], pollFds.size(),
-			cgiManager.getPollTimeoutMs(clients));
+		int cgiPollTimeout;
+		int clientPollTimeout;
+		int pollTimeout;
+		int ready;
+
+		cgiPollTimeout = cgiManager.getPollTimeoutMs(connectionManager.getClients());
+		clientPollTimeout = connectionManager.getPollTimeoutMs(configs);
+		pollTimeout = combinePollTimeoutMs(cgiPollTimeout, clientPollTimeout);
+		ready = poll(&pollFds[0], pollFds.size(), pollTimeout);
 
 		if (ready < 0)
 		{
@@ -56,16 +77,17 @@ int WebServ::run()
 			std::cerr << "poll: " << strerror(errno) << std::endl;
 			return (1);
 		}
-		cgiManager.checkTimeouts(clients, configs, pollManager);
+		cgiManager.checkTimeouts(connectionManager.getClients(), configs, pollManager);
+		connectionManager.enforceTimeouts(configs, cgiManager, listenerSocketHandler, pollManager);
 		if (ready == 0)
 			continue;
-		std::cout << "Sockets Ready - " << ready << "\n" << std::endl;
+		std::cout << "Sockets Ready - " << ready << "\n"
+				  << std::endl;
 		size_t i = 0;
 		while (i < pollFds.size())
 		{
-			if (PollEventHandler::handle(pollFds[i], clients, configs,
-					cgiManager, listenerSocketHandler, pollManager)
-				== PollEventHandler::ADVANCE_INDEX)
+			if (PollEventHandler::handle(pollFds[i], connectionManager.getClients(), configs,
+										 cgiManager, listenerSocketHandler, pollManager) == PollEventHandler::ADVANCE_INDEX)
 				++i;
 		}
 	}

@@ -2,11 +2,10 @@
 #define WEBSERV_HPP
 
 #include "CgiManager.hpp"
-#include "Client.hpp"
 #include "Config.hpp"
 #include "ListenerSocketHandler.hpp"
 #include "PollManager.hpp"
-#include <map>
+#include "ConnectionManager.hpp"
 #include <vector>
 
 class WebServ
@@ -23,11 +22,10 @@ public:
 private:
 	PollManager pollManager;
 	CgiManager cgiManager;
+	ConnectionManager connectionManager;
 	ListenerSocketHandler listenerSocketHandler;
 
 	std::vector<ServerConfig> configs;
-	std::map<int, Client> clients;
-
 };
 
 #endif

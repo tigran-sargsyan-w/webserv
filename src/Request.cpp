@@ -1,7 +1,7 @@
 #include "Request.hpp"
 #include "utils.hpp"
 
-Request::Request() : isCgi(false)  {}
+Request::Request() : valid(false), isCgi(false) {}
 
 Request::~Request() {}
 

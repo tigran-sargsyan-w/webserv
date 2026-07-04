@@ -4,6 +4,41 @@
 
 #include <sys/wait.h>
 
+namespace
+{
+	void	closeCgiStdin(Client &client, PollManager &pollManager,
+		CgiFdRegistry &fdRegistry)
+	{
+		fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
+		client.cgi.stdinFd = -1;
+		client.cgi.stdinClosed = true;
+	}
+
+	void	closeCgiStdout(Client &client, PollManager &pollManager,
+		CgiFdRegistry &fdRegistry)
+	{
+		fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
+		client.cgi.stdoutFd = -1;
+		client.cgi.stdoutClosed = true;
+	}
+
+	int	handleCgiFdError(int cgiFd, Client &client,
+		PollManager &pollManager, CgiFdRegistry &fdRegistry)
+	{
+		if (cgiFd == client.cgi.stdinFd)
+		{
+			closeCgiStdin(client, pollManager, fdRegistry);
+			return (1);
+		}
+		if (cgiFd == client.cgi.stdoutFd)
+		{
+			closeCgiStdout(client, pollManager, fdRegistry);
+			return (1);
+		}
+		return (0);
+	}
+}
+
 int	CgiEventHandler::handleEvent(int cgiFd, short revents,
 	std::map<int, Client> &clients,
 	const std::vector<ServerConfig> &configs, PollManager &pollManager,
@@ -24,22 +59,12 @@ int	CgiEventHandler::handleEvent(int cgiFd, short revents,
 	}
 
 	Client &client = clientIt->second;
-	if (revents & (POLLERR | POLLHUP | POLLNVAL))
+	if (revents & (POLLERR | POLLNVAL))
+		fdRemoved = handleCgiFdError(cgiFd, client, pollManager, fdRegistry);
+	if ((revents & POLLHUP) && cgiFd == client.cgi.stdinFd)
 	{
-		if (cgiFd == client.cgi.stdinFd)
-		{
-			fdRegistry.closeFd(client.cgi.stdinFd, pollManager);
-			client.cgi.stdinFd = -1;
-			client.cgi.stdinClosed = true;
-			fdRemoved = 1;
-		}
-		else if (cgiFd == client.cgi.stdoutFd)
-		{
-			fdRegistry.closeFd(client.cgi.stdoutFd, pollManager);
-			client.cgi.stdoutFd = -1;
-			client.cgi.stdoutClosed = true;
-			fdRemoved = 1;
-		}
+		closeCgiStdin(client, pollManager, fdRegistry);
+		fdRemoved = 1;
 	}
 	if ((revents & POLLOUT) && cgiFd == client.cgi.stdinFd)
 	{
@@ -52,7 +77,7 @@ int	CgiEventHandler::handleEvent(int cgiFd, short revents,
 		else if (client.cgi.stdinFd == -1)
 			fdRemoved = 1;
 	}
-	if ((revents & POLLIN) && cgiFd == client.cgi.stdoutFd)
+	if ((revents & (POLLIN | POLLHUP)) && cgiFd == client.cgi.stdoutFd)
 	{
 		if (readFromCgi(client, pollManager, fdRegistry) != 0)
 		{

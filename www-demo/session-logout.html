@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webserv — session logout</title>
+<meta name="description" content="Session logout page for the webserv cookies and sessions bonus demo.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/index.html">Home</a>
+      <a href="/session">Sessions</a>
+      <a href="/features.html">Features</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="hero container">
+  <span class="eyebrow">// session logout</span>
+  <h1>Session destroyed</h1>
+  <p class="lead">{{MESSAGE}}</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{SESSION_PATH}}">Create a new session</a>
+    <a class="btn" href="/index.html">Back home</a>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>cookies & sessions bonus</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

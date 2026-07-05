@@ -211,6 +211,21 @@ void ConfigParser::parseLocationDirective(RouteConfig &route)
 		expectSemicolon();
 		return;
 	}
+	if (directive.value == "session_enable")
+	{
+		std::string value = expectWord("Expected session_enable value").value;
+		if (value != "on" && value != "off")
+			throw error(previous(), "session_enable must be 'on' or 'off'");
+		route.sessionEnable = (value == "on");
+		expectSemicolon();
+		return;
+	}
+	if (directive.value == "session_path")
+	{
+		route.sessionPath = expectWord("Expected session_path value").value;
+		expectSemicolon();
+		return;
+	}
 	if (directive.value == "return")
 	{
 		int code = 0;
@@ -279,81 +294,28 @@ void ConfigParser::expectSemicolon()
 
 bool ConfigParser::toInt(const std::string &text, int &value) const
 {
-	if (text.empty())
-		return (false);
 	char *end = NULL;
-	long parsed = std::strtol(text.c_str(), &end, 10);
-	if (*end != '\0' || parsed < -2147483648L || parsed > 2147483647L)
+	long result = std::strtol(text.c_str(), &end, 10);
+
+	if (*end != '\0')
 		return (false);
-	value = static_cast<int>(parsed);
+	value = static_cast<int>(result);
 	return (true);
 }
 
 size_t ConfigParser::toSize(const std::string &text) const
 {
-	if (text.empty())
-		throw std::runtime_error("Invalid size value");
 	char *end = NULL;
-	unsigned long parsed = std::strtoul(text.c_str(), &end, 10);
+	unsigned long result = std::strtoul(text.c_str(), &end, 10);
+
 	if (*end != '\0')
-		throw std::runtime_error("Invalid size value: " + text);
-	return (static_cast<size_t>(parsed));
+		throw error(previous(), "Invalid size value");
+	return (static_cast<size_t>(result));
 }
 
 std::runtime_error ConfigParser::error(const ConfigToken &token, const std::string &message) const
 {
 	std::ostringstream oss;
-	oss << "Config parse error at " << token.line << ":" << token.column << " - " << message;
+	oss << "Config parse error at line " << token.line << ", column " << token.column << ": " << message;
 	return (std::runtime_error(oss.str()));
-}
-
-static std::string methodListToString(const std::set<HttpMethod> &methods)
-{
-	std::ostringstream oss;
-	bool first = true;
-	for (std::set<HttpMethod>::const_iterator it = methods.begin(); it != methods.end(); ++it)
-	{
-		if (!first)
-			oss << ", ";
-		first = false;
-		oss << httpMethodToString(*it);
-	}
-	return (oss.str());
-}
-
-static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
-{
-	std::string indent(indentLevel * 2, ' ');
-	std::cout << indent << "location " << route.path << "\n";
-	std::cout << indent << "  methods: " << methodListToString(route.methods) << "\n";
-	std::cout << indent << "  root: " << route.root << "\n";
-	std::cout << indent << "  index: " << route.index << "\n";
-	std::cout << indent << "  autoindex: " << (route.autoindex ? "on" : "off") << "\n";
-	std::cout << indent << "  upload_enable: " << (route.uploadEnable ? "on" : "off") << "\n";
-	if (!route.uploadStore.empty())
-		std::cout << indent << "  upload_store: " << route.uploadStore << "\n";
-	if (route.hasReturn)
-		std::cout << indent << "  return: " << route.returnCode << " " << route.returnPath << "\n";
-	for (size_t cgiIndex = 0; cgiIndex < route.cgi.size(); ++cgiIndex)
-		std::cout << indent << "  cgi: " << route.cgi[cgiIndex].extension << " -> " << route.cgi[cgiIndex].executable << "\n";
-}
-
-void ConfigParser::debugPrintConfig(const Config &config)
-{
-	std::cout << ConfigDebug::parser << "[parser] config tree" << ConfigDebug::reset << "\n";
-	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
-	{
-		const ServerConfig &server = config.servers[serverIndex];
-		std::cout << ConfigDebug::parser << "server #" << serverIndex << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  listen: " << server.listen.host << ":" << server.listen.port << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  server_name: " << server.serverName << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
-		for (std::map<int, std::string>::const_iterator errorPageIt = server.errorPages.begin(); errorPageIt != server.errorPages.end(); ++errorPageIt)
-			std::cout << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
-		for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)
-			printRouteConfig(server.routes[routeIndex], 2);
-	}
 }

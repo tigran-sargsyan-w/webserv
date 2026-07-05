@@ -211,6 +211,21 @@ void ConfigParser::parseLocationDirective(RouteConfig &route)
 		expectSemicolon();
 		return;
 	}
+	if (directive.value == "session_enable")
+	{
+		std::string value = expectWord("Expected session_enable value").value;
+		if (value != "on" && value != "off")
+			throw error(previous(), "session_enable must be 'on' or 'off'");
+		route.sessionEnable = (value == "on");
+		expectSemicolon();
+		return;
+	}
+	if (directive.value == "session_path")
+	{
+		route.sessionPath = expectWord("Expected session_path value").value;
+		expectSemicolon();
+		return;
+	}
 	if (directive.value == "return")
 	{
 		int code = 0;
@@ -332,6 +347,9 @@ static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
 	std::cout << indent << "  upload_enable: " << (route.uploadEnable ? "on" : "off") << "\n";
 	if (!route.uploadStore.empty())
 		std::cout << indent << "  upload_store: " << route.uploadStore << "\n";
+	std::cout << indent << "  session_enable: " << (route.sessionEnable ? "on" : "off") << "\n";
+	if (!route.sessionPath.empty())
+		std::cout << indent << "  session_path: " << route.sessionPath << "\n";
 	if (route.hasReturn)
 		std::cout << indent << "  return: " << route.returnCode << " " << route.returnPath << "\n";
 	for (size_t cgiIndex = 0; cgiIndex < route.cgi.size(); ++cgiIndex)

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <dirent.h>
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -91,7 +92,7 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
 	while (entry != NULL)
 	{
 		name = entry->d_name;
-		if (name != "." && name != "..")
+		if (name != "." && name != ".." && name != ".gitkeep")
 		{
 			entryPath = PathUtils::join(directoryPath, name);
 			autoindexEntry.name = name;
@@ -166,15 +167,123 @@ static std::string urlEncodePathSegment(const std::string &text)
 	return (stream.str());
 }
 
+static std::string readTemplateFile(const std::string &path)
+{
+	std::ifstream file(path.c_str());
+	std::ostringstream buffer;
+
+	if (!file.is_open())
+		return ("");
+	buffer << file.rdbuf();
+	return (buffer.str());
+}
+
+static void replaceAll(std::string &text, const std::string &from,
+	const std::string &to)
+{
+	size_t position;
+
+	if (from.empty())
+		return;
+	position = 0;
+	while ((position = text.find(from, position)) != std::string::npos)
+	{
+		text.replace(position, from.length(), to);
+		position += to.length();
+	}
+}
+
+static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &entries,
+	const std::string &baseUrl)
+{
+	std::vector<AutoindexEntry>::const_iterator it;
+	std::string html;
+	std::string entryUrl;
+	std::string entryName;
+
+	if (entries.empty())
+		return ("<p class=\"muted\">This directory is empty.</p>");
+	html = "<div class=\"autoindex-list\">";
+	it = entries.begin();
+	while (it != entries.end())
+	{
+		entryName = it->name;
+		entryUrl = baseUrl + urlEncodePathSegment(entryName);
+		if (it->isDirectory)
+		{
+			entryUrl += "/";
+			entryName += "/";
+		}
+		html += "<a class=\"card autoindex-entry\" href=\"";
+		html += htmlEscape(entryUrl);
+		html += "\"><span class=\"autoindex-icon\">";
+		if (it->isDirectory)
+			html += "📁";
+		else
+			html += "📄";
+		html += "</span><span><strong>";
+		html += htmlEscape(entryName);
+		html += "</strong></span></a>";
+		it++;
+	}
+	html += "</div>";
+	return (html);
+}
+
+static std::string buildFallbackAutoindexBody(const std::string &requestPath,
+	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl)
+{
+	std::vector<AutoindexEntry>::const_iterator it;
+	std::string body;
+	std::string name;
+
+	body = "<html><body>";
+	body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
+	body += "<ul>";
+	it = entries.begin();
+	while (it != entries.end())
+	{
+		name = it->name;
+		body += "<li><a href=\"";
+		body += htmlEscape(baseUrl + urlEncodePathSegment(name));
+		if (it->isDirectory)
+			body += "/";
+		body += "\">";
+		body += htmlEscape(name);
+		if (it->isDirectory)
+			body += "/";
+		body += "</a></li>";
+		it++;
+	}
+	body += "</ul>";
+	body += "</body></html>";
+	return (body);
+}
+
+static std::string buildAutoindexBody(const std::string &requestPath,
+	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl,
+	const ServerConfig &server)
+{
+	std::string body;
+	std::string templatePath;
+
+	templatePath = PathUtils::join(server.root, "autoindex-template.html");
+	body = readTemplateFile(templatePath);
+	if (body.empty())
+		return (buildFallbackAutoindexBody(requestPath, entries, baseUrl));
+	replaceAll(body, "{{REQUEST_PATH}}", htmlEscape(requestPath));
+	replaceAll(body, "{{ENTRY_COUNT}}", intToString(entries.size()));
+	replaceAll(body, "{{ENTRIES}}", buildAutoindexEntriesHtml(entries, baseUrl));
+	return (body);
+}
+
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath, const ServerConfig &server)
 {
 	Response response;
 	DIR *dir;
 	std::vector<AutoindexEntry> entries;
-	std::vector<AutoindexEntry>::const_iterator it;
 	std::string body;
 	std::string baseUrl;
-	std::string name;
 
 	dir = opendir(directoryPath.c_str());
 	if (dir == NULL)
@@ -187,32 +296,7 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	if (baseUrl.empty() || baseUrl[baseUrl.length() - 1] != '/')
 		baseUrl += "/";
 
-	body = "<html><body>";
-	body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
-	body += "<ul>";
-
-	it = entries.begin();
-	while (it != entries.end())
-	{
-		name = it->name;
-
-		body += "<li><a href=\"";
-		body += htmlEscape(baseUrl + urlEncodePathSegment(name));
-		if (it->isDirectory)
-			body += "/";
-		body += "\">";
-
-		body += htmlEscape(name);
-		if (it->isDirectory)
-			body += "/";
-		body += "</a></li>";
-
-		it++;
-	}
-
-	body += "</ul>";
-	body += "</body></html>";
-
+	body = buildAutoindexBody(requestPath, entries, baseUrl, server);
 	response.setStatusCode(200);
 	response.setBody(body);
 	response.addHeader("Content-Type", "text/html");

@@ -3,8 +3,65 @@
 #include "ErrorResponseHandler.hpp"
 #include "HttpMethod.hpp"
 
+#include <fstream>
 #include <map>
 #include <sstream>
+
+static std::string toStringTime(std::time_t value)
+{
+	std::ostringstream oss;
+
+	oss << value;
+	return (oss.str());
+}
+
+static std::string toStringUnsigned(unsigned long value)
+{
+	std::ostringstream oss;
+
+	oss << value;
+	return (oss.str());
+}
+
+static std::string joinPath(const std::string &root, const std::string &fileName)
+{
+	if (root.empty())
+		return (fileName);
+	if (root[root.length() - 1] == '/')
+		return (root + fileName);
+	return (root + "/" + fileName);
+}
+
+static std::string getTemplateRoot(const RouteConfig &route, const ServerConfig &server)
+{
+	if (!route.root.empty())
+		return (route.root);
+	return (server.root);
+}
+
+static std::string readTemplateFile(const std::string &path)
+{
+	std::ifstream file(path.c_str());
+	std::ostringstream buffer;
+
+	if (!file.is_open())
+		return ("");
+	buffer << file.rdbuf();
+	return (buffer.str());
+}
+
+static void replaceAll(std::string &text, const std::string &from, const std::string &to)
+{
+	size_t pos = 0;
+
+	if (from.empty())
+		return;
+	while ((pos = text.find(from, pos)) != std::string::npos)
+	{
+		text.replace(pos, from.length(), to);
+		pos += to.length();
+	}
+}
 
 std::string SessionHandler::normalizePath(const std::string &path)
 {
@@ -53,73 +110,70 @@ Response SessionHandler::handle(const Request &request, const RouteConfig &route
 		return (errorRes);
 	}
 	if (path == getLogoutPath(route))
-		return (handleLogout(request, route));
-	return (handleSession(request, route));
+		return (handleLogout(request, route, server));
+	return (handleSession(request, route, server));
 }
 
-Response SessionHandler::handleSession(const Request &request, const RouteConfig &route)
+Response SessionHandler::handleSession(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	bool created;
 	SessionData session = SessionManager::getOrCreate(getCookieHeader(request), created);
 	Response response;
 
 	response.setStatusCode(200);
-	response.setBody(buildSessionPage(session, created, route));
+	response.setBody(buildSessionPage(session, created, route, server));
 	response.addHeader("Content-Type", "text/html");
 	response.addHeader("Set-Cookie", SessionManager::buildCookieHeader(session.id));
 	return (response);
 }
 
-Response SessionHandler::handleLogout(const Request &request, const RouteConfig &route)
+Response SessionHandler::handleLogout(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	bool destroyed = SessionManager::destroy(getCookieHeader(request));
 	Response response;
 
 	response.setStatusCode(200);
-	response.setBody(buildLogoutPage(destroyed, route));
+	response.setBody(buildLogoutPage(destroyed, route, server));
 	response.addHeader("Content-Type", "text/html");
 	response.addHeader("Set-Cookie", SessionManager::buildExpiredCookieHeader());
 	return (response);
 }
 
-std::string SessionHandler::buildSessionPage(const SessionData &session, bool created, const RouteConfig &route)
+std::string SessionHandler::buildSessionPage(const SessionData &session, bool created, const RouteConfig &route, const ServerConfig &server)
 {
-	std::ostringstream body;
-	std::string sessionPath = route.sessionPath;
-	std::string logoutPath = getLogoutPath(route);
+	std::string templatePath = joinPath(getTemplateRoot(route, server), "session.html");
+	std::string body = readTemplateFile(templatePath);
+	std::string status;
 
-	body << "<!DOCTYPE html>\n";
-	body << "<html><head><title>webserv session demo</title></head><body>\n";
-	body << "<h1>Cookies and sessions demo</h1>\n";
+	if (body.empty())
+		return ("<html><body><h1>Session template missing</h1></body></html>\n");
 	if (created)
-		body << "<p>Status: new session created.</p>\n";
+		status = "new session created";
 	else
-		body << "<p>Status: existing session restored from Cookie header.</p>\n";
-	body << "<ul>\n";
-	body << "<li>Session id: " << session.id << "</li>\n";
-	body << "<li>Visit count: " << session.visitCount << "</li>\n";
-	body << "<li>Created at: " << session.createdAt << "</li>\n";
-	body << "<li>Last seen: " << session.lastSeen << "</li>\n";
-	body << "</ul>\n";
-	body << "<p><a href=\"" << sessionPath << "\">Refresh session</a></p>\n";
-	body << "<p><a href=\"" << logoutPath << "\">Destroy session</a></p>\n";
-	body << "</body></html>\n";
-	return (body.str());
+		status = "existing session restored from Cookie header";
+	replaceAll(body, "{{STATUS}}", status);
+	replaceAll(body, "{{SESSION_ID}}", session.id);
+	replaceAll(body, "{{VISIT_COUNT}}", toStringUnsigned(session.visitCount));
+	replaceAll(body, "{{CREATED_AT}}", toStringTime(session.createdAt));
+	replaceAll(body, "{{LAST_SEEN}}", toStringTime(session.lastSeen));
+	replaceAll(body, "{{SESSION_PATH}}", route.sessionPath);
+	replaceAll(body, "{{LOGOUT_PATH}}", getLogoutPath(route));
+	return (body);
 }
 
-std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &route)
+std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &route, const ServerConfig &server)
 {
-	std::ostringstream body;
-	std::string sessionPath = route.sessionPath;
+	std::string templatePath = joinPath(getTemplateRoot(route, server), "session-logout.html");
+	std::string body = readTemplateFile(templatePath);
+	std::string message;
 
-	body << "<!DOCTYPE html>\n";
-	body << "<html><head><title>webserv logout</title></head><body>\n";
-	body << "<h1>Session destroyed</h1>\n";
+	if (body.empty())
+		return ("<html><body><h1>Session logout template missing</h1></body></html>\n");
 	if (destroyed)
-		body << "<p>The current server-side session was removed.</p>\n";
+		message = "The current server-side session was removed.";
 	else
-		body << "<p>No active session was found, but the browser cookie was expired.</p>\n";
-	body << "<p><a href=\"" << sessionPath << "\">Create a new session</a></p>\n";
-	body << "</body></html>\n";
-	return (body.str());
+		message = "No active session was found, but the browser cookie was expired.";
+	replaceAll(body, "{{MESSAGE}}", message);
+	replaceAll(body, "{{SESSION_PATH}}", route.sessionPath);
+	return (body);
 }

@@ -42,7 +42,7 @@
   <div class="form">
     <div class="field">
       <label for="path">Resource path</label>
-      <input id="path" class="input" type="text" value="/uploads/sample.txt" data-delete-path>
+      <input id="path" class="input" type="text" value="/uploads/example.txt" data-delete-path>
     </div>
     <div>
       <button class="btn btn-danger" data-delete-btn>🗑 Send DELETE request</button>
@@ -59,8 +59,9 @@
       <h3>ℹ Route used by this demo</h3>
       <p>
         The configured <code>/uploads</code> route allows <code>GET</code>,
-        <code>POST</code> and <code>DELETE</code>. Try the default
-        <code>/uploads/sample.txt</code> path or upload a new file and paste its path here.
+        <code>POST</code> and <code>DELETE</code>. First upload a file from
+        <a href="/upload.html">the upload page</a>, then paste its
+        <code>/uploads/&lt;filename&gt;</code> path here and delete it.
       </p>
     </div>
   </div>

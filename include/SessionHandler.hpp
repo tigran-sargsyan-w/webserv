@@ -23,10 +23,10 @@ class SessionHandler
 		static std::string getCookieHeader(const Request &request);
 		static std::string normalizePath(const std::string &path);
 		static std::string getLogoutPath(const RouteConfig &route);
-		static Response handleSession(const Request &request, const RouteConfig &route);
-		static Response handleLogout(const Request &request, const RouteConfig &route);
-		static std::string buildSessionPage(const SessionData &session, bool created, const RouteConfig &route);
-		static std::string buildLogoutPage(bool destroyed, const RouteConfig &route);
+		static Response handleSession(const Request &request, const RouteConfig &route, const ServerConfig &server);
+		static Response handleLogout(const Request &request, const RouteConfig &route, const ServerConfig &server);
+		static std::string buildSessionPage(const SessionData &session, bool created, const RouteConfig &route, const ServerConfig &server);
+		static std::string buildLogoutPage(bool destroyed, const RouteConfig &route, const ServerConfig &server);
 };
 
 #endif

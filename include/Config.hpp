@@ -6,7 +6,7 @@
 #include <set>
 #include <string>
 #include <vector>
-# include "HttpMethod.hpp"
+#include "HttpMethod.hpp"
 
 struct ListenConfig
 {
@@ -31,12 +31,14 @@ struct RouteConfig
 	bool autoindex;
 	bool uploadEnable;
 	std::string uploadStore;
+	bool sessionEnable;
+	std::string sessionPath;
 	bool hasReturn;
 	int returnCode;
 	std::string returnPath;
 	std::vector<CgiConfig> cgi;
 
-	RouteConfig() : autoindex(false), uploadEnable(false), hasReturn(false), returnCode(0) {}
+	RouteConfig() : autoindex(false), uploadEnable(false), sessionEnable(false), hasReturn(false), returnCode(0) {}
 };
 
 struct ServerConfig
@@ -48,8 +50,9 @@ struct ServerConfig
 	size_t clientMaxBodySize;
 	std::map<int, std::string> errorPages;
 	std::vector<RouteConfig> routes;
+	int clientTimeout;
 
-	ServerConfig() : clientMaxBodySize(0) {}
+	ServerConfig() : clientMaxBodySize(0), clientTimeout(30) {}
 };
 
 struct Config

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webserv — cookies and sessions demo</title>
+<meta name="description" content="Cookies and server-side sessions bonus demo for webserv.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/session" class="active">Sessions</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="hero container">
+  <span class="eyebrow">// bonus demo</span>
+  <h1><span class="accent">cookies</span> and server-side sessions</h1>
+  <p class="lead">
+    This page demonstrates a cookie-backed session stored on the server.
+    Refresh the page to reuse the same session and increment the visit counter.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{SESSION_PATH}}">Refresh session</a>
+    <a class="btn btn-danger" href="{{LOGOUT_PATH}}">Destroy session</a>
+    <a class="btn" href="/index.html">Back to demo</a>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="grid" style="grid-template-columns: 1.2fr 1fr; align-items:start;">
+    <div>
+      <h2>Current session</h2>
+      <p class="sub">Status: {{STATUS}}.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>🍪 Session id</h3>
+          <p><code>{{SESSION_ID}}</code></p>
+        </div>
+        <div class="card">
+          <h3>🔁 Visit count</h3>
+          <p><code>{{VISIT_COUNT}}</code></p>
+        </div>
+        <div class="card">
+          <h3>🕒 Created at</h3>
+          <p><code>{{CREATED_AT}}</code></p>
+        </div>
+        <div class="card">
+          <h3>👀 Last seen</h3>
+          <p><code>{{LAST_SEEN}}</code></p>
+        </div>
+      </div>
+    </div>
+    <div class="terminal" aria-hidden="false">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">session — flow</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt"></span>curl -i {{SESSION_PATH}}<span class="cursor"></span></div>
+        <div class="row"><span class="k">Set-Cookie</span><span class="v ok">sid=...</span></div>
+        <div class="row"><span class="k">Cookie</span><span class="v">sent back by client</span></div>
+        <div class="row"><span class="k">Storage</span><span class="v">server-side map</span></div>
+        <div class="row"><span class="k">Counter</span><span class="v ok">{{VISIT_COUNT}}</span></div>
+        <div class="row"><span class="k">Logout</span><span class="v">{{LOGOUT_PATH}}</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section container">
+  <h2>What this proves</h2>
+  <p class="sub">The cookie contains only the session id. The real session state lives on the server.</p>
+  <div class="grid">
+    <div class="card"><h3>✅ Cookie parsing</h3><p>The server reads the incoming <code>Cookie</code> header and extracts <code>sid</code>.</p></div>
+    <div class="card"><h3>✅ Session restore</h3><p>The same <code>sid</code> restores the same server-side session data.</p></div>
+    <div class="card"><h3>✅ Session state</h3><p>The visit counter changes on the server without being stored in the cookie.</p></div>
+    <div class="card"><h3>✅ Logout</h3><p>The logout endpoint destroys the session and expires the cookie with <code>Max-Age=0</code>.</p></div>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

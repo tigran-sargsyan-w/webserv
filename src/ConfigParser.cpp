@@ -144,6 +144,16 @@ void ConfigParser::parseServerDirective(ServerConfig &server)
 		expectSemicolon();
 		return;
 	}
+	if (directive.value == "client_timeout")
+	{
+		int timeout = 0;
+
+		if (!toInt(expectWord("Expected client_timeout value").value, timeout))
+			throw error(previous(), "Invalid client_timeout value");
+		server.clientTimeout = timeout;
+		expectSemicolon();
+		return;
+	}
 	throw error(directive, "Unknown server directive: " + directive.value);
 }
 
@@ -198,6 +208,21 @@ void ConfigParser::parseLocationDirective(RouteConfig &route)
 	if (directive.value == "upload_store")
 	{
 		route.uploadStore = expectWord("Expected upload_store value").value;
+		expectSemicolon();
+		return;
+	}
+	if (directive.value == "session_enable")
+	{
+		std::string value = expectWord("Expected session_enable value").value;
+		if (value != "on" && value != "off")
+			throw error(previous(), "session_enable must be 'on' or 'off'");
+		route.sessionEnable = (value == "on");
+		expectSemicolon();
+		return;
+	}
+	if (directive.value == "session_path")
+	{
+		route.sessionPath = expectWord("Expected session_path value").value;
 		expectSemicolon();
 		return;
 	}
@@ -322,6 +347,9 @@ static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
 	std::cout << indent << "  upload_enable: " << (route.uploadEnable ? "on" : "off") << "\n";
 	if (!route.uploadStore.empty())
 		std::cout << indent << "  upload_store: " << route.uploadStore << "\n";
+	std::cout << indent << "  session_enable: " << (route.sessionEnable ? "on" : "off") << "\n";
+	if (!route.sessionPath.empty())
+		std::cout << indent << "  session_path: " << route.sessionPath << "\n";
 	if (route.hasReturn)
 		std::cout << indent << "  return: " << route.returnCode << " " << route.returnPath << "\n";
 	for (size_t cgiIndex = 0; cgiIndex < route.cgi.size(); ++cgiIndex)
@@ -340,6 +368,7 @@ void ConfigParser::debugPrintConfig(const Config &config)
 		std::cout << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
 		std::cout << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
+		std::cout << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
 		for (std::map<int, std::string>::const_iterator errorPageIt = server.errorPages.begin(); errorPageIt != server.errorPages.end(); ++errorPageIt)
 			std::cout << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
 		for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)

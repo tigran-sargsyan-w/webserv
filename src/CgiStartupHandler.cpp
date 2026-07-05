@@ -54,15 +54,7 @@ int	CgiStartupHandler::startForClient(Client &client,
 
 int	CgiStartupHandler::setNonBlockingFd(int fd)
 {
-	int flags;
-
-	flags = fcntl(fd, F_GETFL, 0);
-	if (flags == -1)
-	{
-		std::cerr << "fcntl: " << strerror(errno) << "\n";
-		return (1);
-	}
-	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 	{
 		std::cerr << "fcntl: " << strerror(errno) << "\n";
 		return (1);

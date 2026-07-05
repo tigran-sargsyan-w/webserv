@@ -85,6 +85,17 @@ static bool isValidRedirectTarget(const std::string &target)
 	return (true);
 }
 
+static bool isPathInsideRoute(const std::string &path, const std::string &routePath)
+{
+	if (routePath == "/")
+		return (true);
+	if (path == routePath)
+		return (true);
+	if (path.find(routePath + "/") == 0)
+		return (true);
+	return (false);
+}
+
 static bool isValidCgiExtension(const std::string &extension)
 {
 	if (extension.length() < 2)
@@ -189,6 +200,20 @@ static void validateRoutePaths(const RouteConfig &route)
 		throw configError("location " + route.path + " has invalid index path");
 	if (!isValidOptionalConfigPath(route.uploadStore))
 		throw configError("location " + route.path + " has invalid upload_store path");
+	if (!route.sessionPath.empty() && !isValidLocationPath(route.sessionPath))
+		throw configError("location " + route.path + " has invalid session_path");
+}
+
+static void validateSessionConfig(const RouteConfig &route)
+{
+	if (route.sessionEnable && route.sessionPath.empty())
+		throw configError("location " + route.path + " has session_enable on but session_path is missing");
+	if (!route.sessionEnable && !route.sessionPath.empty())
+		throw configError("location " + route.path + " has session_path but session_enable is off");
+	if (!route.sessionPath.empty() && !isPathInsideRoute(route.sessionPath, route.path))
+		throw configError("location " + route.path + " has session_path outside of the location prefix");
+	if (route.sessionEnable && route.methods.find(HTTP_GET) == route.methods.end())
+		throw configError("location " + route.path + " has session_enable on but GET is not allowed");
 }
 
 static void validateRoute(const RouteConfig &route)
@@ -202,6 +227,7 @@ static void validateRoute(const RouteConfig &route)
 		throw configError("location " + route.path + " has upload_store but upload_enable is off");
 	if (route.uploadEnable)
 		validateUploadStoreDirectory(route);
+	validateSessionConfig(route);
 	if (route.hasReturn && !isRedirectStatusCode(route.returnCode))
 		throw configError("location " + route.path + " has invalid redirect status code");
 	if (route.hasReturn && !isValidRedirectTarget(route.returnPath))
@@ -244,6 +270,10 @@ static void validateServer(const ServerConfig &server, size_t serverIndex)
 	validateServerPaths(server, serverIndex);
 	if (server.clientMaxBodySize == 0)
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_max_body_size greater than 0");
+	if (server.clientTimeout <= 0)
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_timeout greater than 0");
+	if (server.clientTimeout > 3600)
+		throw configError("server " + toString(static_cast<int>(serverIndex)) + " requires client_timeout at most 3600");
 	validateErrorPages(server, serverIndex);
 	validateRoutes(server, serverIndex);
 }

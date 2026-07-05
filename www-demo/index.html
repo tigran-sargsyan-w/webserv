@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -39,6 +40,7 @@
   <div class="hero-actions">
     <a class="btn btn-primary" href="#try">▶ Try the demo</a>
     <a class="btn" href="/features.html">View features</a>
+    <a class="btn" href="/session">Session bonus</a>
     <a class="btn" href="/about.html">About the project</a>
   </div>
 </section>
@@ -54,6 +56,7 @@
         <li><span class="method delete">DELETE</span> Remove resources on disk.</li>
         <li><span class="method get">CGI</span> Execute Python / PHP scripts and pipe their output.</li>
         <li><span class="method get">AUTO</span> Generate directory listings when index files are missing.</li>
+        <li><span class="method get">BONUS</span> Demonstrate cookies and server-side sessions.</li>
       </ul>
     </div>
     <div class="terminal" aria-hidden="false">
@@ -69,6 +72,7 @@
         <div class="row"><span class="k">i/o model</span><span class="v">non-blocking (poll)</span></div>
         <div class="row"><span class="k">methods</span><span class="v">GET, POST, DELETE</span></div>
         <div class="row"><span class="k">cgi</span><span class="v ok">enabled</span></div>
+        <div class="row"><span class="k">sessions</span><span class="v ok">bonus demo</span></div>
         <div class="row"><span class="k">uptime</span><span class="v" data-uptime>00:00:00</span></div>
       </div>
     </div>
@@ -84,6 +88,7 @@
     <div class="card"><h3>🔁 GET / POST / DELETE</h3><p>The three methods required by the subject are fully parsed and routed.</p></div>
     <div class="card"><h3>📤 File uploads</h3><p>Parse <code>multipart/form-data</code> and store uploads in a configured directory.</p></div>
     <div class="card"><h3>🐍 CGI support</h3><p>Execute Python or PHP scripts and stream their stdout back to the client.</p></div>
+    <div class="card"><h3>🍪 Cookies & sessions</h3><p>Bonus demo with <code>Set-Cookie</code>, session restore, visit counter and logout.</p></div>
     <div class="card"><h3>🚧 Custom error pages</h3><p>Per-server <code>error_page</code> directives, with consistent styling.</p></div>
     <div class="card"><h3>📂 Autoindex</h3><p>Auto-generated directory listings when no index file is present.</p></div>
     <div class="card"><h3>🔌 Multiple ports</h3><p>Bind several listen blocks with different configurations on the same binary.</p></div>
@@ -98,6 +103,7 @@
     <a class="card" href="/forms.html"><h3>📝 Submit a form</h3><p>POST URL-encoded data to a configured route.</p></a>
     <a class="card" href="/delete.html"><h3>🗑 DELETE a resource</h3><p>Send a DELETE request from the browser.</p></a>
     <a class="card" href="/cgi.html"><h3>🐍 Run a CGI script</h3><p>Hit <code>/cgi-bin/test.py</code> with GET or POST.</p></a>
+    <a class="card" href="/session"><h3>🍪 Open session demo</h3><p>Create a cookie-backed session, refresh it and logout through <code>/session/logout</code>.</p></a>
     <a class="card" href="/autoindex.html"><h3>📂 Browse a directory</h3><p>See the autoindex in action.</p></a>
     <a class="card" href="/redirect.html"><h3>🔀 Follow a redirect</h3><p>HTTP 301/302 response from config.</p></a>
     <a class="card" href="/errors/404.html"><h3>🚧 View an error page</h3><p>Preview the custom 404 template.</p></a>

@@ -14,28 +14,63 @@
       <span class="brand-dot"></span>
       <span><span class="brand-prompt">~/</span>webserv</span>
     </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
     <nav class="nav-links" aria-label="Primary">
-      <a href="/index.html">Home</a>
-      <a href="/session">Sessions</a>
-      <a href="/features.html">Features</a>
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/forms.html">Forms</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/session" class="active">Sessions</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
     </nav>
   </div>
 </header>
 <main class="fade-in">
 <section class="hero container">
   <span class="eyebrow">// session logout</span>
-  <h1>Session destroyed</h1>
+  <h1><span class="accent">session</span> destroyed</h1>
   <p class="lead">{{MESSAGE}}</p>
   <div class="hero-actions">
     <a class="btn btn-primary" href="{{SESSION_PATH}}">Create a new session</a>
-    <a class="btn" href="/index.html">Back home</a>
+    <a class="btn" href="/index.html">Back to demo</a>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="grid" style="grid-template-columns: 1.2fr 1fr; align-items:start;">
+    <div>
+      <h2>Logout result</h2>
+      <p class="sub">The server removed the session state and sent an expired cookie to the client.</p>
+      <div class="grid">
+        <div class="card"><h3>🗑 Server-side state</h3><p>The session entry was removed from the in-memory session map.</p></div>
+        <div class="card"><h3>🍪 Browser cookie</h3><p>The response sends <code>Set-Cookie</code> with <code>Max-Age=0</code>.</p></div>
+      </div>
+    </div>
+    <div class="terminal" aria-hidden="false">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">logout — response</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt"></span>curl -i {{SESSION_PATH}}/logout<span class="cursor"></span></div>
+        <div class="row"><span class="k">HTTP</span><span class="v ok">200 OK</span></div>
+        <div class="row"><span class="k">Set-Cookie</span><span class="v">sid=deleted</span></div>
+        <div class="row"><span class="k">Max-Age</span><span class="v ok">0</span></div>
+        <div class="row"><span class="k">Next step</span><span class="v">create fresh session</span></div>
+      </div>
+    </div>
   </div>
 </section>
 </main>
 <footer>
   <div class="container">
     <span>webserv</span><span class="sep">/</span>
-    <span>cookies & sessions bonus</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
   </div>
 </footer>
 <script src="/js/main.js" defer></script>

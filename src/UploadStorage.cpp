@@ -34,17 +34,62 @@ namespace
 		return (result);
 	}
 
+	std::string	buildUploadedHref(const std::string &fileName)
+	{
+		return ("/uploads/" + htmlEscape(fileName));
+	}
+
 	Response	buildCreatedResponse(const std::string &fileName)
 	{
 		Response	response;
 		std::string	body;
+		std::string	safeName;
+		std::string	fileHref;
 
-		body = "<html><body><h1>Created: File uploaded</h1>";
-		if (!fileName.empty())
-			body += "<p>Stored as: " + htmlEscape(fileName) + "</p>";
-		body += "</body></html>";
+		safeName = htmlEscape(fileName);
+		fileHref = buildUploadedHref(fileName);
+		body = "<!DOCTYPE html>";
+		body += "<html lang=\"en\"><head><meta charset=\"utf-8\">";
+		body += "<meta name=\"viewport\" content=\"width=device-width,";
+		body += " initial-scale=1\">";
+		body += "<title>Upload complete · webserv</title>";
+		body += "<link rel=\"stylesheet\" href=\"/css/style.css\">";
+		body += "</head><body>";
+		body += "<header class=\"nav\"><div class=\"nav-inner\">";
+		body += "<a href=\"/index.html\" class=\"brand\">";
+		body += "<span class=\"brand-dot\"></span>";
+		body += "<span><span class=\"brand-prompt\">~/</span>webserv</span>";
+		body += "</a><nav class=\"nav-links\" aria-label=\"Primary\">";
+		body += "<a href=\"/index.html\">Home</a>";
+		body += "<a href=\"/upload.html\">Upload</a>";
+		body += "<a href=\"/uploads/\">Uploads</a>";
+		body += "<a href=\"/delete.html\">DELETE</a>";
+		body += "</nav></div></header>";
+		body += "<main class=\"fade-in\"><section class=\"container\">";
+		body += "<span class=\"eyebrow\">// 201 Created</span>";
+		body += "<h1>File uploaded successfully</h1>";
+		body += "<p class=\"lead\" style=\"color:var(--muted)\">";
+		body += "The server accepted the multipart request and stored the";
+		body += " file in the configured upload directory.</p>";
+		body += "</section><section class=\"section container\">";
+		body += "<div class=\"card\"><h3>Stored file</h3>";
+		body += "<p><code>" + safeName + "</code></p>";
+		body += "<p style=\"color:var(--muted)\">";
+		body += "You can now open it, inspect the uploads directory,";
+		body += " or upload another file.</p>";
+		body += "<p style=\"margin-top:1rem\">";
+		body += "<a class=\"btn btn-primary\" href=\"" + fileHref;
+		body += "\">Open uploaded file</a> ";
+		body += "<a class=\"btn\" href=\"/uploads/\">Open uploads</a> ";
+		body += "<a class=\"btn\" href=\"/upload.html\">Upload another</a>";
+		body += "</p></div></section></main>";
+		body += "<footer><div class=\"container\">";
+		body += "<span>webserv</span><span class=\"sep\">/</span>";
+		body += "<span>42 School HTTP Server Project</span>";
+		body += "</div></footer></body></html>";
 		response.setStatusCode(201);
 		response.setBody(body);
+		response.addHeader("Content-Type", "text/html");
 		return (response);
 	}
 

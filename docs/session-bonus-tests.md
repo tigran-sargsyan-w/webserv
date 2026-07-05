@@ -27,6 +27,36 @@ For example:
   - `GET /account/session`
   - `GET /account/session/logout`
 
+## HTML templates
+
+The session pages are not hardcoded in C++.
+
+`SessionHandler` reads templates from the configured route root:
+
+- `session.html`
+- `session-logout.html`
+
+For the default config, the files are:
+
+- `www/session.html`
+- `www/session-logout.html`
+
+For the demo config, the files are:
+
+- `www-demo/session.html`
+- `www-demo/session-logout.html`
+
+Supported placeholders:
+
+- `{{STATUS}}`
+- `{{SESSION_ID}}`
+- `{{VISIT_COUNT}}`
+- `{{CREATED_AT}}`
+- `{{LAST_SEEN}}`
+- `{{SESSION_PATH}}`
+- `{{LOGOUT_PATH}}`
+- `{{MESSAGE}}`
+
 ## Endpoints with the default config
 
 - `GET /session`

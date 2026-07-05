@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload complete · webserv</title>
+<meta name="description" content="File upload success page for webserv.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+        <a href="/index.html">Home</a>
+        <a href="/features.html">Features</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/uploads/">Uploads</a>
+        <a href="/delete.html">DELETE</a>
+        <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
+        <a href="/autoindex.html">Autoindex</a>
+        <a href="/redirect.html">Redirect</a>
+        <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// 201 Created</span>
+  <h1>File uploaded successfully</h1>
+  <p class="lead" style="color:var(--muted)">
+    The server accepted the multipart request and stored the file in the configured upload directory.
+  </p>
+</section>
+
+<section class="section container">
+  <div class="card">
+    <h3>Stored file</h3>
+    <p><code>{{FILENAME}}</code></p>
+    <p style="color:var(--muted)">
+      You can now open it, inspect the uploads directory, or upload another file.
+    </p>
+    <p style="margin-top:1rem">
+      <a class="btn btn-primary" href="{{FILE_HREF}}">Open uploaded file</a>
+      <a class="btn" href="/uploads/">Open uploads</a>
+      <a class="btn" href="/upload.html">Upload another</a>
+    </p>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="container">
+    <span>webserv</span><span class="sep">/</span>
+    <span>42 School HTTP Server Project</span><span class="sep">/</span>
+    <span>Built with C++98 &middot; non-blocking I/O</span>
+  </div>
+</footer>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

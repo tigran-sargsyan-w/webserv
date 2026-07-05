@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webserv session demo</title>
+</head>
+<body>
+  <h1>Cookies and sessions demo</h1>
+  <p>Status: {{STATUS}}.</p>
+  <ul>
+    <li>Session id: {{SESSION_ID}}</li>
+    <li>Visit count: {{VISIT_COUNT}}</li>
+    <li>Created at: {{CREATED_AT}}</li>
+    <li>Last seen: {{LAST_SEEN}}</li>
+  </ul>
+  <p><a href="{{SESSION_PATH}}">Refresh session</a></p>
+  <p><a href="{{LOGOUT_PATH}}">Destroy session</a></p>
+  <p><a href="/">Back to home</a></p>
+</body>
+</html>

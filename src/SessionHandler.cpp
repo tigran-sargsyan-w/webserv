@@ -146,7 +146,7 @@ std::string SessionHandler::buildSessionPage(const SessionData &session, bool cr
 	std::string status;
 
 	if (body.empty())
-		return ("<html><body><h1>Session template missing</h1></body></html>\n");
+		return ("Session template missing\n");
 	if (created)
 		status = "new session created";
 	else
@@ -168,7 +168,7 @@ std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &r
 	std::string message;
 
 	if (body.empty())
-		return ("<html><body><h1>Session logout template missing</h1></body></html>\n");
+		return ("Session logout template missing\n");
 	if (destroyed)
 		message = "The current server-side session was removed.";
 	else

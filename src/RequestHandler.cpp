@@ -73,8 +73,8 @@ Response RequestHandler::handleRequest(const Request &request, const RouteConfig
 
 	else if (server.clientMaxBodySize > 0 && request.getBody().size() > server.clientMaxBodySize)
 		response = ErrorResponseHandler::build(413, "Payload Too Large: Body size exceeds limit", server);
-	else if (SessionHandler::canHandle(request))
-		response = SessionHandler::handle(request, server);
+	else if (SessionHandler::canHandle(request, route))
+		response = SessionHandler::handle(request, route, server);
 	// Handle CGI requests
 	else if (CgiRequestHandler::isCgiRequest(request, route))
 		response = ErrorResponseHandler::build(500, "Internal Server Error", server);

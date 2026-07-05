@@ -2,7 +2,32 @@
 
 This branch adds a minimal server-side session demo for the `Support cookies and session management` bonus.
 
-## Endpoints
+The bonus is enabled per location through config directives:
+
+```conf
+location / {
+    methods GET;
+    root ./www;
+    index index.html;
+    autoindex off;
+    upload_enable off;
+    session_enable on;
+    session_path /session;
+}
+```
+
+`session_path` defines the session demo endpoint. The logout endpoint is derived from it by appending `/logout`.
+
+For example:
+
+- `session_path /session;` gives:
+  - `GET /session`
+  - `GET /session/logout`
+- `session_path /account/session;` gives:
+  - `GET /account/session`
+  - `GET /account/session/logout`
+
+## Endpoints with the default config
 
 - `GET /session`
   - creates a new session when the request has no valid `sid` cookie;
@@ -10,7 +35,7 @@ This branch adds a minimal server-side session demo for the `Support cookies and
   - increments a per-session visit counter;
   - sends `Set-Cookie: sid=...; Path=/; Max-Age=1800; HttpOnly; SameSite=Lax`.
 
-- `GET /logout`
+- `GET /session/logout`
   - removes the current server-side session if it exists;
   - sends an expired `sid` cookie with `Max-Age=0`.
 
@@ -35,7 +60,7 @@ curl -i -c /tmp/webserv-session.cookies http://127.0.0.1:8080/session
 curl -i -b /tmp/webserv-session.cookies -c /tmp/webserv-session.cookies http://127.0.0.1:8080/session
 
 # Logout: deletes the server-side session and expires the browser cookie.
-curl -i -b /tmp/webserv-session.cookies -c /tmp/webserv-session.cookies http://127.0.0.1:8080/logout
+curl -i -b /tmp/webserv-session.cookies -c /tmp/webserv-session.cookies http://127.0.0.1:8080/session/logout
 
 # New request after logout: creates a fresh session again.
 curl -i -b /tmp/webserv-session.cookies -c /tmp/webserv-session.cookies http://127.0.0.1:8080/session
@@ -46,7 +71,7 @@ Expected behavior:
 - the first `/session` response says `new session created`;
 - the second `/session` response says `existing session restored from Cookie header`;
 - `Visit count` increases when the same cookie is reused;
-- `/logout` expires the cookie;
+- `/session/logout` expires the cookie;
 - a request after logout starts a new session.
 
 ## Notes

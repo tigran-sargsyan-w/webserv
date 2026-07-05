@@ -53,30 +53,30 @@ Response SessionHandler::handle(const Request &request, const RouteConfig &route
 		return (errorRes);
 	}
 	if (path == getLogoutPath(route))
-		return (handleLogout(request));
-	return (handleSession(request));
+		return (handleLogout(request, route));
+	return (handleSession(request, route));
 }
 
-Response SessionHandler::handleSession(const Request &request)
+Response SessionHandler::handleSession(const Request &request, const RouteConfig &route)
 {
 	bool created;
 	SessionData session = SessionManager::getOrCreate(getCookieHeader(request), created);
 	Response response;
 
 	response.setStatusCode(200);
-	response.setBody(buildSessionPage(session, created, RouteConfig()));
+	response.setBody(buildSessionPage(session, created, route));
 	response.addHeader("Content-Type", "text/html");
 	response.addHeader("Set-Cookie", SessionManager::buildCookieHeader(session.id));
 	return (response);
 }
 
-Response SessionHandler::handleLogout(const Request &request)
+Response SessionHandler::handleLogout(const Request &request, const RouteConfig &route)
 {
 	bool destroyed = SessionManager::destroy(getCookieHeader(request));
 	Response response;
 
 	response.setStatusCode(200);
-	response.setBody(buildLogoutPage(destroyed, RouteConfig()));
+	response.setBody(buildLogoutPage(destroyed, route));
 	response.addHeader("Content-Type", "text/html");
 	response.addHeader("Set-Cookie", SessionManager::buildExpiredCookieHeader());
 	return (response);
@@ -85,8 +85,8 @@ Response SessionHandler::handleLogout(const Request &request)
 std::string SessionHandler::buildSessionPage(const SessionData &session, bool created, const RouteConfig &route)
 {
 	std::ostringstream body;
-	std::string sessionPath = route.sessionPath.empty() ? "/session" : route.sessionPath;
-	std::string logoutPath = route.sessionPath.empty() ? "/logout" : getLogoutPath(route);
+	std::string sessionPath = route.sessionPath;
+	std::string logoutPath = getLogoutPath(route);
 
 	body << "<!DOCTYPE html>\n";
 	body << "<html><head><title>webserv session demo</title></head><body>\n";
@@ -110,7 +110,7 @@ std::string SessionHandler::buildSessionPage(const SessionData &session, bool cr
 std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &route)
 {
 	std::ostringstream body;
-	std::string sessionPath = route.sessionPath.empty() ? "/session" : route.sessionPath;
+	std::string sessionPath = route.sessionPath;
 
 	body << "<!DOCTYPE html>\n";
 	body << "<html><head><title>webserv logout</title></head><body>\n";

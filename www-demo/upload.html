@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>File upload · webserv</title>
-<meta name="description" content="Send a multipart file upload to the webserv server.">
+<meta name="description" content="Send a file upload request to the webserv server.">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -30,13 +31,13 @@
 </header>
 <main class="fade-in">
 <section class="container">
-  <span class="eyebrow">// POST · multipart/form-data</span>
+  <span class="eyebrow">// POST · upload store</span>
   <h1>File upload</h1>
-  <p class="lead" style="color:var(--muted)">Send a file to the server. The webserv config decides where it gets stored.</p>
+  <p class="lead" style="color:var(--muted)">Send a body to a route with <code>upload_enable on;</code>. The server stores it under the configured <code>upload_store</code>.</p>
 </section>
 
 <section class="section container">
-  <form class="form" action="/upload" method="POST" enctype="multipart/form-data">
+  <form class="form" action="/uploads/browser-upload.bin" method="POST" enctype="multipart/form-data">
     <div class="field">
       <label for="file">Choose a file to upload</label>
       <input id="file" type="file" name="file" required>
@@ -54,11 +55,10 @@
     <div class="card">
       <h3>ℹ Notes for evaluators</h3>
       <p>
-        Submitting this form sends a <code>POST</code> request with
-        <code>Content-Type: multipart/form-data</code> to the
-        <code>/upload</code> route. The server should accept the body,
-        parse the multipart sections, and save the file to the directory
-        configured by the matching <code>location</code> block.
+        Submitting this form sends a real <code>POST</code> request to
+        <code>/uploads/browser-upload.bin</code>. The current upload handler stores
+        the request body in <code>www-demo/uploads/browser-upload.bin</code>. After upload,
+        open <a href="/uploads/">/uploads/</a> to see the saved file through autoindex.
       </p>
     </div>
   </div>

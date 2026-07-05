@@ -22,7 +22,8 @@ The browser demo is served from `www-demo/` and is intended to exercise the same
 
 - static files with `GET`;
 - directory listing with `autoindex on`;
-- `POST` uploads on an upload-enabled route;
+- regular browser uploads with `multipart/form-data`;
+- raw `POST /uploads/<filename>` uploads;
 - `DELETE` on uploaded resources;
 - CGI `GET` and `POST`;
 - multiple CGI interpreter types when configured;

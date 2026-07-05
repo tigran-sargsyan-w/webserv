@@ -31,12 +31,14 @@ struct RouteConfig
 	bool autoindex;
 	bool uploadEnable;
 	std::string uploadStore;
+	bool sessionEnable;
+	std::string sessionPath;
 	bool hasReturn;
 	int returnCode;
 	std::string returnPath;
 	std::vector<CgiConfig> cgi;
 
-	RouteConfig() : autoindex(false), uploadEnable(false), hasReturn(false), returnCode(0) {}
+	RouteConfig() : autoindex(false), uploadEnable(false), sessionEnable(false), hasReturn(false), returnCode(0) {}
 };
 
 struct ServerConfig

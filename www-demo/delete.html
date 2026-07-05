@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -33,8 +34,7 @@
   <span class="eyebrow">// DELETE</span>
   <h1>DELETE request demo</h1>
   <p class="lead" style="color:var(--muted)">
-    HTML forms don't speak <code>DELETE</code>, so this page uses
-    <code>fetch()</code> to send the request directly.
+    This page uses browser JavaScript to send a <code>DELETE</code> request.
   </p>
 </section>
 
@@ -56,13 +56,11 @@
 
   <div class="section">
     <div class="card">
-      <h3>ℹ How it works</h3>
+      <h3>ℹ Route used by this demo</h3>
       <p>
-        Clicking the button runs roughly:
-        <code>fetch(path, &#123; method: "DELETE" &#125;)</code>.
-        The server should reply with <code>200</code>, <code>204</code>
-        or <code>404</code> depending on whether the resource exists and
-        the route allows the <code>DELETE</code> method.
+        The configured <code>/uploads</code> route allows <code>GET</code>,
+        <code>POST</code> and <code>DELETE</code>. Try the default
+        <code>/uploads/sample.txt</code> path or upload a new file and paste its path here.
       </p>
     </div>
   </div>

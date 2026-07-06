@@ -3,13 +3,11 @@
 #include "MimeTypes.hpp"
 #include "utils.hpp"
 #include "PathUtils.hpp"
+#include "TemplateRenderer.hpp"
 #include "UriUtils.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <dirent.h>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
@@ -91,7 +89,7 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
 	while (entry != NULL)
 	{
 		name = entry->d_name;
-		if (name != "." && name != "..")
+		if (name != "." && name != ".." && name != ".gitkeep")
 		{
 			entryPath = PathUtils::join(directoryPath, name);
 			autoindexEntry.name = name;
@@ -104,66 +102,90 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
 	return (entries);
 }
 
-static std::string htmlEscape(const std::string &text)
+static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &entries,
+	const std::string &baseUrl)
 {
-	std::string result;
-	size_t i;
+	std::vector<AutoindexEntry>::const_iterator it;
+	std::string html;
+	std::string entryUrl;
+	std::string entryName;
 
-	i = 0;
-	while (i < text.length())
+	if (entries.empty())
+		return ("<p class=\"muted\">This directory is empty.</p>");
+	html = "<div class=\"autoindex-list\">";
+	it = entries.begin();
+	while (it != entries.end())
 	{
-		if (text[i] == '&')
-			result += "&amp;";
-		else if (text[i] == '<')
-			result += "&lt;";
-		else if (text[i] == '>')
-			result += "&gt;";
-		else if (text[i] == '"')
-			result += "&quot;";
-		else if (text[i] == '\'')
-			result += "&#39;";
-		else
-			result += text[i];
-		i++;
-	}
-	return (result);
-}
-
-static bool isUrlSafeChar(unsigned char c)
-{
-	if (std::isalnum(c))
-		return (true);
-	if (c == '-' || c == '_' || c == '.' || c == '~')
-		return (true);
-	return (false);
-}
-
-static std::string urlEncodePathSegment(const std::string &text)
-{
-	std::ostringstream stream;
-	size_t i;
-	unsigned char c;
-
-	i = 0;
-	while (i < text.length())
-	{
-		c = static_cast<unsigned char>(text[i]);
-		if (isUrlSafeChar(c))
-			stream << text[i];
-		else
+		entryName = it->name;
+		entryUrl = baseUrl + TemplateRenderer::urlEncodePathSegment(entryName);
+		if (it->isDirectory)
 		{
-			stream << '%';
-			stream << std::uppercase;
-			stream << std::hex;
-			stream << std::setw(2);
-			stream << std::setfill('0');
-			stream << static_cast<int>(c);
-			stream << std::nouppercase;
-			stream << std::dec;
+			entryUrl += "/";
+			entryName += "/";
 		}
-		i++;
+		html += "<a class=\"card autoindex-entry\" href=\"";
+		html += TemplateRenderer::htmlEscape(entryUrl);
+		html += "\"><span class=\"autoindex-icon\">";
+		if (it->isDirectory)
+			html += "📁";
+		else
+			html += "📄";
+		html += "</span><span><strong>";
+		html += TemplateRenderer::htmlEscape(entryName);
+		html += "</strong></span></a>";
+		it++;
 	}
-	return (stream.str());
+	html += "</div>";
+	return (html);
+}
+
+static std::string buildFallbackAutoindexBody(const std::string &requestPath,
+	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl)
+{
+	std::vector<AutoindexEntry>::const_iterator it;
+	std::string body;
+	std::string name;
+
+	body = "<html><body>";
+	body += "<h1>Index of " + TemplateRenderer::htmlEscape(requestPath) + "</h1>";
+	body += "<ul>";
+	it = entries.begin();
+	while (it != entries.end())
+	{
+		name = it->name;
+		body += "<li><a href=\"";
+		body += TemplateRenderer::htmlEscape(baseUrl
+			+ TemplateRenderer::urlEncodePathSegment(name));
+		if (it->isDirectory)
+			body += "/";
+		body += "\">";
+		body += TemplateRenderer::htmlEscape(name);
+		if (it->isDirectory)
+			body += "/";
+		body += "</a></li>";
+		it++;
+	}
+	body += "</ul>";
+	body += "</body></html>";
+	return (body);
+}
+
+static std::string buildAutoindexBody(const std::string &requestPath,
+	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl,
+	const ServerConfig &server)
+{
+	TemplateRenderer::Variables variables;
+	std::string body;
+	std::string templatePath;
+
+	templatePath = PathUtils::join(server.root, "autoindex-template.html");
+	variables["{{REQUEST_PATH}}"] = TemplateRenderer::htmlEscape(requestPath);
+	variables["{{ENTRY_COUNT}}"] = intToString(entries.size());
+	variables["{{ENTRIES}}"] = buildAutoindexEntriesHtml(entries, baseUrl);
+	body = TemplateRenderer::render(templatePath, variables);
+	if (body.empty())
+		return (buildFallbackAutoindexBody(requestPath, entries, baseUrl));
+	return (body);
 }
 
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath, const ServerConfig &server)
@@ -171,10 +193,8 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	Response response;
 	DIR *dir;
 	std::vector<AutoindexEntry> entries;
-	std::vector<AutoindexEntry>::const_iterator it;
 	std::string body;
 	std::string baseUrl;
-	std::string name;
 
 	dir = opendir(directoryPath.c_str());
 	if (dir == NULL)
@@ -187,32 +207,7 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	if (baseUrl.empty() || baseUrl[baseUrl.length() - 1] != '/')
 		baseUrl += "/";
 
-	body = "<html><body>";
-	body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
-	body += "<ul>";
-
-	it = entries.begin();
-	while (it != entries.end())
-	{
-		name = it->name;
-
-		body += "<li><a href=\"";
-		body += htmlEscape(baseUrl + urlEncodePathSegment(name));
-		if (it->isDirectory)
-			body += "/";
-		body += "\">";
-
-		body += htmlEscape(name);
-		if (it->isDirectory)
-			body += "/";
-		body += "</a></li>";
-
-		it++;
-	}
-
-	body += "</ul>";
-	body += "</body></html>";
-
+	body = buildAutoindexBody(requestPath, entries, baseUrl, server);
 	response.setStatusCode(200);
 	response.setBody(body);
 	response.addHeader("Content-Type", "text/html");

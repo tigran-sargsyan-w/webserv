@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -39,14 +40,15 @@
 
 <section class="section container">
   <div class="grid">
-    <div class="card"><h3><span class="method get">GET</span> Static files</h3><p>Retrieves any file under a configured <code>root</code>, with MIME type detection and proper status codes.</p></div>
-    <div class="card"><h3><span class="method post">POST</span> Submit data</h3><p>Accepts <code>application/x-www-form-urlencoded</code> and <code>multipart/form-data</code> payloads.</p></div>
-    <div class="card"><h3><span class="method delete">DELETE</span> Remove resources</h3><p>Deletes a resource on disk when the route allows it.</p></div>
-    <div class="card"><h3>📤 File upload</h3><p>Parses multipart bodies and stores files to the configured upload directory.</p></div>
-    <div class="card"><h3>🐍 CGI</h3><p>Executes external interpreters (Python, PHP) and pipes their output back to the client.</p></div>
+    <div class="card"><h3><span class="method get">GET</span> Static files</h3><p>Retrieves files under a configured <code>root</code>, with MIME type detection and proper status codes.</p></div>
+    <div class="card"><h3><span class="method post">POST</span> Submit data</h3><p>Accepts request bodies for CGI scripts and upload routes.</p></div>
+    <div class="card"><h3><span class="method delete">DELETE</span> Remove resources</h3><p>Removes a resource on disk when the route allows it.</p></div>
+    <div class="card"><h3>📤 File upload</h3><p>Stores request bodies to the configured upload directory.</p></div>
+    <div class="card"><h3>🐍 CGI</h3><p>Executes Python and shell CGI scripts and pipes their output back to the client.</p></div>
     <div class="card"><h3>📂 Autoindex</h3><p>Generates a directory listing page when <code>autoindex on;</code> is set and no index file exists.</p></div>
     <div class="card"><h3>🚧 Custom error pages</h3><p>Serves project-styled 4xx/5xx pages per the <code>error_page</code> directive.</p></div>
     <div class="card"><h3>🔀 Redirection</h3><p>Returns 301/302 responses configured per route.</p></div>
+    <div class="card"><h3>🍪 Sessions</h3><p>Bonus demo with <code>Set-Cookie</code>, server-side session state, counter and logout.</p></div>
     <div class="card"><h3>🧱 Multiple servers</h3><p>Bind several <code>listen</code> directives with independent <code>server_name</code> and roots.</p></div>
   </div>
 </section>
@@ -55,7 +57,7 @@
   <h2>HTTP methods</h2>
   <ul class="feature-list">
     <li><span class="method get">GET</span> &nbsp; safe, idempotent; serves a resource or runs CGI</li>
-    <li><span class="method post">POST</span> &nbsp; accepts forms and uploads</li>
+    <li><span class="method post">POST</span> &nbsp; accepts forms, CGI input and uploads</li>
     <li><span class="method delete">DELETE</span> &nbsp; removes a resource if the route allows it</li>
   </ul>
 </section>

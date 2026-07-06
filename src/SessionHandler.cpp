@@ -2,8 +2,9 @@
 
 #include "ErrorResponseHandler.hpp"
 #include "HttpMethod.hpp"
+#include "PathUtils.hpp"
+#include "TemplateRenderer.hpp"
 
-#include <fstream>
 #include <map>
 #include <sstream>
 
@@ -23,44 +24,11 @@ static std::string toStringUnsigned(unsigned long value)
 	return (oss.str());
 }
 
-static std::string joinPath(const std::string &root, const std::string &fileName)
-{
-	if (root.empty())
-		return (fileName);
-	if (root[root.length() - 1] == '/')
-		return (root + fileName);
-	return (root + "/" + fileName);
-}
-
 static std::string getTemplateRoot(const RouteConfig &route, const ServerConfig &server)
 {
 	if (!route.root.empty())
 		return (route.root);
 	return (server.root);
-}
-
-static std::string readTemplateFile(const std::string &path)
-{
-	std::ifstream file(path.c_str());
-	std::ostringstream buffer;
-
-	if (!file.is_open())
-		return ("");
-	buffer << file.rdbuf();
-	return (buffer.str());
-}
-
-static void replaceAll(std::string &text, const std::string &from, const std::string &to)
-{
-	size_t pos = 0;
-
-	if (from.empty())
-		return;
-	while ((pos = text.find(from, pos)) != std::string::npos)
-	{
-		text.replace(pos, from.length(), to);
-		pos += to.length();
-	}
 }
 
 std::string SessionHandler::normalizePath(const std::string &path)
@@ -141,39 +109,43 @@ Response SessionHandler::handleLogout(const Request &request, const RouteConfig 
 
 std::string SessionHandler::buildSessionPage(const SessionData &session, bool created, const RouteConfig &route, const ServerConfig &server)
 {
-	std::string templatePath = joinPath(getTemplateRoot(route, server), "session.html");
-	std::string body = readTemplateFile(templatePath);
+	std::string templatePath = PathUtils::join(getTemplateRoot(route, server), "session.html");
+	TemplateRenderer::Variables variables;
+	std::string body;
 	std::string status;
 
-	if (body.empty())
-		return ("Session template missing\n");
 	if (created)
 		status = "new session created";
 	else
 		status = "existing session restored from Cookie header";
-	replaceAll(body, "{{STATUS}}", status);
-	replaceAll(body, "{{SESSION_ID}}", session.id);
-	replaceAll(body, "{{VISIT_COUNT}}", toStringUnsigned(session.visitCount));
-	replaceAll(body, "{{CREATED_AT}}", toStringTime(session.createdAt));
-	replaceAll(body, "{{LAST_SEEN}}", toStringTime(session.lastSeen));
-	replaceAll(body, "{{SESSION_PATH}}", route.sessionPath);
-	replaceAll(body, "{{LOGOUT_PATH}}", getLogoutPath(route));
+	variables["{{STATUS}}"] = TemplateRenderer::htmlEscape(status);
+	variables["{{SESSION_ID}}"] = TemplateRenderer::htmlEscape(session.id);
+	variables["{{VISIT_COUNT}}"] = toStringUnsigned(session.visitCount);
+	variables["{{CREATED_AT}}"] = toStringTime(session.createdAt);
+	variables["{{LAST_SEEN}}"] = toStringTime(session.lastSeen);
+	variables["{{SESSION_PATH}}"] = TemplateRenderer::htmlEscape(route.sessionPath);
+	variables["{{LOGOUT_PATH}}"] = TemplateRenderer::htmlEscape(getLogoutPath(route));
+	body = TemplateRenderer::render(templatePath, variables);
+	if (body.empty())
+		return ("Session template missing\n");
 	return (body);
 }
 
 std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &route, const ServerConfig &server)
 {
-	std::string templatePath = joinPath(getTemplateRoot(route, server), "session-logout.html");
-	std::string body = readTemplateFile(templatePath);
+	std::string templatePath = PathUtils::join(getTemplateRoot(route, server), "session-logout.html");
+	TemplateRenderer::Variables variables;
+	std::string body;
 	std::string message;
 
-	if (body.empty())
-		return ("Session logout template missing\n");
 	if (destroyed)
 		message = "The current server-side session was removed.";
 	else
 		message = "No active session was found, but the browser cookie was expired.";
-	replaceAll(body, "{{MESSAGE}}", message);
-	replaceAll(body, "{{SESSION_PATH}}", route.sessionPath);
+	variables["{{MESSAGE}}"] = TemplateRenderer::htmlEscape(message);
+	variables["{{SESSION_PATH}}"] = TemplateRenderer::htmlEscape(route.sessionPath);
+	body = TemplateRenderer::render(templatePath, variables);
+	if (body.empty())
+		return ("Session logout template missing\n");
 	return (body);
 }

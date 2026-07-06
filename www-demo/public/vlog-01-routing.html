@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webserv Vlog 01 · Routing</title>
+<meta name="description" content="Public webserv vlog note about route resolution.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/public/">Public vlog</a>
+      <a href="/features.html">Features</a>
+      <a href="/index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// public vlog · episode 01</span>
+  <h1>How webserv chooses a route</h1>
+  <p class="lead" style="color:var(--muted)">
+    A short public note about route resolution in this demo server.
+  </p>
+</section>
+<section class="section container">
+  <div class="card">
+    <h3>Route matching</h3>
+    <p>
+      The server receives an HTTP request, extracts the clean path, and maps it to the best configured location.
+      In this demo, pages are served from the root location, uploads from <code>/uploads</code>, CGI scripts from
+      <code>/cgi-bin</code>, and public notes from <code>/public</code>.
+    </p>
+  </div>
+</section>
+<section class="section container">
+  <div class="grid">
+    <div class="card"><h3>Static files</h3><p>Regular files are returned with a MIME type and a normal <code>200 OK</code> response.</p></div>
+    <div class="card"><h3>Directories</h3><p>If no index file exists and autoindex is enabled, webserv generates a directory listing.</p></div>
+    <div class="card"><h3>Errors</h3><p>Unknown paths are mapped to styled custom error pages instead of raw debug output.</p></div>
+  </div>
+</section>
+</main>
+<footer><div class="container"><span>webserv</span><span class="sep">/</span><span>public vlog</span></div></footer>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webserv Vlog 03 · Non-blocking I/O</title>
+<meta name="description" content="Public webserv vlog note about non-blocking I/O.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/public/">Public vlog</a>
+      <a href="/features.html">Features</a>
+      <a href="/index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// public vlog · episode 03</span>
+  <h1>Why the server stays responsive</h1>
+  <p class="lead" style="color:var(--muted)">
+    A short note about the non-blocking model used by this webserv demo.
+  </p>
+</section>
+<section class="section container">
+  <div class="card">
+    <h3>One event loop</h3>
+    <p>
+      webserv uses non-blocking sockets and an event loop to handle several clients without creating one blocking
+      process per connection. Slow clients, CGI scripts, and regular static responses are coordinated through
+      readiness events and timeout checks.
+    </p>
+  </div>
+</section>
+<section class="section container">
+  <div class="grid">
+    <div class="card"><h3>Static response</h3><p>Files can be served while other connections are still open.</p></div>
+    <div class="card"><h3>CGI timeout</h3><p>Long-running scripts are bounded by timeout logic.</p></div>
+    <div class="card"><h3>Stress checks</h3><p>The demo should remain available after concurrent requests.</p></div>
+  </div>
+</section>
+</main>
+<footer><div class="container"><span>webserv</span><span class="sep">/</span><span>public vlog</span></div></footer>
+</body>
+</html>

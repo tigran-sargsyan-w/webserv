@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webserv Vlog 02 · CGI</title>
+<meta name="description" content="Public webserv vlog note about CGI execution.">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">
+      <span class="brand-dot"></span>
+      <span><span class="brand-prompt">~/</span>webserv</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/public/">Public vlog</a>
+      <a href="/cgi.html">CGI demo</a>
+      <a href="/index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<main class="fade-in">
+<section class="container">
+  <span class="eyebrow">// public vlog · episode 02</span>
+  <h1>CGI as a dynamic endpoint</h1>
+  <p class="lead" style="color:var(--muted)">
+    This note explains what the CGI demo is meant to prove during evaluation.
+  </p>
+</section>
+<section class="section container">
+  <div class="card">
+    <h3>What CGI receives</h3>
+    <p>
+      A CGI script receives request metadata through environment variables and request body data through stdin.
+      The demo includes GET, query string handling, POST body handling, a custom <code>Status</code> header,
+      and a timeout scenario.
+    </p>
+  </div>
+</section>
+<section class="section container">
+  <div class="grid">
+    <div class="card"><h3>Python</h3><p><code>.py</code> scripts are executed with <code>/usr/bin/python3</code>.</p></div>
+    <div class="card"><h3>Shell</h3><p><code>.sh</code> scripts are executed with <code>/bin/sh</code>, demonstrating multiple CGI types.</p></div>
+    <div class="card"><h3>Timeout</h3><p>The slow CGI script should be interrupted and returned as <code>504 Gateway Timeout</code>.</p></div>
+  </div>
+</section>
+</main>
+<footer><div class="container"><span>webserv</span><span class="sep">/</span><span>public vlog</span></div></footer>
+</body>
+</html>

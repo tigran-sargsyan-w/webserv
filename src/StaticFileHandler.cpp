@@ -3,14 +3,11 @@
 #include "MimeTypes.hpp"
 #include "utils.hpp"
 #include "PathUtils.hpp"
+#include "TemplateRenderer.hpp"
 #include "UriUtils.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <dirent.h>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
@@ -105,94 +102,6 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
 	return (entries);
 }
 
-static std::string htmlEscape(const std::string &text)
-{
-	std::string result;
-	size_t i;
-
-	i = 0;
-	while (i < text.length())
-	{
-		if (text[i] == '&')
-			result += "&amp;";
-		else if (text[i] == '<')
-			result += "&lt;";
-		else if (text[i] == '>')
-			result += "&gt;";
-		else if (text[i] == '"')
-			result += "&quot;";
-		else if (text[i] == '\'')
-			result += "&#39;";
-		else
-			result += text[i];
-		i++;
-	}
-	return (result);
-}
-
-static bool isUrlSafeChar(unsigned char c)
-{
-	if (std::isalnum(c))
-		return (true);
-	if (c == '-' || c == '_' || c == '.' || c == '~')
-		return (true);
-	return (false);
-}
-
-static std::string urlEncodePathSegment(const std::string &text)
-{
-	std::ostringstream stream;
-	size_t i;
-	unsigned char c;
-
-	i = 0;
-	while (i < text.length())
-	{
-		c = static_cast<unsigned char>(text[i]);
-		if (isUrlSafeChar(c))
-			stream << text[i];
-		else
-		{
-			stream << '%';
-			stream << std::uppercase;
-			stream << std::hex;
-			stream << std::setw(2);
-			stream << std::setfill('0');
-			stream << static_cast<int>(c);
-			stream << std::nouppercase;
-			stream << std::dec;
-		}
-		i++;
-	}
-	return (stream.str());
-}
-
-static std::string readTemplateFile(const std::string &path)
-{
-	std::ifstream file(path.c_str());
-	std::ostringstream buffer;
-
-	if (!file.is_open())
-		return ("");
-	buffer << file.rdbuf();
-	return (buffer.str());
-}
-
-static void replaceAll(std::string &text, const std::string &from,
-	const std::string &to)
-{
-	size_t position;
-
-	if (from.empty())
-		return;
-	position = 0;
-	while ((position = text.find(from, position)) != std::string::npos)
-	{
-		text.replace(position, from.length(), to);
-		position += to.length();
-	}
-}
-
 static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &entries,
 	const std::string &baseUrl)
 {
@@ -208,21 +117,21 @@ static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &
 	while (it != entries.end())
 	{
 		entryName = it->name;
-		entryUrl = baseUrl + urlEncodePathSegment(entryName);
+		entryUrl = baseUrl + TemplateRenderer::urlEncodePathSegment(entryName);
 		if (it->isDirectory)
 		{
 			entryUrl += "/";
 			entryName += "/";
 		}
 		html += "<a class=\"card autoindex-entry\" href=\"";
-		html += htmlEscape(entryUrl);
+		html += TemplateRenderer::htmlEscape(entryUrl);
 		html += "\"><span class=\"autoindex-icon\">";
 		if (it->isDirectory)
 			html += "📁";
 		else
 			html += "📄";
 		html += "</span><span><strong>";
-		html += htmlEscape(entryName);
+		html += TemplateRenderer::htmlEscape(entryName);
 		html += "</strong></span></a>";
 		it++;
 	}
@@ -238,18 +147,19 @@ static std::string buildFallbackAutoindexBody(const std::string &requestPath,
 	std::string name;
 
 	body = "<html><body>";
-	body += "<h1>Index of " + htmlEscape(requestPath) + "</h1>";
+	body += "<h1>Index of " + TemplateRenderer::htmlEscape(requestPath) + "</h1>";
 	body += "<ul>";
 	it = entries.begin();
 	while (it != entries.end())
 	{
 		name = it->name;
 		body += "<li><a href=\"";
-		body += htmlEscape(baseUrl + urlEncodePathSegment(name));
+		body += TemplateRenderer::htmlEscape(baseUrl
+			+ TemplateRenderer::urlEncodePathSegment(name));
 		if (it->isDirectory)
 			body += "/";
 		body += "\">";
-		body += htmlEscape(name);
+		body += TemplateRenderer::htmlEscape(name);
 		if (it->isDirectory)
 			body += "/";
 		body += "</a></li>";
@@ -264,16 +174,17 @@ static std::string buildAutoindexBody(const std::string &requestPath,
 	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl,
 	const ServerConfig &server)
 {
+	TemplateRenderer::Variables variables;
 	std::string body;
 	std::string templatePath;
 
 	templatePath = PathUtils::join(server.root, "autoindex-template.html");
-	body = readTemplateFile(templatePath);
+	variables["{{REQUEST_PATH}}"] = TemplateRenderer::htmlEscape(requestPath);
+	variables["{{ENTRY_COUNT}}"] = intToString(entries.size());
+	variables["{{ENTRIES}}"] = buildAutoindexEntriesHtml(entries, baseUrl);
+	body = TemplateRenderer::render(templatePath, variables);
 	if (body.empty())
 		return (buildFallbackAutoindexBody(requestPath, entries, baseUrl));
-	replaceAll(body, "{{REQUEST_PATH}}", htmlEscape(requestPath));
-	replaceAll(body, "{{ENTRY_COUNT}}", intToString(entries.size()));
-	replaceAll(body, "{{ENTRIES}}", buildAutoindexEntriesHtml(entries, baseUrl));
 	return (body);
 }
 

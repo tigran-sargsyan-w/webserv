@@ -1,8 +1,8 @@
 #include "ListenerSocketHandler.hpp"
+#include "Logger.hpp"
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -37,7 +37,7 @@ int ListenerSocketHandler::setNonBlocking(int fd) const
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 	{
-		std::cerr << "fcntl: " << strerror(errno) << "\n";
+		Logger::error() << "fcntl: " << strerror(errno) << "\n";
 		return (1);
 	}
 	return (0);
@@ -51,15 +51,15 @@ int ListenerSocketHandler::initListeningSocket(void) const
 	listeningSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (listeningSocket == -1)
 	{
-		std::cerr << "socket() failed: " << std::strerror(errno) << "\n";
+		Logger::error() << "socket() failed: " << std::strerror(errno) << "\n";
 		return (-1);
 	}
-	std::cout << "Server socked created, FD = " << listeningSocket << "\n";
+	Logger::debug() << "Server socked created, FD = " << listeningSocket << "\n";
 	opt = 1;
 	if (setsockopt(listeningSocket, SOL_SOCKET, SO_REUSEADDR,
 			&opt, sizeof(opt)) == -1)
 	{
-		std::cerr << "setsockopt() failed: " << std::strerror(errno) << "\n";
+		Logger::error() << "setsockopt() failed: " << std::strerror(errno) << "\n";
 		close(listeningSocket);
 		return (-1);
 	}
@@ -89,13 +89,13 @@ int ListenerSocketHandler::bindSockAddress(int listeningSocket,
 	ret = getaddrinfo(hostCstr, portStr.c_str(), &hints, &res);
 	if (ret)
 	{
-		std::cerr << "getaddrinfo: " << gai_strerror(ret) << "\n";
+		Logger::error() << "getaddrinfo: " << gai_strerror(ret) << "\n";
 		close(listeningSocket);
 		return (1);
 	}
 	if (bind(listeningSocket, res->ai_addr, res->ai_addrlen) == -1)
 	{
-		std::cerr << "Error binding socket\n" << std::strerror(errno) << "\n";
+		Logger::error() << "Error binding socket\n" << std::strerror(errno) << "\n";
 		freeaddrinfo(res);
 		close(listeningSocket);
 		return (1);
@@ -116,20 +116,20 @@ int ListenerSocketHandler::setupSingleListener(const ServerConfig &config,
 		return (1);
 	if (listen(listeningSocket, 10) == -1)
 	{
-		std::cerr << "Error on socket " << configIndex << " listening\n";
+		Logger::error() << "Error on socket " << configIndex << " listening\n";
 		close(listeningSocket);
 		return (1);
 	}
 	if (setNonBlocking(listeningSocket))
 	{
-		std::cerr << "Error setting socket " << configIndex
+		Logger::error() << "Error setting socket " << configIndex
 			<< " as Non blocking\n";
 		close(listeningSocket);
 		return (1);
 	}
 	listenerFdToIndex[listeningSocket] = configIndex;
 	pollManager.addFd(listeningSocket, POLLIN);
-	std::cout << "Listening on " << config.listen.host << ":"
+	Logger::info() << "Listening on " << config.listen.host << ":"
 		<< config.listen.port << "\n";
 	return (0);
 }
@@ -145,7 +145,7 @@ int ListenerSocketHandler::setup(const std::vector<ServerConfig> &configs,
 	while (i < configs.size())
 	{
 		if (setupSingleListener(configs[i], i, pollManager))
-			std::cerr << "Server Block " << i << " setup failed!\n";
+			Logger::error() << "Server Block " << i << " setup failed!\n";
 		else
 			stop = false;
 		++i;
@@ -180,12 +180,12 @@ int ListenerSocketHandler::acceptConnection(int listeningSocket,
 	if (clientSocket == -1)
 	{
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
-			std::cerr << "accept: " << strerror(errno) << std::endl;
+			Logger::error() << "accept: " << strerror(errno) << std::endl;
 		return (-1);
 	}
 	if (setNonBlocking(clientSocket))
 	{
-		std::cerr << "fcntl: " << strerror(errno) << std::endl;
+		Logger::error() << "fcntl: " << strerror(errno) << std::endl;
 		close(clientSocket);
 		return (-1);
 	}

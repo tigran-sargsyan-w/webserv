@@ -1,8 +1,8 @@
 #include "ConfigValidator.hpp"
 #include "ConfigDebug.hpp"
+#include "Logger.hpp"
 
 #include <cctype>
-#include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -289,16 +289,18 @@ void ConfigValidator::validate(const Config &config)
 
 void ConfigValidator::debugPrintValidation(const Config &config)
 {
-	std::cout << ConfigDebug::validator << "[validator] config is valid"
-			  << ConfigDebug::reset << "\n";
-	std::cout << ConfigDebug::validator << "  servers: "
-			  << config.servers.size() << ConfigDebug::reset << "\n";
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << ConfigDebug::validator << "[validator] config is valid"
+					<< ConfigDebug::reset << "\n";
+	Logger::debug() << ConfigDebug::validator << "  servers: "
+					<< config.servers.size() << ConfigDebug::reset << "\n";
 	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
 	{
 		const ServerConfig &server = config.servers[serverIndex];
 
-		std::cout << ConfigDebug::validator << "  server #"
-				  << serverIndex << " routes: " << server.routes.size()
-				  << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::validator << "  server #"
+						<< serverIndex << " routes: " << server.routes.size()
+						<< ConfigDebug::reset << "\n";
 	}
 }

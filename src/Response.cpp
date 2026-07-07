@@ -1,10 +1,10 @@
 #include "Response.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <sstream>
 
+#include "Logger.hpp"
 #include "utils.hpp"
 
 Response::Response () : statusCode(0) {}
@@ -92,7 +92,7 @@ void Response::setBodyFromFile (const std::string &path)
 
 	if (!file)
 	{
-		std::cerr << "File not found!\n";
+		Logger::error() << "File not found: " << path << "\n";
 	}
 	std::ostringstream ss;
 	ss << file.rdbuf ();

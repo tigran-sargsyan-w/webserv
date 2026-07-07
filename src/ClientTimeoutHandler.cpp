@@ -1,4 +1,5 @@
 #include "ClientTimeoutHandler.hpp"
+#include "Logger.hpp"
 
 #include <iostream>
 
@@ -42,7 +43,7 @@ int ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 }
 
 void ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &clients,
-												 const std::vector<ServerConfig> &configs, std::vector<int> &expiredFds)
+											 const std::vector<ServerConfig> &configs, std::vector<int> &expiredFds)
 {
 	std::map<int, Client>::const_iterator it;
 	time_t now;
@@ -56,8 +57,8 @@ void ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &cl
 		timeoutSeconds = getTimeoutSeconds(client, configs);
 		if (isExpired(client, now, timeoutSeconds))
 		{
-			std::cout << "Client timeout for fd " << client.fd << " after "
-					  << timeoutSeconds << "s of inactivity" << std::endl;
+			Logger::debug() << "Client timeout for fd " << client.fd << " after "
+							  << timeoutSeconds << "s of inactivity" << std::endl;
 			expiredFds.push_back(client.fd);
 		}
 		++it;

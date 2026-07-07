@@ -1,7 +1,6 @@
 #include "ConfigLexer.hpp"
 #include "ConfigDebug.hpp"
-
-#include <iostream>
+#include "Logger.hpp"
 
 ConfigLexer::ConfigLexer(const std::string &input)
 	: inputText(input), position(0), currentLine(1), currentColumn(1) {}
@@ -116,15 +115,17 @@ static const char *tokenTypeToString(ConfigTokenType tokenType)
 
 void ConfigLexer::debugPrintTokens(const std::vector<ConfigToken> &tokens)
 {
-	std::cout << ConfigDebug::lexer << "[lexer] tokens" << ConfigDebug::reset << "\n";
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << ConfigDebug::lexer << "[lexer] tokens" << ConfigDebug::reset << "\n";
 	for (size_t index = 0; index < tokens.size(); ++index)
 	{
 		const ConfigToken &token = tokens[index];
-		std::cout << ConfigDebug::lexer
+		Logger::debug() << ConfigDebug::lexer
 			<< "  - " << tokenTypeToString(token.type)
 			<< " @ " << token.line << ":" << token.column;
 		if (!token.value.empty())
-			std::cout << " => '" << token.value << "'";
-		std::cout << ConfigDebug::reset << "\n";
+			Logger::debug() << " => '" << token.value << "'";
+		Logger::debug() << ConfigDebug::reset << "\n";
 	}
 }

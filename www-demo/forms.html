@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -30,14 +31,14 @@
 </header>
 <main class="fade-in">
 <section class="container">
-  <span class="eyebrow">// POST · application/x-www-form-urlencoded</span>
+  <span class="eyebrow">// POST form</span>
   <h1>POST form demo</h1>
-  <p class="lead" style="color:var(--muted)">Submit a small form and watch the live JSON preview.</p>
+  <p class="lead" style="color:var(--muted)">Submit a form to a real CGI script and inspect the request body received by the server.</p>
 </section>
 
 <section class="section container">
   <div class="grid" style="grid-template-columns: 1fr 1fr">
-    <form class="form" action="/post-demo" method="POST" data-preview-form>
+    <form class="form" action="/cgi-bin/post.py" method="POST" data-preview-form>
       <div class="field">
         <label for="name">Name</label>
         <input id="name" class="input" type="text" name="name" placeholder="ada" required>
@@ -47,7 +48,7 @@
         <textarea id="message" class="textarea" name="message" placeholder="hello, webserv!"></textarea>
       </div>
       <div>
-        <button class="btn btn-primary" type="submit">▶ Submit POST</button>
+        <button class="btn btn-primary" type="submit">▶ POST to /cgi-bin/post.py</button>
       </div>
     </form>
     <div>
@@ -57,12 +58,13 @@
           <span class="title">request preview</span>
         </div>
         <div class="terminal-body">
-          <div><span class="prompt"></span>cat body.json</div>
+          <div><span class="prompt"></span>form body preview</div>
           <pre style="margin:0.5rem 0 0;color:var(--text)" data-preview-output>{}</pre>
         </div>
       </div>
       <p style="color:var(--muted);font-size:0.9rem;margin-top:0.75rem">
-        The preview is just a JS helper — the form still submits a real <code>POST</code> to <code>/post-demo</code>.
+        The preview is only a browser helper. The form itself sends a real
+        <code>POST</code> request to the configured CGI route.
       </p>
     </div>
   </div>

@@ -22,6 +22,7 @@
         <a href="/forms.html">Forms</a>
         <a href="/delete.html">DELETE</a>
         <a href="/cgi.html">CGI</a>
+        <a href="/session">Sessions</a>
         <a href="/autoindex.html">Autoindex</a>
         <a href="/redirect.html">Redirect</a>
         <a href="/about.html">About</a>
@@ -33,32 +34,32 @@
   <span class="eyebrow">// CGI</span>
   <h1>CGI demo</h1>
   <p class="lead" style="color:var(--muted)">
-    webserv can execute external interpreters such as Python or PHP and
-    stream their output back to the client.
+    webserv can execute configured CGI interpreters, pass request metadata through
+    the CGI environment, and stream the script output back to the client.
   </p>
 </section>
 
 <section class="section container">
   <div class="grid">
     <div class="card">
-      <h3>▶ Run a script (GET)</h3>
+      <h3>▶ Python CGI GET</h3>
       <p>Direct hit on <code>/cgi-bin/test.py</code>.</p>
-      <p style="margin-top:0.75rem"><a class="btn" href="/cgi-bin/test.py">Open /cgi-bin/test.py</a></p>
+      <p style="margin-top:0.75rem"><a class="btn" href="/cgi-bin/test.py">Open test.py</a></p>
     </div>
 
     <div class="card">
-      <h3>🔎 GET with query string</h3>
+      <h3>🔎 Query string</h3>
       <form class="form" action="/cgi-bin/test.py" method="GET" style="gap:0.5rem">
         <div class="field">
           <label for="qname">name</label>
           <input id="qname" class="input" type="text" name="name" value="evaluator">
         </div>
-        <div><button class="btn btn-primary" type="submit">▶ GET /cgi-bin/test.py</button></div>
+        <div><button class="btn btn-primary" type="submit">▶ GET with query</button></div>
       </form>
     </div>
 
     <div class="card">
-      <h3>📨 POST to a CGI script</h3>
+      <h3>📨 POST body to CGI</h3>
       <form class="form" action="/cgi-bin/post.py" method="POST" style="gap:0.5rem">
         <div class="field">
           <label for="payload">payload</label>
@@ -67,16 +68,32 @@
         <div><button class="btn btn-primary" type="submit">▶ POST /cgi-bin/post.py</button></div>
       </form>
     </div>
+
+    <div class="card">
+      <h3>🐚 Shell CGI type</h3>
+      <p>Second CGI interpreter configured with <code>.sh /bin/sh</code>.</p>
+      <p style="margin-top:0.75rem"><a class="btn" href="/cgi-bin/hello.sh?mode=shell">Open hello.sh</a></p>
+    </div>
+
+    <div class="card">
+      <h3>🧾 CGI Status header</h3>
+      <p>Script returns <code>Status: 201 Created</code>.</p>
+      <p style="margin-top:0.75rem"><a class="btn" href="/cgi-bin/status.py">Open status.py</a></p>
+    </div>
+
+    <div class="card">
+      <h3>⏱ Timeout path</h3>
+      <p>Slow script should be stopped by the server and return <code>504</code>.</p>
+      <p style="margin-top:0.75rem"><a class="btn btn-danger" href="/cgi-bin/slow.py">Open slow.py</a></p>
+    </div>
   </div>
 
   <div class="section">
     <div class="card">
-      <h3>ℹ Heads-up</h3>
+      <h3>ℹ Config used by this page</h3>
       <p>
-        These routes depend on a <code>cgi_pass</code> / <code>cgi_extension</code>
-        block in your <code>webserv.conf</code> and on the scripts existing on disk.
-        If a route returns <code>404</code>, check the config and the
-        <code>cgi-bin/</code> directory.
+        The demo config wires <code>/cgi-bin</code> to <code>www-demo/cgi-bin</code>
+        and enables both <code>.py /usr/bin/python3</code> and <code>.sh /bin/sh</code>.
       </p>
     </div>
   </div>

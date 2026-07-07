@@ -1,17 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Upload complete · webserv</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload complete — WebServ</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <h1>File uploaded successfully</h1>
-  <p>Stored as: <code>{{FILENAME}}</code></p>
-  <p>
-    <a href="{{FILE_HREF}}">Open uploaded file</a> |
-    <a href="/uploads/">Open uploads</a> |
-    <a href="/upload.html">Upload another</a>
-  </p>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/index.html"><span class="brand-dot"></span><span><span class="brand-prompt">~/</span>webserv</span></a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/index.html">Home</a>
+      <a href="/features.html">Features</a>
+      <a href="/upload.html">Upload</a>
+      <a href="/forms.html">Forms</a>
+      <a href="/delete.html">DELETE</a>
+      <a href="/cgi.html">CGI</a>
+      <a href="/session">Sessions</a>
+      <a href="/autoindex.html">Autoindex</a>
+      <a href="/redirect.html">Redirect</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="container hero">
+    <span class="eyebrow">// upload complete</span>
+    <h1>File uploaded <span class="accent">successfully</span></h1>
+    <p class="lead">Stored as <code>{{FILENAME}}</code> in the configured uploads directory.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{FILE_HREF}}">Open uploaded file</a>
+      <a class="btn" href="/uploads/">Open uploads</a>
+      <a class="btn" href="/upload.html">Upload another</a>
+    </div>
+  </section>
+  <section class="container section">
+    <div class="card">
+      <h3>Upload result</h3>
+      <p>The multipart request was parsed and the file was written to the configured upload store.</p>
+    </div>
+  </section>
+</main>
+<footer><div class="container">webserv / upload complete</div></footer>
+<script src="/js/main.js" defer></script>
 </body>
 </html>

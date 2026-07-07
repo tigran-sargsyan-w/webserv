@@ -1,5 +1,5 @@
 #include <CgiHandler.hpp>
-#include <iostream>
+#include "Logger.hpp"
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -80,14 +80,16 @@ static void debugPrintEnv(const std::string &title, const CgiEnv &env)
 {
 	CgiEnv::const_iterator it;
 
-	std::cout << "\n===== " << title << " =====" << std::endl;
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << "\n===== " << title << " =====" << std::endl;
 	it = env.begin();
 	while (it != env.end())
 	{
-		std::cout << it->first << "=" << it->second << std::endl;
+		Logger::debug() << it->first << "=" << it->second << std::endl;
 		it++;
 	}
-	std::cout << "===================================\n" << std::endl;
+	Logger::debug() << "===================================\n" << std::endl;
 }
 
 int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
@@ -101,12 +103,12 @@ int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
 
     if (pipe(stdinPipe) == -1)
     {
-        std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+        Logger::error() << "pipe() failed: " << std::strerror(errno) << std::endl;
         return (1);
     }
     if (pipe(stdoutPipe) == -1)
     {
-        std::cerr << "pipe() failed: " << std::strerror(errno) << std::endl;
+        Logger::error() << "pipe() failed: " << std::strerror(errno) << std::endl;
         close(stdinPipe[0]);
         close(stdinPipe[1]);
         return (1);
@@ -119,7 +121,7 @@ int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
     pid = fork();
     if (pid == -1)
     {
-        std::cerr << "fork() failed: " << std::strerror(errno) << std::endl;
+        Logger::error() << "fork() failed: " << std::strerror(errno) << std::endl;
         close(stdinPipe[0]);
         close(stdinPipe[1]);
         close(stdoutPipe[0]);

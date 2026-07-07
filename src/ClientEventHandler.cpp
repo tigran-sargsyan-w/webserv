@@ -260,6 +260,8 @@ ClientEventHandler::Result ClientEventHandler::handle(Client &client,
 			return (CLIENT_SHOULD_CLOSE);
 		if (readResult == READ_EVENT_DONE)
 			return (EVENT_HANDLED);
+		if (readResult == READ_EVENT_CONTINUE)
+			return (EVENT_HANDLED);
 	}
 	if (revents & POLLOUT)
 		return (handleWriteEvent(client, server, cgiManager, pollManager));

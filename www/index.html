@@ -4,13 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebServ</title>
+  <meta name="description" content="Browser demo for the 42 School webserv project.">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <h1>Hello from WebServ!</h1>
-  <p>This default page is served by the webserv static file handler.</p>
-  <h2>Bonus demo</h2>
-  <p>
-    <a href="/session">Open cookies and sessions demo</a>
-  </p>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/index.html"><span class="brand-dot"></span><span><span class="brand-prompt">~/</span>webserv</span></a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/index.html">Home</a><a href="/features.html">Features</a><a href="/upload.html">Upload</a><a href="/forms.html">Forms</a><a href="/delete.html">DELETE</a><a href="/cgi.html">CGI</a><a href="/session">Sessions</a><a href="/autoindex.html">Autoindex</a><a href="/redirect.html">Redirect</a><a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="container hero">
+    <span class="eyebrow">// 42 school project</span>
+    <h1>A small <span class="accent">HTTP/1.1 server</span> written in C++98</h1>
+    <p class="lead">This site exercises static files, uploads, DELETE requests, CGI, redirects, autoindex, cookies and server-side sessions.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/features.html">Explore features</a>
+      <a class="btn" href="/session">Open session demo</a>
+      <a class="btn" href="/about.html">About the project</a>
+    </div>
+  </section>
+  <section class="container section">
+    <h2>Try the server</h2>
+    <p class="sub">Each card opens a route handled by WebServ.</p>
+    <div class="grid">
+      <a class="card" href="/upload.html"><h3>📤 Upload</h3><p>Send a multipart file upload.</p></a>
+      <a class="card" href="/forms.html"><h3>📝 Form POST</h3><p>Submit URL-encoded data to CGI.</p></a>
+      <a class="card" href="/delete.html"><h3>🗑 DELETE</h3><p>Remove an uploaded resource.</p></a>
+      <a class="card" href="/cgi.html"><h3>🐍 CGI</h3><p>Execute Python or shell scripts.</p></a>
+      <a class="card" href="/session"><h3>🍪 Sessions</h3><p>Reuse a cookie-backed session.</p></a>
+      <a class="card" href="/autoindex.html"><h3>📂 Autoindex</h3><p>Browse a generated directory listing.</p></a>
+      <a class="card" href="/redirect.html"><h3>↪ Redirect</h3><p>Follow a configured HTTP 301.</p></a>
+      <a class="card" href="/errors/404.html"><h3>🚧 Error page</h3><p>Preview a custom 404 response.</p></a>
+    </div>
+  </section>
+</main>
+<footer><div class="container">webserv / 42 School HTTP server / C++98</div></footer>
+<script src="/js/main.js" defer></script>
 </body>
 </html>

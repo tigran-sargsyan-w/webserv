@@ -1,0 +1,77 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #111820;
+  --panel-hover: #16212b;
+  --border: #263442;
+  --text: #e8eef4;
+  --muted: #94a3b2;
+  --accent: #3ddc97;
+  --danger: #ef6666;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(circle at top right, rgba(61, 220, 151, 0.08), transparent 35%), var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--mono); color: var(--accent); }
+
+.container { width: min(1050px, calc(100% - 2rem)); margin: 0 auto; }
+.nav { border-bottom: 1px solid var(--border); background: rgba(11, 15, 20, 0.94); }
+.nav-inner { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.brand { color: var(--text); font: 700 1.05rem var(--mono); }
+.brand:hover { text-decoration: none; }
+.brand-prompt, .accent { color: var(--accent); }
+.nav-links { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.nav-links a { color: var(--muted); padding: 0.35rem 0.55rem; border-radius: 6px; font: 0.84rem var(--mono); }
+.nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--panel); text-decoration: none; }
+.nav-toggle { display: none; border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 0.4rem 0.65rem; border-radius: 6px; }
+
+main { padding: 3rem 0 4rem; }
+.hero { padding: 1rem 0 2rem; }
+.hero h1 { margin: 0 0 0.8rem; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.12; }
+.lead, .sub, .muted { color: var(--muted); }
+.lead { max-width: 720px; font-size: 1.08rem; }
+.eyebrow { display: inline-block; margin-bottom: 0.8rem; color: var(--accent); font: 0.8rem var(--mono); }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.4rem; }
+.section { margin-top: 2.6rem; }
+.section h2 { margin-bottom: 0.3rem; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+.card { display: block; padding: 1.15rem; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); }
+.card:hover { background: var(--panel-hover); border-color: #37614f; text-decoration: none; }
+.card h3 { margin: 0 0 0.45rem; font: 700 1rem var(--mono); }
+.card p { margin: 0; color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.62rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); font: 600 0.9rem var(--mono); cursor: pointer; }
+.btn:hover { background: var(--panel-hover); text-decoration: none; }
+.btn-primary { background: var(--accent); color: #062117; border-color: var(--accent); }
+.btn-danger { color: var(--danger); border-color: rgba(239, 102, 102, 0.55); }
+
+.form { display: grid; gap: 1rem; max-width: 620px; }
+.field { display: grid; gap: 0.35rem; }
+.field label { color: var(--muted); font: 0.86rem var(--mono); }
+.input, .textarea, input[type="file"] { width: 100%; padding: 0.7rem 0.8rem; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; font: 0.92rem var(--mono); }
+.textarea { min-height: 120px; resize: vertical; }
+.result { min-height: 70px; margin-top: 1rem; padding: 1rem; white-space: pre-wrap; word-break: break-word; background: #070a0e; border: 1px solid var(--border); border-radius: 8px; font: 0.88rem var(--mono); }
+
+.feature-list { list-style: none; padding: 0; }
+.feature-list li { padding: 0.55rem 0; border-bottom: 1px dashed var(--border); }
+.method { display: inline-block; min-width: 62px; margin-right: 0.5rem; color: var(--accent); font: 700 0.76rem var(--mono); }
+
+footer { border-top: 1px solid var(--border); padding: 1.3rem 0; color: var(--muted); font: 0.82rem var(--mono); }
+
+@media (max-width: 850px) {
+  .nav-inner { align-items: flex-start; padding: 0.8rem 0; flex-wrap: wrap; }
+  .nav-toggle { display: block; }
+  .nav-links { display: none; width: 100%; flex-direction: column; }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 0.55rem; }
+}

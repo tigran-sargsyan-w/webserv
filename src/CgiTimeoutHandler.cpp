@@ -1,8 +1,8 @@
 #include "CgiTimeoutHandler.hpp"
 #include "CgiCompletionHandler.hpp"
+#include "Logger.hpp"
 
 #include <ctime>
-#include <iostream>
 #include <sys/wait.h>
 
 namespace
@@ -93,7 +93,8 @@ int	CgiTimeoutHandler::handleTimeouts(std::map<int, Client> &clients,
 		}
 		if (isExpired(client, now))
 		{
-			std::cout << "CGI timeout for client fd " << client.fd << std::endl;
+			Logger::info() << "CGI timeout for client fd " << client.fd
+				<< std::endl;
 			CgiCompletionHandler::fail(client, 504, "Gateway Timeout",
 				configs, pollManager, fdRegistry);
 		}

@@ -1,37 +1,37 @@
 #include "WebServ.hpp"
+#include "Logger.hpp"
 #include "PollEventHandler.hpp"
 #include <cerrno>
 #include <cstring>
-#include <iostream>
 #include <poll.h>
 #include <vector>
 
 WebServ::WebServ()
 {
-	std::cout << "WebServ created!\n";
+	Logger::debug() << "WebServ created!\n";
 }
 
 WebServ::WebServ(const WebServ &other)
 {
 	(void)other;
-	std::cout << "WebServ copy constructor called!\n";
+	Logger::debug() << "WebServ copy constructor called!\n";
 }
 
 WebServ::~WebServ()
 {
-	std::cout << "WebServ destroyed!\n";
+	Logger::debug() << "WebServ destroyed!\n";
 }
 
 WebServ &WebServ::operator=(const WebServ &other)
 {
 	(void)other;
-	std::cout << "WebServ assignement operator called!\n";
+	Logger::debug() << "WebServ assignement operator called!\n";
 	return (*this);
 }
 
 int WebServ::setup(std::vector<ServerConfig> servers)
 {
-	std::cout << "WebServ setup called!\n";
+	Logger::debug() << "WebServ setup called!\n";
 	configs = servers;
 	return (listenerSocketHandler.setup(configs, pollManager));
 }
@@ -51,7 +51,7 @@ static int combinePollTimeoutMs(int first, int second)
 
 int WebServ::run()
 {
-	std::cout << "WebServ run called!\n";
+	Logger::debug() << "WebServ run called!\n";
 
 	while (true)
 	{
@@ -74,15 +74,14 @@ int WebServ::run()
 		{
 			if (errno == EINTR)
 				continue;
-			std::cerr << "poll: " << strerror(errno) << std::endl;
+			Logger::error() << "poll: " << strerror(errno) << std::endl;
 			return (1);
 		}
 		cgiManager.checkTimeouts(connectionManager.getClients(), configs, pollManager);
 		connectionManager.enforceTimeouts(configs, cgiManager, listenerSocketHandler, pollManager);
 		if (ready == 0)
 			continue;
-		std::cout << "Sockets Ready - " << ready << "\n"
-				  << std::endl;
+		Logger::debug() << "Sockets Ready - " << ready << "\n" << std::endl;
 		size_t i = 0;
 		while (i < pollFds.size())
 		{

@@ -14,6 +14,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: radial-gradient(circle at top right, rgba(61, 220, 151, 0.08), transparent 35%), var(--bg);
   color: var(--text);
   font-family: var(--sans);
@@ -25,16 +28,25 @@ code { font-family: var(--mono); color: var(--accent); }
 
 .container { width: min(1050px, calc(100% - 2rem)); margin: 0 auto; }
 .nav { border-bottom: 1px solid var(--border); background: rgba(11, 15, 20, 0.94); }
-.nav-inner { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.brand { color: var(--text); font: 700 1.05rem var(--mono); }
+.nav-inner {
+  width: min(1050px, calc(100% - 2rem));
+  min-height: 62px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.brand { display: inline-flex; align-items: center; gap: 0.55rem; color: var(--text); font: 700 1.05rem var(--mono); }
 .brand:hover { text-decoration: none; }
+.brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(61, 220, 151, 0.45); }
 .brand-prompt, .accent { color: var(--accent); }
-.nav-links { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.nav-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.2rem; }
 .nav-links a { color: var(--muted); padding: 0.35rem 0.55rem; border-radius: 6px; font: 0.84rem var(--mono); }
 .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--panel); text-decoration: none; }
 .nav-toggle { display: none; border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 0.4rem 0.65rem; border-radius: 6px; }
 
-main { padding: 3rem 0 4rem; }
+main { flex: 1; padding: 3rem 0 4rem; }
 .hero { padding: 1rem 0 2rem; }
 .hero h1 { margin: 0 0 0.8rem; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.12; }
 .lead, .sub, .muted { color: var(--muted); }
@@ -62,6 +74,22 @@ main { padding: 3rem 0 4rem; }
 .textarea { min-height: 120px; resize: vertical; }
 .result { min-height: 70px; margin-top: 1rem; padding: 1rem; white-space: pre-wrap; word-break: break-word; background: #070a0e; border: 1px solid var(--border); border-radius: 8px; font: 0.88rem var(--mono); }
 
+.terminal { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #070a0e; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28); font-family: var(--mono); }
+.terminal-bar { display: flex; align-items: center; gap: 0.45rem; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); background: #0d131a; }
+.terminal-bar .dot { width: 10px; height: 10px; border-radius: 50%; background: #394654; }
+.terminal-bar .dot.r { background: #ff5f57; }
+.terminal-bar .dot.y { background: #febc2e; }
+.terminal-bar .dot.g { background: #28c840; }
+.terminal-bar .title { margin-left: auto; color: var(--muted); font-size: 0.78rem; }
+.terminal-body { padding: 1rem; font-size: 0.88rem; }
+.terminal-body > div:first-child { margin-bottom: 0.8rem; }
+.terminal-body .row { display: grid; grid-template-columns: 115px minmax(0, 1fr); gap: 0.75rem; padding: 0.18rem 0; }
+.terminal-body .k { color: var(--muted); }
+.terminal-body .v { min-width: 0; overflow-wrap: anywhere; color: var(--text); }
+.terminal-body .v.ok { color: var(--accent); }
+.terminal-body .prompt::before { content: "$ "; color: var(--accent); }
+.terminal-body .cursor { display: inline-block; width: 7px; height: 1em; margin-left: 3px; vertical-align: -0.1em; background: var(--accent); }
+
 .feature-list { list-style: none; padding: 0; }
 .feature-list li { padding: 0.55rem 0; border-bottom: 1px dashed var(--border); }
 .method { display: inline-block; min-width: 62px; margin-right: 0.5rem; color: var(--accent); font: 700 0.76rem var(--mono); }
@@ -74,4 +102,9 @@ footer { border-top: 1px solid var(--border); padding: 1.3rem 0; color: var(--mu
   .nav-links { display: none; width: 100%; flex-direction: column; }
   .nav-links.open { display: flex; }
   .nav-links a { padding: 0.55rem; }
+  .section .grid[style] { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 520px) {
+  .terminal-body .row { grid-template-columns: 1fr; gap: 0; margin-bottom: 0.45rem; }
 }

@@ -2,12 +2,12 @@
 #include "CgiCompletionHandler.hpp"
 #include "CgiRequestHandler.hpp"
 #include "CgiValidator.hpp"
+#include "Logger.hpp"
 
 #include <cerrno>
 #include <ctime>
 #include <cstring>
 #include <fcntl.h>
-#include <iostream>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -56,7 +56,7 @@ int	CgiStartupHandler::setNonBlockingFd(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
 	{
-		std::cerr << "fcntl: " << strerror(errno) << "\n";
+		Logger::error() << "fcntl: " << strerror(errno) << "\n";
 		return (1);
 	}
 	return (0);

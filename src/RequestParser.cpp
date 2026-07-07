@@ -21,6 +21,25 @@ static void parseHeader(std::string &header, Request &request)
 	request.addHeader(key, value);
 }
 
+static void debugPrintParsedRequest(const Request &request)
+{
+	std::map<std::string, std::string>::const_iterator it;
+
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << "Parsed method: " << request.getMethod() << std::endl;
+	Logger::debug() << "Parsed path: " << request.getPath() << std::endl;
+	Logger::debug() << "Parsed version: " << request.getVersion() << std::endl;
+	Logger::debug() << "Parsed body: [" << request.getBody() << "]" << std::endl;
+	Logger::debug() << "Parsed headers:" << std::endl;
+	it = request.getHeaders().begin();
+	while (it != request.getHeaders().end())
+	{
+		Logger::debug() << it->first << " = [" << it->second << "]" << std::endl;
+		++it;
+	}
+}
+
 int RequestParser::parse(const std::string &rawRequest, Request &req, const RequestInspection &inspection)
 {
 	std::string headerPart;
@@ -66,20 +85,7 @@ int RequestParser::parse(const std::string &rawRequest, Request &req, const Requ
 	}
 
 	req.setBody(body);
-
-	if (Logger::isDebugEnabled())
-	{
-		Logger::debug() << "Parsed method: " << req.getMethod() << std::endl;
-		Logger::debug() << "Parsed path: " << req.getPath() << std::endl;
-		Logger::debug() << "Parsed version: " << req.getVersion() << std::endl;
-		Logger::debug() << "Parsed body: [" << req.getBody() << "]" << std::endl;
-		Logger::debug() << "Parsed headers:" << std::endl;
-		for (std::map<std::string, std::string>::const_iterator it = req.getHeaders().begin();
-			 it != req.getHeaders().end(); ++it)
-		{
-			Logger::debug() << it->first << " = [" << it->second << "]" << std::endl;
-		}
-	}
+	debugPrintParsedRequest(req);
 
 	if (req.getMethod().empty())
 	{

@@ -1,5 +1,6 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
+#include "Logger.hpp"
 #include "utils.hpp"
 #include "PathUtils.hpp"
 #include "UriUtils.hpp"
@@ -7,7 +8,6 @@
 #include <cctype>
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -339,6 +339,16 @@ static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 	}
 }
 
+static void debugPrintCgiContext(const CgiContext &context)
+{
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << "CGI scriptPath: " << context.scriptPath << std::endl;
+	Logger::debug() << "CGI scriptFileName: " << context.scriptFileName << std::endl;
+	Logger::debug() << "CGI workingDirectory: " << context.workingDirectory << std::endl;
+	Logger::debug() << "Request body for CGI:\n[" << context.requestBody << "]\n";
+}
+
 static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
 {
 	CgiContext context;
@@ -348,10 +358,7 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
 	context.scriptFileName = PathUtils::getFileName(cgiPath.scriptPath);
 	context.workingDirectory = PathUtils::getDirectoryName(cgiPath.scriptPath);
 	context.requestBody = request.getBody();
-	std::cout << "CGI scriptPath: " << context.scriptPath << std::endl;
-	std::cout << "CGI scriptFileName: " << context.scriptFileName << std::endl;
-	std::cout << "CGI workingDirectory: " << context.workingDirectory << std::endl;
-	std::cout << "Request body for CGI:\n[" << context.requestBody << "]\n";
+	debugPrintCgiContext(context);
 	addStandardCgiVariables(context, request, server, remoteAddr, cgiPath);
 	addHttpHeaderVariables(context, request);
 	addImplementationCgiVariables(context, request, route, cgiPath);

@@ -2,10 +2,9 @@
 
 #include "CgiRequestHandler.hpp"
 #include "HttpMethod.hpp"
+#include "Logger.hpp"
 #include "RequestHandler.hpp"
 #include "Router.hpp"
-
-#include <iostream>
 
 static bool shouldHandleBeforeCgi(const Client &client, const RouteConfig &route,
 								  const ServerConfig &server)
@@ -23,11 +22,11 @@ static bool shouldHandleBeforeCgi(const Client &client, const RouteConfig &route
 }
 
 RequestDispatcher::Result RequestDispatcher::dispatch(Client &client, const ServerConfig &server,
-											  CgiManager &cgiManager, PollManager &pollManager)
+										  CgiManager &cgiManager, PollManager &pollManager)
 {
 	const RouteConfig &route = Router::resolve(server, client.getRequest().getPath());
 
-	std::cout << "Matched route: " << route.path << std::endl;
+	Logger::debug() << "Matched route: " << route.path << std::endl;
 
 	if (CgiRequestHandler::isCgiRequest(client.getRequest(), route))
 	{
@@ -44,8 +43,8 @@ RequestDispatcher::Result RequestDispatcher::dispatch(Client &client, const Serv
 
 	Response response = RequestHandler::handleRequest(client.getRequest(), route, server);
 	prepareResponse(client, response);
-	std::cout << "Response to client:\n\n"
-			  << client.responseBuffer << std::endl;
+	Logger::debug() << "Response ready, size = "
+				<< client.responseBuffer.size() << " bytes" << std::endl;
 
 	return (RESPONSE_READY);
 }

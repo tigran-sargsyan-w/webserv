@@ -1,11 +1,50 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>About</title>
+  <title>About — WebServ</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <h1>This page contains information about the project</h1>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/index.html"><span class="brand-dot"></span><span><span class="brand-prompt">~/</span>webserv</span></a>
+    <button class="nav-toggle" data-nav-toggle aria-label="Toggle navigation">menu</button>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="/index.html">Home</a>
+      <a href="/features.html">Features</a>
+      <a href="/upload.html">Upload</a>
+      <a href="/forms.html">Forms</a>
+      <a href="/delete.html">DELETE</a>
+      <a href="/cgi.html">CGI</a>
+      <a href="/session">Sessions</a>
+      <a href="/autoindex.html">Autoindex</a>
+      <a href="/redirect.html">Redirect</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="container hero">
+    <span class="eyebrow">// about the project</span>
+    <h1>A C++98 <span class="accent">HTTP server</span></h1>
+    <p class="lead">WebServ is a 42 School project focused on sockets, non-blocking I/O, HTTP parsing, routing, CGI and configuration.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="/features.html">View features</a>
+      <a class="btn" href="/index.html">Back home</a>
+    </div>
+  </section>
+  <section class="container section">
+    <div class="grid">
+      <div class="card"><h3>Non-blocking I/O</h3><p>A poll-based event loop handles listeners, clients and CGI pipes.</p></div>
+      <div class="card"><h3>Configured routing</h3><p>Server and location blocks control roots, methods, redirects, uploads and CGI.</p></div>
+      <div class="card"><h3>HTTP methods</h3><p>GET, POST and DELETE requests are parsed and dispatched to dedicated handlers.</p></div>
+      <div class="card"><h3>Browser demo</h3><p>These pages provide simple manual checks for the main server features.</p></div>
+    </div>
+  </section>
+</main>
+<footer><div class="container">webserv / 42 School HTTP server / C++98</div></footer>
+<script src="/js/main.js" defer></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 #include "PollEventHandler.hpp"
 #include "ClientEventHandler.hpp"
-#include <iostream>
+#include "Logger.hpp"
 #include <unistd.h>
 
 namespace
@@ -16,8 +16,8 @@ namespace
 		{
 			if (clientIt->second.cgi.isActive())
 			{
-				std::cout << "Cleaning CGI for disconnected client fd "
-						  << fd << std::endl;
+				Logger::debug() << "Cleaning CGI for disconnected client fd "
+							  << fd << std::endl;
 				cgiManager.cleanup(clientIt->second, pollManager);
 			}
 			clients.erase(clientIt);
@@ -33,9 +33,9 @@ namespace
 	}
 
 	PollEventHandler::Result handleCgiFd(const pollfd &pollFd,
-										 std::map<int, Client> &clients,
-										 const std::vector<ServerConfig> &configs,
-										 CgiManager &cgiManager, PollManager &pollManager)
+									 std::map<int, Client> &clients,
+									 const std::vector<ServerConfig> &configs,
+									 CgiManager &cgiManager, PollManager &pollManager)
 	{
 		if (cgiManager.handleEvent(pollFd.fd, pollFd.revents, clients,
 								   configs, pollManager) == 0)
@@ -44,8 +44,8 @@ namespace
 	}
 
 	PollEventHandler::Result handleListenerFd(const pollfd &pollFd,
-											  std::map<int, Client> &clients,
-											  ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
+									  std::map<int, Client> &clients,
+									  ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
 	{
 		if (pollFd.revents & POLLIN)
 			listenerSocketHandler.acceptConnection(pollFd.fd, clients, pollManager);
@@ -53,9 +53,9 @@ namespace
 	}
 
 	PollEventHandler::Result handleClientFd(const pollfd &pollFd,
-											std::map<int, Client> &clients,
-											const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
-											ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
+									std::map<int, Client> &clients,
+									const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
+									ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
 	{
 		std::map<int, Client>::iterator clientIt;
 		ClientEventHandler::Result result;
@@ -76,9 +76,9 @@ namespace
 }
 
 PollEventHandler::Result PollEventHandler::handle(const pollfd &pollFd,
-												  std::map<int, Client> &clients,
-												  const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
-												  ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
+										  std::map<int, Client> &clients,
+										  const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
+										  ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
 {
 	if (cgiManager.isCgiFd(pollFd.fd))
 		return (handleCgiFd(pollFd, clients, configs, cgiManager, pollManager));

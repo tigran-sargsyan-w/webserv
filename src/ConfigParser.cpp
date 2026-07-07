@@ -1,10 +1,10 @@
 #include "ConfigParser.hpp"
 #include "ConfigValidator.hpp"
 #include "ConfigDebug.hpp"
+#include "Logger.hpp"
 
 #include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 
@@ -339,38 +339,41 @@ static std::string methodListToString(const std::set<HttpMethod> &methods)
 static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
 {
 	std::string indent(indentLevel * 2, ' ');
-	std::cout << indent << "location " << route.path << "\n";
-	std::cout << indent << "  methods: " << methodListToString(route.methods) << "\n";
-	std::cout << indent << "  root: " << route.root << "\n";
-	std::cout << indent << "  index: " << route.index << "\n";
-	std::cout << indent << "  autoindex: " << (route.autoindex ? "on" : "off") << "\n";
-	std::cout << indent << "  upload_enable: " << (route.uploadEnable ? "on" : "off") << "\n";
+	Logger::debug() << indent << "location " << route.path << "\n";
+	Logger::debug() << indent << "  methods: " << methodListToString(route.methods) << "\n";
+	Logger::debug() << indent << "  root: " << route.root << "\n";
+	Logger::debug() << indent << "  index: " << route.index << "\n";
+	Logger::debug() << indent << "  autoindex: " << (route.autoindex ? "on" : "off") << "\n";
+	Logger::debug() << indent << "  upload_enable: " << (route.uploadEnable ? "on" : "off") << "\n";
 	if (!route.uploadStore.empty())
-		std::cout << indent << "  upload_store: " << route.uploadStore << "\n";
-	std::cout << indent << "  session_enable: " << (route.sessionEnable ? "on" : "off") << "\n";
+		Logger::debug() << indent << "  upload_store: " << route.uploadStore << "\n";
+	Logger::debug() << indent << "  session_enable: " << (route.sessionEnable ? "on" : "off") << "\n";
 	if (!route.sessionPath.empty())
-		std::cout << indent << "  session_path: " << route.sessionPath << "\n";
+		Logger::debug() << indent << "  session_path: " << route.sessionPath << "\n";
 	if (route.hasReturn)
-		std::cout << indent << "  return: " << route.returnCode << " " << route.returnPath << "\n";
+		Logger::debug() << indent << "  return: " << route.returnCode << " " << route.returnPath << "\n";
 	for (size_t cgiIndex = 0; cgiIndex < route.cgi.size(); ++cgiIndex)
-		std::cout << indent << "  cgi: " << route.cgi[cgiIndex].extension << " -> " << route.cgi[cgiIndex].executable << "\n";
+		Logger::debug() << indent << "  cgi: " << route.cgi[cgiIndex].extension
+			<< " -> " << route.cgi[cgiIndex].executable << "\n";
 }
 
 void ConfigParser::debugPrintConfig(const Config &config)
 {
-	std::cout << ConfigDebug::parser << "[parser] config tree" << ConfigDebug::reset << "\n";
+	if (!Logger::isDebugEnabled())
+		return;
+	Logger::debug() << ConfigDebug::parser << "[parser] config tree" << ConfigDebug::reset << "\n";
 	for (size_t serverIndex = 0; serverIndex < config.servers.size(); ++serverIndex)
 	{
 		const ServerConfig &server = config.servers[serverIndex];
-		std::cout << ConfigDebug::parser << "server #" << serverIndex << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  listen: " << server.listen.host << ":" << server.listen.port << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  server_name: " << server.serverName << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
-		std::cout << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "server #" << serverIndex << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  listen: " << server.listen.host << ":" << server.listen.port << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  server_name: " << server.serverName << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  root: " << server.root << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  index: " << server.index << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  client_max_body_size: " << server.clientMaxBodySize << ConfigDebug::reset << "\n";
+		Logger::debug() << ConfigDebug::parser << "  client_timeout: " << server.clientTimeout << ConfigDebug::reset << "\n";
 		for (std::map<int, std::string>::const_iterator errorPageIt = server.errorPages.begin(); errorPageIt != server.errorPages.end(); ++errorPageIt)
-			std::cout << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
+			Logger::debug() << ConfigDebug::parser << "  error_page " << errorPageIt->first << " => " << errorPageIt->second << ConfigDebug::reset << "\n";
 		for (size_t routeIndex = 0; routeIndex < server.routes.size(); ++routeIndex)
 			printRouteConfig(server.routes[routeIndex], 2);
 	}

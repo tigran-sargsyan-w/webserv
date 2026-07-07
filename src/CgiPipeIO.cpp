@@ -1,6 +1,6 @@
 #include "CgiPipeIO.hpp"
+#include "Logger.hpp"
 
-#include <iostream>
 #include <unistd.h>
 
 bool CgiPipeIO::hasInputFinished(const CgiSession &session)
@@ -18,7 +18,7 @@ int CgiPipeIO::writeToStdin(CgiSession &session)
 						 session.inputBuffer.c_str() + session.inputSent, remaining);
 	if (bytesWritten <= 0)
 	{
-		std::cerr << "Failed to write request body to CGI" << std::endl;
+		Logger::error() << "Failed to write request body to CGI" << std::endl;
 		return (1);
 	}
 	session.inputSent += static_cast<size_t>(bytesWritten);
@@ -33,7 +33,7 @@ CgiPipeIO::ReadResult CgiPipeIO::readFromStdout(CgiSession &session)
 	bytesRead = read(session.stdoutFd, buffer, sizeof(buffer));
 	if (bytesRead < 0)
 	{
-		std::cerr << "Failed to read CGI output" << std::endl;
+		Logger::error() << "Failed to read CGI output" << std::endl;
 		return (READ_ERROR);
 	}
 	if (bytesRead == 0)

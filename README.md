@@ -1,10 +1,12 @@
-*This project has been created as part of the 42 curriculum by tsargsya, dsemenov, cafabre*
+*This project has been created as part of the 42 curriculum by cafabre, dsemenov, tsargsya.*
 
 # WebServ
 
 ## Description
 
-This project aims to create your own HTTP server. You will be able to test it with a real web browser. HTTP is one of the most used protocols on the internet. Knowing its intricacies will be useful, even if web development is not on your career path.
+WebServ is a non-blocking HTTP/1.1 server written in C++98 for the 42 curriculum. It parses HTTP requests, routes them through nginx-inspired configuration blocks, and handles static files, uploads, redirects, CGI scripts, and optional server-side sessions.
+
+The server runs a single `poll()` event loop with non-blocking client sockets. Configuration uses custom `server` and `location` blocks to define listening addresses, allowed methods, document roots, upload directories, CGI mappings, custom error pages, and request limits such as `client_max_body_size` and `client_timeout`. Invalid configuration is rejected at startup.
 
 ## Instructions
 
@@ -14,14 +16,43 @@ This project aims to create your own HTTP server. You will be able to test it wi
 - A POSIX-compatible system (Linux/macOS)
 - Optional: Python 3 to run the provided regression tests
 
-### Build and run
+### Build
 
 ```sh
 make
-./webserv
 ```
 
-By default the server uses `configs/default.conf`.
+Rebuild from scratch:
+
+```sh
+make re
+```
+
+Remove build artifacts:
+
+```sh
+make fclean
+```
+
+### Run
+
+```sh
+./webserv configs/default.conf
+```
+
+By default, the server uses `configs/default.conf` when launched as `./webserv` without arguments.
+
+Stop the server with `Ctrl+C`.
+
+### Logging (optional)
+
+Log verbosity can be set at compile time:
+
+```sh
+make re LOG_LEVEL=1   # errors only (default)
+make re LOG_LEVEL=2   # errors + info
+make re LOG_LEVEL=3   # errors + info + debug
+```
 
 ## Browser demo
 
@@ -44,6 +75,22 @@ The browser demo is served from `www-demo/` and is intended to exercise the same
 - cookies and server-side sessions.
 
 Before using `www-demo` as the only web root, verify that every link in the demo maps to an existing route, script, or fixture file and that `configs/demo.conf` starts from a clean clone.
+
+## Tests
+
+### Recommanded
+
+Run the regression suite from the repository root :
+```bash
+python3 tests/regression_tester.py check
+```
+
+### By topic
+
+A variety of tests are included in the documentation files. You can find them in the ```docs``` folder :
+- Autoindex tests : ```docs/autoindex-tests.md```
+- CGI tests : ```cgi-tests.md````
+...
 
 ## Resources
 

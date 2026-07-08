@@ -23,6 +23,7 @@ Covered features:
 * redirect configuration validation;
 * CGI extension and executable validation;
 * duplicate CGI extension detection;
+* duplicate `listen` host/port detection;
 * duplicate `listen` + `server_name` detection;
 * required `location` block per server;
 * stricter path validation;
@@ -363,6 +364,28 @@ Config validation error: duplicate server block for 127.0.0.1:8080 with server_n
 ### Purpose
 
 Checks that two server blocks cannot use the same `listen` host, port and `server_name`.
+
+---
+
+## 14b. Test: duplicate listen on same host and port
+
+### Command
+```bash
+./webserv configs/invalid/duplicate_listen_same_port.conf
+```
+
+### Expected result
+
+The server should not start.
+
+Expected error should mention a duplicate listen, for example:
+```bash
+Config validation error: duplicate listen for 127.0.0.1:19091
+```
+
+### Purpose
+
+Checks that two server blocks cannot bind to the same `listen` address, even when `server_name` differs. This matches the eval requirement: setting up the same port multiple times in one config must not work.
 
 ---
 
@@ -1068,6 +1091,7 @@ Then run each config file:
 ./webserv configs/invalid/missing_semicolon.conf
 ./webserv configs/invalid/missing_closing_brace.conf
 ./webserv configs/invalid/duplicate_server_same_name.conf
+./webserv configs/invalid/duplicate_listen_same_port.conf
 ./webserv configs/invalid/server_without_location.conf
 ./webserv configs/invalid/double_slash_location.conf
 ./webserv configs/invalid/empty_root_value.conf
@@ -1128,6 +1152,7 @@ Expected summary:
 | `missing_semicolon.conf`                 |           fails | parser syntax error                 |
 | `missing_closing_brace.conf`             |           fails | parser syntax error                 |
 | `duplicate_server_same_name.conf`        |           fails | duplicate listen and server_name    |
+| duplicate_listen_same_port.conf          |           fails | duplicate listen host/port          |
 | `server_without_location.conf`           |           fails | server route block required         |
 | `double_slash_location.conf`             |           fails | location must not start with `//`   |
 | `empty_root_value.conf`                  |           fails | empty path value                    |

@@ -128,7 +128,7 @@ static std::string buildServerKey(const ServerConfig &server)
 {
 	std::ostringstream oss;
 
-	oss << server.listen.host << ":" << server.listen.port << ":" << server.serverName;
+	oss << server.listen.host << ":" << server.listen.port;
 	return (oss.str());
 }
 
@@ -143,7 +143,7 @@ static void validateServerUniqueness(const Config &config)
 
 		if (keys.find(key) != keys.end())
 		{
-			throw configError("duplicate server block for " + server.listen.host + ":" + toString(server.listen.port) + " with server_name '" + server.serverName + "'");
+			throw configError("duplicate listen for " + server.listen.host + ":" + toString(server.listen.port));
 		}
 		keys.insert(key);
 	}

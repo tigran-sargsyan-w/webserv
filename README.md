@@ -78,19 +78,39 @@ Before using `www-demo` as the only web root, verify that every link in the demo
 
 ## Tests
 
-### Recommanded
+### Recommended
 
-Run the regression suite from the repository root :
-```bash
+Run the automated regression suite from the repository root:
+
+```sh
 python3 tests/regression_tester.py check
+```
+
+Optional extended stress run (500 parallel requests):
+
+```sh
+python3 tests/regression_tester.py check --stress
 ```
 
 ### By topic
 
-A variety of tests are included in the documentation files. You can find them in the ```docs``` folder :
-- Autoindex tests : ```docs/autoindex-tests.md```
-- CGI tests : ```cgi-tests.md````
-...
+Manual test cases are documented in the `docs/` folder:
+
+| Topic | Documentation |
+|-------|---------------|
+| Autoindex | `docs/autoindex-tests.md` |
+| CGI | `docs/cgi-tests.md` |
+| Non-blocking CGI | `docs/non-blocking-cgi_tests.md` |
+| Multiple CGI interpreters | `docs/multiple-cgi-types-tests.md` |
+| POST / DELETE / uploads | `docs/post-delete-tests.md` |
+| Request body handling | `docs/request-body-tests.md` |
+| Client max body size | `docs/client-max-body-size-tests.md` |
+| Request timeout | `docs/request-timeout-tests.md` |
+| Partial writes | `docs/partial-write-tests.md` |
+| Redirects | `docs/redirect-tests.md` |
+| Custom error pages | `docs/error-pages-tests.md` |
+| Config validation | `docs/config-validator-tests.md` |
+| Sessions (bonus) | `docs/session-bonus-tests.md` |
 
 ## Resources
 

@@ -47,4 +47,26 @@ Before using `www-demo` as the only web root, verify that every link in the demo
 
 ## Resources
 
-- https://hackmd.io/@fttranscendance/H1mLWxbr_
+### References
+- [NGINX documentation](https://nginx.org/en/docs/)
+- [MDN - HTTP Methods](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods)
+- [MDN - HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+- [IBM - Common Gateway Interface (CGI)](https://www.ibm.com/docs/en/i/7.5.0?topic=functionality-cgi)
+
+Additional learning resources:
+
+- [Summary of topics covered in WebServ](https://hackmd.io/@fttranscendance/H1mLWxbr_)
+- [Creating an HTTP Server from Scratch](https://medium.com/@sakhawy/creating-an-http-server-from-scratch-ed41ef83314b)
+- [Polling vs Streaming](https://www.svix.com/resources/faq/polling-vs-streaming/)
+
+### AI usage
+
+AI was used only as a productivity tool. It helped to:
+
+- write documentation from the existing codebase
+- generate configuration files from predefined requirements
+- detect unused or dead code
+- generate additional test cases based on existing ones
+- summarize and regroup documentation about specific topics
+
+AI was not used to generate the server implementation itself.

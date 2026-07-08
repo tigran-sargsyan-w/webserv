@@ -128,12 +128,12 @@ Additional learning resources:
 
 ### AI usage
 
-AI was used only as a productivity tool. It helped to:
+**AI was used only as a productivity tool. It helped for :**
 
-- write documentation from the existing codebase
-- generate configuration files from predefined requirements
-- detect unused or dead code
-- generate additional test cases based on existing ones
-- summarize and regroup documentation about specific topics
+- `docs/` : writing manual test documentation from the existing codebase
+- `configs/` : generating valid and invalid configuration files from predefined requirements
+- `tests/` : generate additional test cases based on existing ones
+- outside the project : summarize and regroup documentation about specific topics
+- everywhere : detect unused or dead code, review structure and wording
 
-AI was not used to generate the server implementation itself.
+All AI-assisted output was reviewed, adapted, and validated by the team before being merged.

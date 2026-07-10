@@ -29,14 +29,10 @@ public:
 
   void setFd(int fd) { this->fd = fd; };
   void setRequest(Request &request) { this->request = request; };
-  bool isRequestReady() { return this->requestReady; };
-  bool isRequestValid() { return this->requestValid; };
 
   int fd;
   Request request;
   std::string rawRequest;
-  bool requestValid;
-  bool requestReady;
   ClientState state;
   size_t serverIndex;
   std::string responseBuffer;
@@ -45,7 +41,6 @@ public:
   bool responseReady;
   CgiSession cgi;
   time_t lastActivity;
-  // TODO: check if rawRequest is valid and finished before parsing
 private:
   std::string remoteAddr;
 };

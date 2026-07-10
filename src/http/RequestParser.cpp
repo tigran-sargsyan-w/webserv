@@ -93,6 +93,5 @@ int RequestParser::parse(const std::string &rawRequest, Request &req, const Requ
 		return (1);
 	}
 
-	req.setValid();
 	return (0);
 }

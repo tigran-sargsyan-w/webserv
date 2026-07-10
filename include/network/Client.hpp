@@ -27,9 +27,6 @@ public:
   void setRemoteAddr(const std::string &remoteAddr) { this->remoteAddr = remoteAddr; };
   void touchActivity();
 
-  void setFd(int fd) { this->fd = fd; };
-  void setRequest(Request &request) { this->request = request; };
-
   int fd;
   Request request;
   std::string rawRequest;

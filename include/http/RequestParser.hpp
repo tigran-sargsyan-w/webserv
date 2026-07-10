@@ -8,9 +8,7 @@
 class RequestParser
 {
 	public:
-		RequestParser() {};
 		int parse(const std::string &rawRequest, Request &req, const RequestInspection &inspection);
-		InspectRequestStatus status;
 };
 
 #endif

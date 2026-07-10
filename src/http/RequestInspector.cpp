@@ -234,13 +234,11 @@ static InspectRequestStatus inspectMessageBody(
 
 void RequestInspector::inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine)
 {
-	requestLineValid = false;
 	if (!parsedLine.parse(requestLine))
 	{
 		this->status = toInspectStatus(parsedLine.getStatus());
 		return;
 	}
-	requestLineValid = true;
 	this->status = COMPLETED;
 }
 

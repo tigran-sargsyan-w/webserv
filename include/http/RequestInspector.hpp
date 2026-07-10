@@ -35,7 +35,7 @@ struct RequestInspection
 class RequestInspector
 {
 	public:
-		RequestInspector() : status(EMPTY), requestLineValid(false) {};
+		RequestInspector() : status(EMPTY) {};
 		~RequestInspector() {};
 
 		RequestInspection inspectRequest(const std::string &rawRequest, size_t maxBodySize);
@@ -43,7 +43,6 @@ class RequestInspector
 
 	private:
 		void inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine);
-		bool requestLineValid;
 };
 
 #endif

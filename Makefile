@@ -115,7 +115,7 @@ CGI_SRCS := \
 	cgi/CgiValidator.cpp
 
 UTILS_SRCS := \
-	utils/utils.cpp \
+	utils/Utils.cpp \
 	utils/PathUtils.cpp \
 	utils/UriUtils.cpp
 

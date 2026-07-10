@@ -1,7 +1,7 @@
 #include "ErrorResponseHandler.hpp"
 #include "StaticFileHandler.hpp"
 #include "MimeTypes.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 #include "PathUtils.hpp"
 #include "TemplateRenderer.hpp"
 #include "UriUtils.hpp"

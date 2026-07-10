@@ -1,7 +1,7 @@
 #include "CgiRequestHandler.hpp"
 #include "CgiHandler.hpp"
 #include "Logger.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 #include "PathUtils.hpp"
 #include "UriUtils.hpp"
 

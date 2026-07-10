@@ -5,7 +5,7 @@
 #include <sstream>
 
 #include "Logger.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 
 Response::Response () : statusCode(0) {}
 

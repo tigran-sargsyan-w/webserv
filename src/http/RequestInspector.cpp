@@ -1,7 +1,7 @@
 #include "RequestInspector.hpp"
 #include "ChunkedDecoder.hpp"
 #include "HttpMessageUtils.hpp"
-#include "utils.hpp"
+#include "Utils.hpp"
 
 #include <string>
 #include <sstream>
@@ -234,13 +234,11 @@ static InspectRequestStatus inspectMessageBody(
 
 void RequestInspector::inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine)
 {
-	requestLineValid = false;
 	if (!parsedLine.parse(requestLine))
 	{
 		this->status = toInspectStatus(parsedLine.getStatus());
 		return;
 	}
-	requestLineValid = true;
 	this->status = COMPLETED;
 }
 

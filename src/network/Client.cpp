@@ -6,8 +6,6 @@
 
 Client::Client(int fd)
     : fd(fd),
-      requestValid(false),
-      requestReady(false),
       state(READING),
       serverIndex(0),
       bytesSent(0),

@@ -37,8 +37,6 @@
 - [🛡️ Robustness and Security](#️-robustness-and-security)
 - [🧠 Key Technical Lessons](#-key-technical-lessons)
 - [📖 Resources](#-resources)
-- [🤖 AI Usage](#-ai-usage)
-- [👥 Authors](#-authors)
 
 ---
 
@@ -753,28 +751,5 @@ This project brings together several low-level systems concepts:
 - [Creating an HTTP Server from Scratch](https://medium.com/@sakhawy/creating-an-http-server-from-scratch-ed41ef83314b)
 
 ---
-
-## 🤖 AI Usage
-
-AI was used as a productivity and review tool, not as a substitute for understanding or team validation.
-
-It assisted with:
-
-- transforming existing implementation details into structured documentation;
-- drafting and reorganizing manual test descriptions in `docs/`;
-- generating additional valid and invalid configuration fixtures from predefined requirements;
-- proposing extra regression cases based on already implemented behaviour;
-- reviewing wording, file organization, and possible dead or unused code;
-- summarizing external documentation during research.
-
-Every AI-assisted suggestion was reviewed, adapted, tested, and validated by the team before being accepted.
-
----
-
-## 👥 Authors
-
-- **cafabre**
-- **dsemenov**
-- **tsargsya**
 
 Built as part of the **42 curriculum**.

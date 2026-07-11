@@ -1,6 +1,12 @@
 #include "Router.hpp"
 #include "UriUtils.hpp"
 
+/**
+ * @brief Checks whether a route path matches the requested path prefix.
+ * @param routePath - configured route path
+ * @param requestPath - normalized request path
+ * @return true when the route applies to the request
+ */
 bool Router::matches(const std::string &routePath, const std::string &requestPath)
 {
 	if (routePath == "/")
@@ -14,6 +20,13 @@ bool Router::matches(const std::string &routePath, const std::string &requestPat
 	return (false);
 }
 
+/**
+ * @brief Finds the best matching route for the requested target.
+ * Uses the longest matching route path and falls back to the first route.
+ * @param server - active server configuration
+ * @param requestTarget - raw request target from the URI
+ * @return matched route configuration
+ */
 const RouteConfig &Router::resolve(const ServerConfig &server, const std::string &requestTarget)
 {
 	const RouteConfig *bestRoute;

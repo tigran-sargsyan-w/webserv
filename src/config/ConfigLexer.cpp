@@ -2,9 +2,17 @@
 #include "ConfigDebug.hpp"
 #include "Logger.hpp"
 
+/**
+ * @brief Create a lexer for the provided config text.
+ * @param input - raw config input text
+ */
 ConfigLexer::ConfigLexer(const std::string &input)
 	: inputText(input), position(0), currentLine(1), currentColumn(1) {}
 
+/**
+ * @brief Return the current character without consuming it.
+ * @return current character or '\0' at end of input
+ */
 char ConfigLexer::peek() const
 {
 	if (isAtEnd())
@@ -12,6 +20,10 @@ char ConfigLexer::peek() const
 	return (inputText[position]);
 }
 
+/**
+ * @brief Consume and return the current character.
+ * @return consumed character or '\0' at end of input
+ */
 char ConfigLexer::advance()
 {
 	if (isAtEnd())
@@ -29,11 +41,18 @@ char ConfigLexer::advance()
 	return (currentChar);
 }
 
+/**
+ * @brief Check whether the lexer reached the end of input.
+ * @return true when no more characters are available
+ */
 bool ConfigLexer::isAtEnd() const
 {
 	return (position >= inputText.size());
 }
 
+/**
+ * @brief Skip spaces, newlines, and line comments.
+ */
 void ConfigLexer::skipWhitespaceAndComments()
 {
 	while (!isAtEnd())
@@ -54,6 +73,10 @@ void ConfigLexer::skipWhitespaceAndComments()
 	}
 }
 
+/**
+ * @brief Convert the config text into a token stream.
+ * @return token sequence ending with EOF
+ */
 std::vector<ConfigToken> ConfigLexer::tokenize()
 {
 	std::vector<ConfigToken> tokens;
@@ -100,6 +123,11 @@ std::vector<ConfigToken> ConfigLexer::tokenize()
 	return (tokens);
 }
 
+/**
+ * @brief Convert a token type to a readable label.
+ * @param tokenType - token kind to stringify
+ * @return short token type name
+ */
 static const char *tokenTypeToString(ConfigTokenType tokenType)
 {
 	if (tokenType == TOKEN_WORD)
@@ -113,6 +141,10 @@ static const char *tokenTypeToString(ConfigTokenType tokenType)
 	return ("EOF");
 }
 
+/**
+ * @brief Print tokens when debug logging is enabled.
+ * @param tokens - token list to display
+ */
 void ConfigLexer::debugPrintTokens(const std::vector<ConfigToken> &tokens)
 {
 	if (!Logger::isDebugEnabled())

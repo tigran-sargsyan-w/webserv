@@ -18,6 +18,11 @@ static bool headerNameEquals(const std::string &left, const std::string &right);
 static bool parseCgiStatusCode(const std::string &value, int &statusCode);
 static std::string trimHeaderValue(const std::string &value);
 
+/**
+ * @brief Parse a single CGI header line and add it to the response.
+ * @param response - response to update
+ * @param line - header line text ("Name: value")
+ */
 static void addCgiHeaderToResponse(Response &response, const std::string &line)
 {
 	size_t colon;
@@ -41,6 +46,11 @@ static void addCgiHeaderToResponse(Response &response, const std::string &line)
 	response.addHeader(name, value);
 }
 
+/**
+ * @brief Parse multiple CGI header lines and add them to the response.
+ * @param response - response to update
+ * @param headers - raw headers block separated by newlines
+ */
 static void addCgiHeadersToResponse(Response &response, const std::string &headers)
 {
 	std::istringstream stream;
@@ -56,6 +66,12 @@ static void addCgiHeadersToResponse(Response &response, const std::string &heade
 	}
 }
 
+/**
+ * @brief Parse a CGI "Status" header value into an integer code.
+ * @param value - header value string
+ * @param statusCode - output integer status code
+ * @return true if parsing succeeded
+ */
 static bool parseCgiStatusCode(const std::string &value, int &statusCode)
 {
 	if (value.length() < 3)
@@ -73,6 +89,11 @@ static bool parseCgiStatusCode(const std::string &value, int &statusCode)
 	return (true);
 }
 
+/**
+ * @brief Build an HTTP Response object from raw CGI output.
+ * @param cgiOutput - full CGI output including headers and body
+ * @return constructed Response
+ */
 Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
 {
 	Response response;
@@ -106,6 +127,12 @@ Response CgiRequestHandler::buildResponse(const std::string &cgiOutput)
 	return (response);
 }
 
+/**
+ * @brief Compute the path inside the route for a request path.
+ * @param requestPath - original request path (may include query)
+ * @param route - route configuration
+ * @return path inside the route
+ */
 static std::string getPathInsideRoute(const std::string &requestPath, const RouteConfig &route)
 {
 	std::string cleanPath = UriUtils::getPathWithoutQuery(requestPath);
@@ -119,6 +146,11 @@ static std::string getPathInsideRoute(const std::string &requestPath, const Rout
 	return (cleanPath.substr(route.path.length()));
 }
 
+/**
+ * @brief Convert a long to its decimal string representation.
+ * @param value - number to convert
+ * @return string form of the number
+ */
 static std::string longToString(long value)
 {
 	std::ostringstream stream;
@@ -127,11 +159,19 @@ static std::string longToString(long value)
 	return (stream.str());
 }
 
+/**
+ * @brief Get current time as seconds since epoch string.
+ * @return time in seconds as string
+ */
 static std::string getRequestTime(void)
 {
 	return (longToString(static_cast<long>(std::time(NULL))));
 }
 
+/**
+ * @brief Get high-resolution current time as a floating string.
+ * @return seconds.microseconds as string
+ */
 static std::string getRequestTimeFloat(void)
 {
 	struct timeval time;
@@ -144,6 +184,13 @@ static std::string getRequestTimeFloat(void)
 	return (stream.str());
 }
 
+/**
+ * @brief Check if a found extension is a true boundary in the path.
+ * @param path - full path string
+ * @param position - position where extension was found
+ * @param extension - extension to check
+ * @return true if boundary (end or followed by '/')
+ */
 static bool isCgiExtensionBoundary(const std::string &path, size_t position, const std::string &extension)
 {
 	size_t end;
@@ -156,6 +203,12 @@ static bool isCgiExtensionBoundary(const std::string &path, size_t position, con
 	return (false);
 }
 
+/**
+ * @brief Find a CGI extension position ensuring boundary rules.
+ * @param path - path to search
+ * @param extension - extension to find
+ * @return position or std::string::npos
+ */
 static size_t findCgiExtensionPosition(const std::string &path, const std::string &extension)
 {
 	size_t position;
@@ -170,6 +223,12 @@ static size_t findCgiExtensionPosition(const std::string &path, const std::strin
 	return (std::string::npos);
 }
 
+/**
+ * @brief Resolve whether a request targets a CGI script and fill info.
+ * @param request - incoming HTTP request
+ * @param route - route configuration with CGI entries
+ * @return filled CgiResolvedPath (isCgi=false if not CGI)
+ */
 static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig &route)
 {
 	CgiResolvedPath info;
@@ -198,6 +257,11 @@ static CgiResolvedPath resolveCgiPath(const Request &request, const RouteConfig 
 	return (info);
 }
 
+/**
+ * @brief Trim leading/trailing whitespace and CR from a header value.
+ * @param value - raw header value
+ * @return trimmed string
+ */
 static std::string trimHeaderValue(const std::string &value)
 {
 	size_t start;
@@ -212,6 +276,12 @@ static std::string trimHeaderValue(const std::string &value)
 	return (value.substr(start, end - start));
 }
 
+/**
+ * @brief Retrieve a header value from request case-insensitively.
+ * @param request - HTTP request
+ * @param name - header name to find
+ * @return trimmed header value or empty string
+ */
 static std::string getHeaderValue(const Request &request, const std::string &name)
 {
 	std::map<std::string, std::string>::const_iterator it;
@@ -226,6 +296,11 @@ static std::string getHeaderValue(const Request &request, const std::string &nam
 	return ("");
 }
 
+/**
+ * @brief Determine content length string for a request.
+ * @param request - HTTP request
+ * @return content length value or empty string
+ */
 static std::string getContentLength(const Request &request)
 {
 	std::string contentLength;
@@ -238,6 +313,14 @@ static std::string getContentLength(const Request &request)
 	return ("");
 }
 
+/**
+ * @brief Add common CGI-standard variables to the context.
+ * @param context - CGI context to populate
+ * @param request - HTTP request
+ * @param server - server configuration
+ * @param remoteAddr - client remote address
+ * @param cgiPath - resolved CGI path info
+ */
 static void addStandardCgiVariables(CgiContext &context, const Request &request, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
 {
 	context.standard.values["AUTH_TYPE"] = "";
@@ -259,6 +342,13 @@ static void addStandardCgiVariables(CgiContext &context, const Request &request,
 	context.standard.values["SERVER_SOFTWARE"] = "webserv/1.0";
 }
 
+/**
+ * @brief Add implementation-specific CGI variables to the context.
+ * @param context - CGI context to populate
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param cgiPath - resolved CGI path info
+ */
 static void addImplementationCgiVariables(CgiContext &context, const Request &request, const RouteConfig &route, const CgiResolvedPath &cgiPath)
 {
 	context.implementation.values["SCRIPT_FILENAME"] = cgiPath.scriptPath;
@@ -276,6 +366,12 @@ static void addImplementationCgiVariables(CgiContext &context, const Request &re
 	context.implementation.values["REQUEST_TIME_FLOAT"] = getRequestTimeFloat();
 }
 
+/**
+ * @brief Case-insensitive comparison of two header names.
+ * @param left - first header name
+ * @param right - second header name
+ * @return true if equal ignoring case
+ */
 static bool headerNameEquals(const std::string &left, const std::string &right)
 {
 	size_t i;
@@ -292,6 +388,11 @@ static bool headerNameEquals(const std::string &left, const std::string &right)
 	return (true);
 }
 
+/**
+ * @brief Check whether a header name is a content-related header.
+ * @param name - header name to check
+ * @return true if it is content-related
+ */
 static bool isContentHeader(const std::string &name)
 {
 	if (headerNameEquals(name, "Content-Length"))
@@ -306,6 +407,11 @@ static bool isContentHeader(const std::string &name)
 	return (false);
 }
 
+/**
+ * @brief Convert a regular header name to CGI/CGI-like HTTP_* form.
+ * @param name - original header name
+ * @return transformed header name
+ */
 static std::string buildCgiHttpHeaderName(const std::string &name)
 {
 	std::string result;
@@ -324,6 +430,11 @@ static std::string buildCgiHttpHeaderName(const std::string &name)
 	return (result);
 }
 
+/**
+ * @brief Add non-content HTTP headers to CGI context as HTTP_* variables.
+ * @param context - CGI context to populate
+ * @param request - HTTP request
+ */
 static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 {
 	std::map<std::string, std::string>::const_iterator it;
@@ -339,6 +450,10 @@ static void addHttpHeaderVariables(CgiContext &context, const Request &request)
 	}
 }
 
+/**
+ * @brief Print CGI context details to debug log when enabled.
+ * @param context - CGI context to print
+ */
 static void debugPrintCgiContext(const CgiContext &context)
 {
 	if (!Logger::isDebugEnabled())
@@ -349,6 +464,15 @@ static void debugPrintCgiContext(const CgiContext &context)
 	Logger::debug() << "Request body for CGI:\n[" << context.requestBody << "]\n";
 }
 
+/**
+ * @brief Build a full CgiContext for executing a CGI script.
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param server - server configuration
+ * @param remoteAddr - remote client address
+ * @param cgiPath - resolved CGI path info
+ * @return populated CgiContext
+ */
 static CgiContext buildCgiContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr, const CgiResolvedPath &cgiPath)
 {
 	CgiContext context;
@@ -365,21 +489,39 @@ static CgiContext buildCgiContext(const Request &request, const RouteConfig &rou
 	return (context);
 }
 
+/**
+ * @brief Construct a CgiRequestHandler.
+ */
 CgiRequestHandler::CgiRequestHandler() {}
 
+/**
+ * @brief Copy constructor (no-op).
+ */
 CgiRequestHandler::CgiRequestHandler(const CgiRequestHandler &other)
 {
 	(void)other;
 }
 
+/**
+ * @brief Assignment operator (no-op).
+ */
 CgiRequestHandler &CgiRequestHandler::operator=(const CgiRequestHandler &other)
 {
 	(void)other;
 	return (*this);
 }
 
+/**
+ * @brief Destroy the CgiRequestHandler.
+ */
 CgiRequestHandler::~CgiRequestHandler() {}
 
+/**
+ * @brief Determine whether a request should be handled by CGI.
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @return true if the route/request maps to a CGI script
+ */
 bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &route)
 {
 	CgiResolvedPath cgiPath;
@@ -388,6 +530,14 @@ bool CgiRequestHandler::isCgiRequest(const Request &request, const RouteConfig &
 	return (cgiPath.isCgi);
 }
 
+/**
+ * @brief Build a CgiContext for a request if it targets CGI.
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param server - server configuration
+ * @param remoteAddr - client remote address
+ * @return populated CgiContext or empty if not CGI
+ */
 CgiContext CgiRequestHandler::buildContext(const Request &request, const RouteConfig &route, const ServerConfig &server, const std::string &remoteAddr)
 {
 	CgiResolvedPath cgiPath;

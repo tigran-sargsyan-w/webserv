@@ -3,11 +3,21 @@
 
 #include <unistd.h>
 
+/**
+ * @brief Check if all request body data has been written to CGI stdin.
+ * @param session - CGI session to inspect
+ * @return true if input fully sent
+ */
 bool CgiPipeIO::hasInputFinished(const CgiSession &session)
 {
 	return (session.inputSent >= session.inputBuffer.size());
 }
 
+/**
+ * @brief Write pending bytes from session.inputBuffer to CGI stdin.
+ * @param session - CGI session containing buffers and fds
+ * @return 0 on success, 1 on write error
+ */
 int CgiPipeIO::writeToStdin(CgiSession &session)
 {
 	size_t remaining;
@@ -25,6 +35,11 @@ int CgiPipeIO::writeToStdin(CgiSession &session)
 	return (0);
 }
 
+/**
+ * @brief Read available data from CGI stdout into the session output buffer.
+ * @param session - CGI session containing fds and buffers
+ * @return READ_OK on data, READ_EOF on EOF, READ_ERROR on failure
+ */
 CgiPipeIO::ReadResult CgiPipeIO::readFromStdout(CgiSession &session)
 {
 	char buffer[4096];

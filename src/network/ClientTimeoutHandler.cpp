@@ -3,6 +3,12 @@
 
 #include <iostream>
 
+/**
+ * @brief Get the timeout value for a client.
+ * @param client - target client
+ * @param configs - server configuration list
+ * @return timeout in seconds
+ */
 int ClientTimeoutHandler::getTimeoutSeconds(const Client &client,
 											const std::vector<ServerConfig> &configs)
 {
@@ -11,6 +17,12 @@ int ClientTimeoutHandler::getTimeoutSeconds(const Client &client,
 	return (configs[client.serverIndex].clientTimeout);
 }
 
+/**
+ * @brief Compute the poll timeout from active clients.
+ * @param clients - tracked clients
+ * @param configs - server configuration list
+ * @return timeout in milliseconds, or -1 if no timeout is needed
+ */
 int ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 										   const std::vector<ServerConfig> &configs)
 {
@@ -42,6 +54,12 @@ int ClientTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients,
 	return (shortestTimeout);
 }
 
+/**
+ * @brief Collect file descriptors for expired clients.
+ * @param clients - tracked clients
+ * @param configs - server configuration list
+ * @param expiredFds - output list of expired sockets
+ */
 void ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &clients,
 											 const std::vector<ServerConfig> &configs, std::vector<int> &expiredFds)
 {
@@ -65,6 +83,13 @@ void ClientTimeoutHandler::collectExpiredClients(const std::map<int, Client> &cl
 	}
 }
 
+/**
+ * @brief Check whether a client has exceeded its timeout.
+ * @param client - target client
+ * @param now - current timestamp
+ * @param timeoutSeconds - allowed inactivity window
+ * @return true if expired, false otherwise
+ */
 bool ClientTimeoutHandler::isExpired(const Client &client, time_t now,
 									 int timeoutSeconds)
 {

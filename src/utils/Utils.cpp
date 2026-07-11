@@ -3,6 +3,11 @@
 #include <cctype>
 #include <sstream>
 
+/**
+ * @brief Converts an integer to a string.
+ * @param num - Integer value to convert.
+ * @return String representation of the integer.
+ */
 std::string intToString(int num)
 {
   std::ostringstream oss;
@@ -10,6 +15,11 @@ std::string intToString(int num)
   return (oss.str());
 }
 
+/**
+ * @brief Converts a string to lowercase.
+ * @param value - Input string.
+ * @return Lowercase copy of the input string.
+ */
 std::string toLowerCase(const std::string &value)
 {
   std::string result;

@@ -8,14 +8,32 @@
 
 static void debugPrintEnv(const std::string &title, const CgiEnv &env);
 
+/**
+ * @brief Construct a CgiHandler.
+ */
 CgiHandler::CgiHandler() {}
+
+/**
+ * @brief Destroy the CgiHandler.
+ */
 CgiHandler::~CgiHandler() {}
 
+/**
+ * @brief Add or overwrite an environment variable in a CgiEnv.
+ * @param env - environment map to modify
+ * @param key - variable name
+ * @param value - variable value
+ */
 void CgiHandler::addEnv(CgiEnv &env, const std::string &key, const std::string &value)
 {
 	env[key] = value;
 }
 
+/**
+ * @brief Merge environment variables from src into dst (overwrite on conflict).
+ * @param dst - destination environment map
+ * @param src - source environment map
+ */
 void CgiHandler::mergeEnvironment(CgiEnv &dst, const CgiEnv &src)
 {
 	CgiEnv::const_iterator it;
@@ -28,6 +46,11 @@ void CgiHandler::mergeEnvironment(CgiEnv &dst, const CgiEnv &src)
 	}
 }
 
+/**
+ * @brief Build a combined CGI environment from the context.
+ * @param context - CGI context containing standard, http and implementation vars
+ * @return combined CgiEnv
+ */
 CgiEnv CgiHandler::buildEnvironment(const CgiContext &context)
 {
 	CgiEnv env;
@@ -47,6 +70,11 @@ CgiEnv CgiHandler::buildEnvironment(const CgiContext &context)
 	return (env);
 }
 
+/**
+ * @brief Convert environment map to vector of "key=value" strings.
+ * @param env - environment map
+ * @return vector of environment strings
+ */
 std::vector<std::string> CgiHandler::buildEnvironmentStrings(const CgiEnv &env)
 {
 	std::vector<std::string> result;
@@ -61,6 +89,11 @@ std::vector<std::string> CgiHandler::buildEnvironmentStrings(const CgiEnv &env)
 	return (result);
 }
 
+/**
+ * @brief Build a null-terminated array of C-style pointers for exec envp.
+ * @param envStrings - vector of environment strings
+ * @return vector of char* ending with NULL
+ */
 std::vector<char *> CgiHandler::buildEnvironmentPointers(std::vector<std::string> &envStrings)
 {
 	std::vector<char *> envp;
@@ -76,6 +109,11 @@ std::vector<char *> CgiHandler::buildEnvironmentPointers(std::vector<std::string
 	return (envp);
 }
 
+/**
+ * @brief Print environment entries when debug logging is enabled.
+ * @param title - header title for the debug output
+ * @param env - environment to print
+ */
 static void debugPrintEnv(const std::string &title, const CgiEnv &env)
 {
 	CgiEnv::const_iterator it;
@@ -92,6 +130,12 @@ static void debugPrintEnv(const std::string &title, const CgiEnv &env)
 	Logger::debug() << "===================================\n" << std::endl;
 }
 
+/**
+ * @brief Start a CGI process with pipes for stdin/stdout.
+ * @param context - CGI execution context (paths, args, env)
+ * @param process - output process details (pid and fds)
+ * @return 0 on success, non-zero on failure
+ */
 int CgiHandler::startCgi(const CgiContext &context, CgiProcess &process)
 {
     int stdinPipe[2];

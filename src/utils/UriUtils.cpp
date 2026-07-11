@@ -2,12 +2,22 @@
 
 namespace
 {
+	/**
+	 * @brief Checks whether a character is a hexadecimal digit.
+	 * @param c - Character to validate.
+	 * @return True if the character is hex, otherwise false.
+	 */
 	bool isHexDigit(char c)
 	{
 		return (
 			(c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
 	}
 
+	/**
+	 * @brief Converts a hexadecimal digit to its integer value.
+	 * @param c - Hex character.
+	 * @return Numeric value of the hex digit.
+	 */
 	int hexToInt(char c)
 	{
 		if (c >= '0' && c <= '9')
@@ -20,6 +30,11 @@ namespace
 
 namespace UriUtils
 {
+	/**
+	 * @brief Removes the query string from a URI.
+	 * @param uri - Full URI string.
+	 * @return URI path without the query part.
+	 */
 	std::string getPathWithoutQuery(const std::string &uri)
 	{
 		size_t questionMark;
@@ -30,6 +45,11 @@ namespace UriUtils
 		return (uri.substr(0, questionMark));
 	}
 
+	/**
+	 * @brief Extracts the query string from a URI.
+	 * @param uri - Full URI string.
+	 * @return Query string, or an empty string if absent.
+	 */
 	std::string getQueryString(const std::string &uri)
 	{
 		size_t questionMark;
@@ -40,6 +60,11 @@ namespace UriUtils
 		return (uri.substr(questionMark + 1));
 	}
 
+	/**
+	 * @brief Decodes percent-encoded path segments.
+	 * @param path - Encoded path string.
+	 * @return Decoded path string.
+	 */
 	std::string decodePath(const std::string &path)
 	{
 		std::string result;

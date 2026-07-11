@@ -8,11 +8,17 @@ namespace
 	const std::size_t MAX_REQUEST_LINE_SIZE = 8192;
 }
 
+/**
+ * @brief Create a request-line object with a default bad-request status.
+ */
 RequestLine::RequestLine()
 {
 	this->status = REQUEST_LINE_BAD_REQUEST;
 }
 
+/**
+ * @brief Reset all stored request-line fields.
+ */
 void RequestLine::clear(void)
 {
 	this->method.clear();
@@ -21,6 +27,9 @@ void RequestLine::clear(void)
 	this->status = REQUEST_LINE_BAD_REQUEST;
 }
 
+/**
+ * @brief Parse and validate a raw request line.
+ */
 bool RequestLine::parse(const std::string &line)
 {
 	std::stringstream stream;
@@ -62,36 +71,57 @@ bool RequestLine::parse(const std::string &line)
 	return (true);
 }
 
+/**
+ * @brief Check whether the request method is supported.
+ */
 bool RequestLine::isSupportedMethod(void) const
 {
 	return (this->method == "GET" || this->method == "POST" || this->method == "DELETE");
 }
 
+/**
+ * @brief Validate the URI format.
+ */
 bool RequestLine::isValidUri(void) const
 {
 	return (!this->uri.empty() && this->uri[0] == '/');
 }
 
+/**
+ * @brief Check whether the HTTP version is supported.
+ */
 bool RequestLine::isSupportedVersion(void) const
 {
 	return (this->version == "HTTP/1.1" || this->version == "HTTP/1.0");
 }
 
+/**
+ * @brief Get the current request-line parsing status.
+ */
 RequestLineStatus RequestLine::getStatus(void) const
 {
 	return (this->status);
 }
 
+/**
+ * @brief Get the parsed HTTP method.
+ */
 const std::string &RequestLine::getMethod(void) const
 {
 	return (this->method);
 }
 
+/**
+ * @brief Get the parsed request URI.
+ */
 const std::string &RequestLine::getUri(void) const
 {
 	return (this->uri);
 }
 
+/**
+ * @brief Get the parsed HTTP version.
+ */
 const std::string &RequestLine::getVersion(void) const
 {
 	return (this->version);

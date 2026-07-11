@@ -10,6 +10,11 @@
 
 namespace
 {
+	/**
+	 * @brief Checks whether the request has explicit body framing.
+	 * @param request - source request
+	 * @return true if Content-Length or Transfer-Encoding is set
+	 */
 	bool	hasExplicitBodyFraming(const Request &request)
 	{
 		const std::map<std::string, std::string> &headers = request.getHeaders();
@@ -18,6 +23,13 @@ namespace
 			|| headers.find("transfer-encoding") != headers.end());
 	}
 
+	/**
+	 * @brief Validates upload-related route and request state.
+	 * @param request - source request
+	 * @param route - matching route configuration
+	 * @param server - current server configuration
+	 * @return empty success response or an error response
+	 */
 	Response	validateUploadRequest(const Request &request,
 		const RouteConfig &route, const ServerConfig &server)
 	{
@@ -36,6 +48,13 @@ namespace
 		return (response);
 	}
 
+	/**
+	 * @brief Handles multipart upload payloads.
+	 * @param request - source request
+	 * @param route - matching route configuration
+	 * @param server - current server configuration
+	 * @return upload result response
+	 */
 	Response	handleMultipartUpload(const Request &request,
 		const RouteConfig &route, const ServerConfig &server)
 	{
@@ -49,6 +68,13 @@ namespace
 			uploaded.content, server));
 	}
 
+	/**
+	 * @brief Handles raw upload payloads.
+	 * @param request - source request
+	 * @param route - matching route configuration
+	 * @param server - current server configuration
+	 * @return upload result response
+	 */
 	Response	handleRawUpload(const Request &request,
 		const RouteConfig &route, const ServerConfig &server)
 	{
@@ -65,6 +91,13 @@ namespace
 	}
 }
 
+	/**
+	 * @brief Dispatches request body to the proper upload handler.
+	 * @param request - source request
+	 * @param route - matching route configuration
+	 * @param server - current server configuration
+	 * @return success response or error response
+	 */
 Response	UploadHandler::handle(const Request &request,
 	const RouteConfig &route, const ServerConfig &server)
 {

@@ -15,18 +15,40 @@
 #include <string>
 #include <map>
 
+/**
+ * @brief Constructs a new request handler.
+ */
 RequestHandler::RequestHandler() {}
 
+/**
+ * @brief Creates a copy of the request handler.
+ * @param other - handler instance to copy from
+ */
 RequestHandler::RequestHandler(const RequestHandler &other) { (void)other; }
 
+/**
+ * @brief Destructs the request handler.
+ */
 RequestHandler::~RequestHandler() {}
 
+/**
+ * @brief Assigns another handler instance.
+ * @param other - handler instance to copy from
+ * @return reference to the current handler
+ */
 RequestHandler &RequestHandler::operator=(const RequestHandler &other)
 {
 	(void)other;
 	return (*this);
 }
 
+/**
+ * @brief Validates the HTTP method for the requested route.
+ * @param route - matched route configuration
+ * @param method - parsed HTTP method
+ * @param server - active server configuration
+ * @return validated response or error
+ */
 static Response validateMethod(const RouteConfig &route, HttpMethod method, const ServerConfig &server)
 {
 	if (route.methods.find(method) == route.methods.end())
@@ -50,12 +72,26 @@ static Response validateMethod(const RouteConfig &route, HttpMethod method, cons
 	return ok;
 }
 
+/**
+ * @brief Checks whether a response already contains a header.
+ * @param response - response to inspect
+ * @param name - header name to look for
+ * @return true when the header exists
+ */
 static bool hasHeader(const Response &response, const std::string &name)
 {
 	std::map<std::string, std::string> headers = response.getHeaders();
 	return (headers.find(name) != headers.end());
 }
 
+/**
+ * @brief Builds the final response for a request.
+ * Routes the request to redirects, sessions, CGI guards, or file handlers.
+ * @param request - incoming HTTP request
+ * @param route - matched route configuration
+ * @param server - active server configuration
+ * @return fully prepared HTTP response
+ */
 Response RequestHandler::handleRequest(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	Response response;

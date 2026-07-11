@@ -8,6 +8,10 @@
 
 #define SESSION_TTL_SECONDS 1800
 
+/**
+ * @brief Gets the static session storage map
+ * @return reference to session storage
+ */
 std::map<std::string, SessionData> &SessionManager::sessions()
 {
 	static std::map<std::string, SessionData> storage;
@@ -15,6 +19,10 @@ std::map<std::string, SessionData> &SessionManager::sessions()
 	return (storage);
 }
 
+/**
+ * @brief Gets the static session counter for ID generation
+ * @return reference to session counter
+ */
 unsigned long &SessionManager::counter()
 {
 	static unsigned long value = 0;
@@ -22,6 +30,11 @@ unsigned long &SessionManager::counter()
 	return (value);
 }
 
+/**
+ * @brief Validates session ID format and length
+ * @param sessionId - session ID to validate
+ * @return true if session ID is valid
+ */
 bool SessionManager::isValidId(const std::string &sessionId)
 {
 	if (sessionId.empty() || sessionId.size() > 128)
@@ -36,6 +49,10 @@ bool SessionManager::isValidId(const std::string &sessionId)
 	return (true);
 }
 
+/**
+ * @brief Generates a unique session ID
+ * @return new session ID
+ */
 std::string SessionManager::generateId()
 {
 	std::ostringstream oss;
@@ -45,6 +62,9 @@ std::string SessionManager::generateId()
 	return (oss.str());
 }
 
+/**
+ * @brief Removes expired sessions from storage
+ */
 void SessionManager::cleanupExpired()
 {
 	std::map<std::string, SessionData> &storage = sessions();
@@ -60,6 +80,12 @@ void SessionManager::cleanupExpired()
 	}
 }
 
+/**
+ * @brief Gets existing session or creates a new one
+ * @param cookieHeader - raw Cookie header value
+ * @param created - output parameter, true if new session was created
+ * @return session data
+ */
 SessionData SessionManager::getOrCreate(const std::string &cookieHeader, bool &created)
 {
 	std::map<std::string, SessionData> &storage = sessions();
@@ -90,6 +116,11 @@ SessionData SessionManager::getOrCreate(const std::string &cookieHeader, bool &c
 	return (session);
 }
 
+/**
+ * @brief Destroys a session by ID from cookie header
+ * @param cookieHeader - raw Cookie header value
+ * @return true if session was found and destroyed
+ */
 bool SessionManager::destroy(const std::string &cookieHeader)
 {
 	std::map<std::string, SessionData> &storage = sessions();
@@ -101,11 +132,20 @@ bool SessionManager::destroy(const std::string &cookieHeader)
 	return (storage.erase(sessionId) > 0);
 }
 
+/**
+ * @brief Builds Set-Cookie header for a session
+ * @param sessionId - session ID to set
+ * @return Set-Cookie header value
+ */
 std::string SessionManager::buildCookieHeader(const std::string &sessionId)
 {
 	return ("sid=" + sessionId + "; Path=/; Max-Age=1800; HttpOnly; SameSite=Lax");
 }
 
+/**
+ * @brief Builds Set-Cookie header to expire session cookie
+ * @return Set-Cookie header value for cookie expiration
+ */
 std::string SessionManager::buildExpiredCookieHeader()
 {
 	return ("sid=deleted; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");

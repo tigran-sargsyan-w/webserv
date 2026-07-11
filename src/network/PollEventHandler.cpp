@@ -5,6 +5,14 @@
 
 namespace
 {
+	/**
+	 * @brief Close a descriptor and remove it from all registries.
+	 * @param fd - descriptor to close
+	 * @param clients - tracked clients map
+	 * @param cgiManager - CGI manager used for cleanup
+	 * @param listenerSocketHandler - listener registry used for removal
+	 * @param pollManager - poll manager used to drop sockets
+	 */
 	void closeAndRemoveFd(int fd, std::map<int, Client> &clients,
 						  CgiManager &cgiManager, ListenerSocketHandler &listenerSocketHandler,
 						  PollManager &pollManager)
@@ -27,11 +35,25 @@ namespace
 		listenerSocketHandler.removeFd(fd);
 	}
 
+	/**
+	 * @brief Check whether a client result requires closing the socket.
+	 * @param result - handler result
+	 * @return true if the client must be closed
+	 */
 	bool shouldCloseClient(ClientEventHandler::Result result)
 	{
 		return (result == ClientEventHandler::CLIENT_SHOULD_CLOSE || result == ClientEventHandler::EVENT_FAILED);
 	}
 
+	/**
+	 * @brief Handle a CGI-managed descriptor.
+	 * @param pollFd - ready poll entry
+	 * @param clients - tracked clients map
+	 * @param configs - server configuration list
+	 * @param cgiManager - CGI manager
+	 * @param pollManager - poll manager
+	 * @return next handler action
+	 */
 	PollEventHandler::Result handleCgiFd(const pollfd &pollFd,
 									 std::map<int, Client> &clients,
 									 const std::vector<ServerConfig> &configs,
@@ -43,6 +65,14 @@ namespace
 		return (PollEventHandler::KEEP_INDEX);
 	}
 
+	/**
+	 * @brief Handle events on a listening socket.
+	 * @param pollFd - ready poll entry
+	 * @param clients - tracked clients map
+	 * @param listenerSocketHandler - listener registry
+	 * @param pollManager - poll manager
+	 * @return next handler action
+	 */
 	PollEventHandler::Result handleListenerFd(const pollfd &pollFd,
 									  std::map<int, Client> &clients,
 									  ListenerSocketHandler &listenerSocketHandler, PollManager &pollManager)
@@ -52,6 +82,16 @@ namespace
 		return (PollEventHandler::ADVANCE_INDEX);
 	}
 
+	/**
+	 * @brief Handle events on a client socket.
+	 * @param pollFd - ready poll entry
+	 * @param clients - tracked clients map
+	 * @param configs - server configuration list
+	 * @param cgiManager - CGI manager
+	 * @param listenerSocketHandler - listener registry
+	 * @param pollManager - poll manager
+	 * @return next handler action
+	 */
 	PollEventHandler::Result handleClientFd(const pollfd &pollFd,
 									std::map<int, Client> &clients,
 									const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
@@ -75,6 +115,16 @@ namespace
 	}
 }
 
+/**
+ * @brief Dispatch a single poll event.
+ * @param pollFd - ready poll entry
+ * @param clients - tracked clients map
+ * @param configs - server configuration list
+ * @param cgiManager - CGI manager
+ * @param listenerSocketHandler - listener registry
+ * @param pollManager - poll manager
+ * @return next handler action
+ */
 PollEventHandler::Result PollEventHandler::handle(const pollfd &pollFd,
 										  std::map<int, Client> &clients,
 										  const std::vector<ServerConfig> &configs, CgiManager &cgiManager,
@@ -95,6 +145,14 @@ PollEventHandler::Result PollEventHandler::handle(const pollfd &pollFd,
 						   listenerSocketHandler, pollManager));
 }
 
+/**
+ * @brief Disconnect and clean up a client descriptor.
+ * @param fd - descriptor to remove
+ * @param clients - tracked clients map
+ * @param cgiManager - CGI manager
+ * @param listenerSocketHandler - listener registry
+ * @param pollManager - poll manager
+ */
 void PollEventHandler::disconnectClient(int fd,
 										std::map<int, Client> &clients,
 										CgiManager &cgiManager,

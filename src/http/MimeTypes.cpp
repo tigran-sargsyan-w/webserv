@@ -5,6 +5,9 @@
 
 namespace
 {
+    /**
+     * @brief Extract the file extension from a path.
+     */
     std::string getFileExtension(const std::string &path)
     {
         size_t dot;
@@ -20,6 +23,9 @@ namespace
         return (path.substr(dot));
     }
 
+    /**
+     * @brief Convert a string to lowercase.
+     */
     std::string toLower(const std::string &text)
     {
         std::string result;
@@ -35,6 +41,9 @@ namespace
         return (result);
     }
 
+    /**
+     * @brief Build the built-in extension to MIME type mapping.
+     */
     std::map<std::string, std::string> createMimeTypes(void)
     {
         std::map<std::string, std::string> types;
@@ -81,6 +90,9 @@ namespace
     }
 }
 
+/**
+ * @brief Resolve the MIME type for a path.
+ */
 std::string MimeTypes::getMimeType(const std::string &path)
 {
     static const std::map<std::string, std::string> types = createMimeTypes();

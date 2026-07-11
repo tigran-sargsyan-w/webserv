@@ -3,6 +3,11 @@
 #include <cctype>
 #include <cstddef>
 
+/**
+ * @brief Removes leading and trailing whitespace from a string
+ * @param value - string to trim
+ * @return trimmed string
+ */
 std::string CookieParser::trim(const std::string &value)
 {
 	size_t start = 0;
@@ -15,6 +20,11 @@ std::string CookieParser::trim(const std::string &value)
 	return (value.substr(start, end - start));
 }
 
+/**
+ * @brief Parses HTTP Cookie header into a map of name-value pairs
+ * @param cookieHeader - raw Cookie header value
+ * @return map of cookie names to values
+ */
 std::map<std::string, std::string> CookieParser::parse(const std::string &cookieHeader)
 {
 	std::map<std::string, std::string> cookies;
@@ -47,6 +57,12 @@ std::map<std::string, std::string> CookieParser::parse(const std::string &cookie
 	return (cookies);
 }
 
+/**
+ * @brief Extracts a specific cookie value from the Cookie header
+ * @param cookieHeader - raw Cookie header value
+ * @param name - cookie name to retrieve
+ * @return cookie value or empty string if not found
+ */
 std::string CookieParser::getCookieValue(const std::string &cookieHeader, const std::string &name)
 {
 	std::map<std::string, std::string> cookies = parse(cookieHeader);

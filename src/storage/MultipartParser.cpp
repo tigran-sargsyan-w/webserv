@@ -7,6 +7,11 @@
 
 namespace
 {
+	/**
+	 * @brief Converts a string to lowercase.
+	 * @param value - input string
+	 * @return lowercase copy of value
+	 */
 	std::string	toLowerString(const std::string &value)
 	{
 		std::string	result;
@@ -23,6 +28,11 @@ namespace
 		return (result);
 	}
 
+	/**
+	 * @brief Trims leading and trailing spaces and tabs.
+	 * @param value - input string
+	 * @return trimmed copy of value
+	 */
 	std::string	trimSpaces(const std::string &value)
 	{
 		size_t	start;
@@ -39,6 +49,12 @@ namespace
 		return (value.substr(start, end - start));
 	}
 
+	/**
+	 * @brief Gets a header value from the request by name.
+	 * @param request - source request
+	 * @param name - header name
+	 * @return trimmed header value or empty string
+	 */
 	std::string	getHeaderValue(const Request &request, const std::string &name)
 	{
 		std::map<std::string, std::string>::const_iterator	it;
@@ -55,6 +71,11 @@ namespace
 		return ("");
 	}
 
+	/**
+	 * @brief Extracts multipart boundary from Content-Type.
+	 * @param contentType - Content-Type header value
+	 * @return boundary string or empty string
+	 */
 	std::string	extractBoundary(const std::string &contentType)
 	{
 		std::string	lower;
@@ -85,6 +106,12 @@ namespace
 		return (trimSpaces(contentType.substr(start, end - start)));
 	}
 
+	/**
+	 * @brief Reads a named parameter from a header line.
+	 * @param line - header line
+	 * @param key - parameter key
+	 * @return parameter value or empty string
+	 */
 	std::string	getLineParameter(const std::string &line,
 		const std::string &key)
 	{
@@ -115,6 +142,11 @@ namespace
 		return (trimSpaces(line.substr(start, end - start)));
 	}
 
+	/**
+	 * @brief Finds a filename in multipart headers.
+	 * @param headers - raw multipart headers
+	 * @return filename or empty string
+	 */
 	std::string	extractFileNameFromHeaders(const std::string &headers)
 	{
 		std::istringstream	stream(headers);
@@ -137,6 +169,12 @@ namespace
 		return ("");
 	}
 
+	/**
+	 * @brief Skips a single CRLF or LF line break.
+	 * @param body - multipart body
+	 * @param position - current cursor position
+	 * @return true if a line break was consumed
+	 */
 	bool	skipPartLineBreak(const std::string &body, size_t &position)
 	{
 		if (position + 1 < body.length()
@@ -153,6 +191,13 @@ namespace
 		return (false);
 	}
 
+	/**
+	 * @brief Locates the end of multipart headers.
+	 * @param body - multipart body
+	 * @param position - search start position
+	 * @param separatorLength - detected separator length
+	 * @return index of header terminator or npos
+	 */
 	size_t	findHeadersEnd(const std::string &body, size_t position,
 		size_t &separatorLength)
 	{
@@ -167,6 +212,13 @@ namespace
 		return (end);
 	}
 
+	/**
+	 * @brief Finds the next multipart boundary marker.
+	 * @param body - multipart body
+	 * @param marker - boundary marker
+	 * @param position - search start position
+	 * @return index of next boundary or npos
+	 */
 	size_t	findNextBoundary(const std::string &body,
 		const std::string &marker, size_t position)
 	{
@@ -179,6 +231,10 @@ namespace
 		return (next);
 	}
 
+	/**
+	 * @brief Creates an invalid uploaded-file record.
+	 * @return invalid UploadedFile instance
+	 */
 	MultipartParser::UploadedFile	makeInvalidUpload(void)
 	{
 		MultipartParser::UploadedFile	uploaded;
@@ -188,6 +244,11 @@ namespace
 	}
 }
 
+	/**
+	 * @brief Checks whether the request is multipart/form-data.
+	 * @param request - source request
+	 * @return true when Content-Type is multipart/form-data
+	 */
 bool	MultipartParser::isMultipartRequest(const Request &request)
 {
 	std::string	contentType;
@@ -196,6 +257,11 @@ bool	MultipartParser::isMultipartRequest(const Request &request)
 	return (contentType.find("multipart/form-data") != std::string::npos);
 }
 
+	/**
+	 * @brief Extracts the first uploaded file from a multipart request.
+	 * @param request - source request
+	 * @return parsed uploaded file or invalid result
+	 */
 MultipartParser::UploadedFile	MultipartParser::parseFileUpload(
 	const Request &request)
 {

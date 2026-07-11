@@ -12,6 +12,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/**
+ * @brief Start CGI for a client: validate, spawn, set non-blocking fds, and register.
+ * @param client - client requesting CGI
+ * @param route - route configuration
+ * @param server - server configuration
+ * @param pollManager - poll manager to register fds
+ * @param fdRegistry - registry to map CGI fds to client fds
+ * @return 0 on success, non-zero on failure
+ */
 int	CgiStartupHandler::startForClient(Client &client,
 	const RouteConfig &route, const ServerConfig &server,
 	PollManager &pollManager, CgiFdRegistry &fdRegistry)
@@ -52,6 +61,11 @@ int	CgiStartupHandler::startForClient(Client &client,
 	return (0);
 }
 
+/**
+ * @brief Set an fd to non-blocking mode.
+ * @param fd - file descriptor to modify
+ * @return 0 on success, 1 on error
+ */
 int	CgiStartupHandler::setNonBlockingFd(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
@@ -62,6 +76,10 @@ int	CgiStartupHandler::setNonBlockingFd(int fd)
 	return (0);
 }
 
+/**
+ * @brief Clean up resources for a process that failed to initialize.
+ * @param process - process info with fds and pid
+ */
 void	CgiStartupHandler::cleanupFailedProcess(CgiProcess &process)
 {
 	if (process.stdinFd != -1)
@@ -75,6 +93,12 @@ void	CgiStartupHandler::cleanupFailedProcess(CgiProcess &process)
 	}
 }
 
+/**
+ * @brief Initialize client's CgiSession from context and process info.
+ * @param client - client whose session will be initialized
+ * @param context - CGI context with request body and paths
+ * @param process - spawned process info (pid and fds)
+ */
 void	CgiStartupHandler::initSession(Client &client,
 	const CgiContext &context, const CgiProcess &process)
 {
@@ -90,6 +114,12 @@ void	CgiStartupHandler::initSession(Client &client,
 	client.cgi.startTime = std::time(NULL);
 }
 
+/**
+ * @brief Register process fds with poll manager and fd registry, set client state.
+ * @param client - client owning the CGI session
+ * @param pollManager - poll manager to add fds to
+ * @param fdRegistry - registry to map fds to client fd
+ */
 void	CgiStartupHandler::registerProcessFds(Client &client,
 	PollManager &pollManager, CgiFdRegistry &fdRegistry)
 {

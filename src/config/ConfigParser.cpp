@@ -8,9 +8,18 @@
 #include <sstream>
 #include <stdexcept>
 
+/**
+ * @brief Create a parser over a prepared token stream.
+ * @param tokens - lexer output to parse
+ */
 ConfigParser::ConfigParser(const std::vector<ConfigToken> &tokens)
 	: tokens(tokens), currentIndex(0) {}
 
+/**
+ * @brief Read, lex, parse, and validate a config file.
+ * @param filePath - path to the config file
+ * @return validated configuration tree
+ */
 Config ConfigParser::parseFile(const std::string &filePath)
 {
 	std::ifstream file(filePath.c_str());
@@ -30,6 +39,10 @@ Config ConfigParser::parseFile(const std::string &filePath)
 	return (config);
 }
 
+/**
+ * @brief Parse the full config document.
+ * @return parsed config structure
+ */
 Config ConfigParser::parse()
 {
 	Config config;
@@ -46,6 +59,10 @@ Config ConfigParser::parse()
 	return (config);
 }
 
+/**
+ * @brief Parse a single server block.
+ * @return parsed server configuration
+ */
 ServerConfig ConfigParser::parseServerBlock()
 {
 	ServerConfig server;
@@ -67,6 +84,10 @@ ServerConfig ConfigParser::parseServerBlock()
 	return (server);
 }
 
+/**
+ * @brief Parse a single location block.
+ * @return parsed route configuration
+ */
 RouteConfig ConfigParser::parseLocationBlock()
 {
 	RouteConfig route;
@@ -83,6 +104,10 @@ RouteConfig ConfigParser::parseLocationBlock()
 	return (route);
 }
 
+/**
+ * @brief Parse a directive inside a server block.
+ * @param server - server config to update
+ */
 void ConfigParser::parseServerDirective(ServerConfig &server)
 {
 	const ConfigToken &directive = expectWord("Expected server directive");
@@ -157,6 +182,10 @@ void ConfigParser::parseServerDirective(ServerConfig &server)
 	throw error(directive, "Unknown server directive: " + directive.value);
 }
 
+/**
+ * @brief Parse a directive inside a location block.
+ * @param route - route config to update
+ */
 void ConfigParser::parseLocationDirective(RouteConfig &route)
 {
 	const ConfigToken &directive = expectWord("Expected location directive");
@@ -249,21 +278,39 @@ void ConfigParser::parseLocationDirective(RouteConfig &route)
 	throw error(directive, "Unknown location directive: " + directive.value);
 }
 
+/**
+ * @brief Return the current token.
+ * @return token at the current parser position
+ */
 const ConfigToken &ConfigParser::peek() const
 {
 	return (tokens[currentIndex]);
 }
 
+/**
+ * @brief Return the previously consumed token.
+ * @return last consumed token
+ */
 const ConfigToken &ConfigParser::previous() const
 {
 	return (tokens[currentIndex - 1]);
 }
 
+/**
+ * @brief Check whether the parser reached EOF.
+ * @return true when the current token is EOF
+ */
 bool ConfigParser::isAtEnd() const
 {
 	return (peek().type == TOKEN_EOF);
 }
 
+/**
+ * @brief Consume the current token when it matches the expected type and value.
+ * @param type - expected token type
+ * @param value - optional expected token value
+ * @return true when the token was consumed
+ */
 bool ConfigParser::match(ConfigTokenType type, const std::string &value)
 {
 	if (isAtEnd() || peek().type != type)
@@ -274,6 +321,12 @@ bool ConfigParser::match(ConfigTokenType type, const std::string &value)
 	return (true);
 }
 
+/**
+ * @brief Expect a token of the given type.
+ * @param type - expected token type
+ * @param message - error message on mismatch
+ * @return consumed token
+ */
 const ConfigToken &ConfigParser::expect(ConfigTokenType type, const std::string &message)
 {
 	if (peek().type != type)
@@ -282,16 +335,30 @@ const ConfigToken &ConfigParser::expect(ConfigTokenType type, const std::string 
 	return (previous());
 }
 
+/**
+ * @brief Expect a WORD token.
+ * @param message - error message on mismatch
+ * @return consumed WORD token
+ */
 const ConfigToken &ConfigParser::expectWord(const std::string &message)
 {
 	return (expect(TOKEN_WORD, message));
 }
 
+/**
+ * @brief Expect and consume a semicolon.
+ */
 void ConfigParser::expectSemicolon()
 {
 	expect(TOKEN_SEMICOLON, "Expected ';'");
 }
 
+/**
+ * @brief Convert a string to a signed integer.
+ * @param text - input text
+ * @param value - parsed integer output
+ * @return true when conversion succeeds
+ */
 bool ConfigParser::toInt(const std::string &text, int &value) const
 {
 	if (text.empty())
@@ -304,6 +371,11 @@ bool ConfigParser::toInt(const std::string &text, int &value) const
 	return (true);
 }
 
+/**
+ * @brief Convert a string to a size value.
+ * @param text - input text
+ * @return parsed size value
+ */
 size_t ConfigParser::toSize(const std::string &text) const
 {
 	if (text.empty())
@@ -315,6 +387,12 @@ size_t ConfigParser::toSize(const std::string &text) const
 	return (static_cast<size_t>(parsed));
 }
 
+/**
+ * @brief Build a parse error with token position details.
+ * @param token - token where the error happened
+ * @param message - human-readable error message
+ * @return runtime_error describing the failure
+ */
 std::runtime_error ConfigParser::error(const ConfigToken &token, const std::string &message) const
 {
 	std::ostringstream oss;
@@ -322,6 +400,11 @@ std::runtime_error ConfigParser::error(const ConfigToken &token, const std::stri
 	return (std::runtime_error(oss.str()));
 }
 
+/**
+ * @brief Convert a method set into a comma-separated string.
+ * @param methods - HTTP methods to print
+ * @return readable method list
+ */
 static std::string methodListToString(const std::set<HttpMethod> &methods)
 {
 	std::ostringstream oss;
@@ -336,6 +419,11 @@ static std::string methodListToString(const std::set<HttpMethod> &methods)
 	return (oss.str());
 }
 
+/**
+ * @brief Print a single route configuration for debugging.
+ * @param route - route to print
+ * @param indentLevel - indentation depth
+ */
 static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
 {
 	std::string indent(indentLevel * 2, ' ');
@@ -357,6 +445,10 @@ static void printRouteConfig(const RouteConfig &route, size_t indentLevel)
 			<< " -> " << route.cgi[cgiIndex].executable << "\n";
 }
 
+/**
+ * @brief Print the parsed config tree when debug logging is enabled.
+ * @param config - parsed config to display
+ */
 void ConfigParser::debugPrintConfig(const Config &config)
 {
 	if (!Logger::isDebugEnabled())

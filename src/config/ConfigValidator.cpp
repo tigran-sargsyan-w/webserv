@@ -10,11 +10,21 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/**
+ * @brief Build a validation error with a standard prefix.
+ * @param message - detailed error message
+ * @return runtime_error for config validation failures
+ */
 static std::runtime_error configError(const std::string &message)
 {
 	return (std::runtime_error("Config validation error: " + message));
 }
 
+/**
+ * @brief Convert an integer to a string.
+ * @param value - integer value to convert
+ * @return decimal string representation
+ */
 static std::string toString(int value)
 {
 	std::ostringstream oss;
@@ -22,21 +32,41 @@ static std::string toString(int value)
 	return (oss.str());
 }
 
+/**
+ * @brief Check whether a code is a redirect status.
+ * @param code - status code to inspect
+ * @return true for supported redirect codes
+ */
 static bool isRedirectStatusCode(int code)
 {
 	return (code == 301 || code == 302 || code == 303 || code == 307 || code == 308);
 }
 
+/**
+ * @brief Check whether a code is an HTTP error status.
+ * @param code - status code to inspect
+ * @return true for 4xx and 5xx codes
+ */
 static bool isErrorStatusCode(int code)
 {
 	return (code >= 400 && code <= 599);
 }
 
+/**
+ * @brief Check whether a string contains a null byte.
+ * @param value - string to inspect
+ * @return true when a null byte is present
+ */
 static bool hasNullByte(const std::string &value)
 {
 	return (value.find('\0') != std::string::npos);
 }
 
+/**
+ * @brief Check whether a string contains whitespace.
+ * @param value - string to inspect
+ * @return true when whitespace is present
+ */
 static bool hasWhiteSpace(const std::string &value)
 {
 	for (size_t index = 0; index < value.length(); ++index)
@@ -47,6 +77,11 @@ static bool hasWhiteSpace(const std::string &value)
 	return (false);
 }
 
+/**
+ * @brief Check whether a required config path is structurally valid.
+ * @param path - path to inspect
+ * @return true when path is non-empty and has no null byte
+ */
 static bool isValidConfigPath(const std::string &path)
 {
 	if (path.empty())
@@ -56,6 +91,11 @@ static bool isValidConfigPath(const std::string &path)
 	return (true);
 }
 
+/**
+ * @brief Check whether an optional config path is structurally valid.
+ * @param path - path to inspect
+ * @return true when empty or valid
+ */
 static bool isValidOptionalConfigPath(const std::string &path)
 {
 	if (path.empty())
@@ -65,6 +105,11 @@ static bool isValidOptionalConfigPath(const std::string &path)
 	return (true);
 }
 
+/**
+ * @brief Check whether a location path is valid.
+ * @param path - path to inspect
+ * @return true when path starts with a single slash and has no null byte
+ */
 static bool isValidLocationPath(const std::string &path)
 {
 	if (path.empty())
@@ -78,6 +123,11 @@ static bool isValidLocationPath(const std::string &path)
 	return (true);
 }
 
+/**
+ * @brief Check whether a redirect target is valid.
+ * @param target - redirect target path
+ * @return true when the target is a valid location path
+ */
 static bool isValidRedirectTarget(const std::string &target)
 {
 	if (!isValidLocationPath(target))
@@ -85,6 +135,12 @@ static bool isValidRedirectTarget(const std::string &target)
 	return (true);
 }
 
+/**
+ * @brief Check whether a path stays inside the route prefix.
+ * @param path - path to inspect
+ * @param routePath - owning route prefix
+ * @return true when the path is equal to or nested under the route
+ */
 static bool isPathInsideRoute(const std::string &path, const std::string &routePath)
 {
 	if (routePath == "/")
@@ -96,6 +152,11 @@ static bool isPathInsideRoute(const std::string &path, const std::string &routeP
 	return (false);
 }
 
+/**
+ * @brief Check whether a CGI extension is valid.
+ * @param extension - extension to inspect
+ * @return true when the extension is dot-prefixed and safe
+ */
 static bool isValidCgiExtension(const std::string &extension)
 {
 	if (extension.length() < 2)
@@ -111,6 +172,11 @@ static bool isValidCgiExtension(const std::string &extension)
 	return (true);
 }
 
+/**
+ * @brief Check whether a CGI executable path is valid.
+ * @param path - executable path to inspect
+ * @return true when the path is absolute, non-empty, and has no whitespace
+ */
 static bool isValidCgiExecutablePath(const std::string &path)
 {
 	if (!isValidConfigPath(path))
@@ -124,6 +190,11 @@ static bool isValidCgiExecutablePath(const std::string &path)
 	return (true);
 }
 
+/**
+ * @brief Build a unique key for a server listen address.
+ * @param server - server config to inspect
+ * @return host:port string key
+ */
 static std::string buildServerKey(const ServerConfig &server)
 {
 	std::ostringstream oss;
@@ -132,6 +203,10 @@ static std::string buildServerKey(const ServerConfig &server)
 	return (oss.str());
 }
 
+/**
+ * @brief Reject duplicate listen endpoints.
+ * @param config - full config to inspect
+ */
 static void validateServerUniqueness(const Config &config)
 {
 	std::set<std::string> keys;
@@ -149,6 +224,11 @@ static void validateServerUniqueness(const Config &config)
 	}
 }
 
+/**
+ * @brief Validate server-level error pages.
+ * @param server - server config to inspect
+ * @param serverIndex - server index used in error messages
+ */
 static void validateErrorPages(const ServerConfig &server, size_t serverIndex)
 {
 	std::map<int, std::string>::const_iterator it;
@@ -162,6 +242,10 @@ static void validateErrorPages(const ServerConfig &server, size_t serverIndex)
 	}
 }
 
+/**
+ * @brief Validate CGI directives inside a route.
+ * @param route - route config to inspect
+ */
 static void validateCgiConfig(const RouteConfig &route)
 {
 	std::set<std::string> extensions;
@@ -179,6 +263,10 @@ static void validateCgiConfig(const RouteConfig &route)
 	}
 }
 
+/**
+ * @brief Check that upload_store points to a writable directory.
+ * @param route - route config to inspect
+ */
 static void validateUploadStoreDirectory(const RouteConfig &route)
 {
 	struct stat pathStat;
@@ -190,6 +278,10 @@ static void validateUploadStoreDirectory(const RouteConfig &route)
 		throw configError("location " + route.path + ": upload_store " + route.uploadStore + " is not accessible or writable");
 }
 
+/**
+ * @brief Validate path-related route settings.
+ * @param route - route config to inspect
+ */
 static void validateRoutePaths(const RouteConfig &route)
 {
 	if (!isValidLocationPath(route.path))
@@ -204,6 +296,10 @@ static void validateRoutePaths(const RouteConfig &route)
 		throw configError("location " + route.path + " has invalid session_path");
 }
 
+/**
+ * @brief Validate session-related route settings.
+ * @param route - route config to inspect
+ */
 static void validateSessionConfig(const RouteConfig &route)
 {
 	if (route.sessionEnable && route.sessionPath.empty())
@@ -216,6 +312,10 @@ static void validateSessionConfig(const RouteConfig &route)
 		throw configError("location " + route.path + " has session_enable on but GET is not allowed");
 }
 
+/**
+ * @brief Validate a single route block.
+ * @param route - route config to inspect
+ */
 static void validateRoute(const RouteConfig &route)
 {
 	validateRoutePaths(route);
@@ -235,6 +335,11 @@ static void validateRoute(const RouteConfig &route)
 	validateCgiConfig(route);
 }
 
+/**
+ * @brief Validate route list uniqueness and contents.
+ * @param server - server config to inspect
+ * @param serverIndex - server index used in error messages
+ */
 static void validateRoutes(const ServerConfig &server, size_t serverIndex)
 {
 	std::set<std::string> paths;
@@ -253,6 +358,11 @@ static void validateRoutes(const ServerConfig &server, size_t serverIndex)
 	}
 }
 
+/**
+ * @brief Validate server path settings.
+ * @param server - server config to inspect
+ * @param serverIndex - server index used in error messages
+ */
 static void validateServerPaths(const ServerConfig &server, size_t serverIndex)
 {
 	if (!isValidConfigPath(server.root))
@@ -261,6 +371,11 @@ static void validateServerPaths(const ServerConfig &server, size_t serverIndex)
 		throw configError("server " + toString(static_cast<int>(serverIndex)) + " has invalid index path");
 }
 
+/**
+ * @brief Validate a single server block.
+ * @param server - server config to inspect
+ * @param serverIndex - server index used in error messages
+ */
 static void validateServer(const ServerConfig &server, size_t serverIndex)
 {
 	if (server.listen.port <= 0 || server.listen.port > 65535)
@@ -278,6 +393,10 @@ static void validateServer(const ServerConfig &server, size_t serverIndex)
 	validateRoutes(server, serverIndex);
 }
 
+/**
+ * @brief Validate the full parsed config tree.
+ * @param config - configuration to validate
+ */
 void ConfigValidator::validate(const Config &config)
 {
 	if (config.servers.empty())
@@ -287,6 +406,10 @@ void ConfigValidator::validate(const Config &config)
 		validateServer(config.servers[serverIndex], serverIndex);
 }
 
+/**
+ * @brief Print validation details when debug logging is enabled.
+ * @param config - validated config to display
+ */
 void ConfigValidator::debugPrintValidation(const Config &config)
 {
 	if (!Logger::isDebugEnabled())

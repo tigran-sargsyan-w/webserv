@@ -6,6 +6,10 @@
 #include <sys/stat.h>
 #include <string>
 
+/**
+ * @brief Builds a response for a successful file deletion.
+ * @return HTTP 200 response.
+ */
 static Response buildDeletedResponse()
 {
 	Response response;
@@ -15,6 +19,14 @@ static Response buildDeletedResponse()
 	return (response);
 }
 
+/**
+ * @brief Handles delete requests.
+ * Validates permissions, checks the target path, and removes the file.
+ * @param request - Incoming request.
+ * @param route - Matched route configuration.
+ * @param server - Server configuration.
+ * @return HTTP response for success or failure.
+ */
 Response DeleteHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string fullPath;

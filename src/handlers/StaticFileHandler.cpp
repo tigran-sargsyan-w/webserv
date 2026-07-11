@@ -12,18 +12,39 @@
 #include <sys/stat.h>
 #include <vector>
 
+/**
+ * @brief Creates an empty static file handler.
+ */
 StaticFileHandler::StaticFileHandler() {}
 
+/**
+ * @brief Copies a static file handler.
+ * @param other - Handler to copy.
+ */
 StaticFileHandler::StaticFileHandler(const StaticFileHandler &other) { (void)other; }
 
+/**
+ * @brief Assigns a static file handler.
+ * @param other - Handler to assign from.
+ * @return Updated handler.
+ */
 StaticFileHandler &StaticFileHandler::operator=(const StaticFileHandler &other)
 {
 	(void)other;
 	return (*this);
 }
 
+/**
+ * @brief Destroys the handler.
+ */
 StaticFileHandler::~StaticFileHandler() {}
 
+/**
+ * @brief Removes the route prefix from a cleaned path when needed.
+ * @param cleanPath - Normalized request path.
+ * @param route - Matched route configuration.
+ * @return Path relative to the route root.
+ */
 static std::string getCleanPathInsideRoute(const std::string &cleanPath, const RouteConfig &route)
 {
 	if (route.path == "/")
@@ -33,6 +54,11 @@ static std::string getCleanPathInsideRoute(const std::string &cleanPath, const R
 	return (cleanPath.substr(route.path.length()));
 }
 
+/**
+ * @brief Checks whether a filesystem path exists.
+ * @param path - Filesystem path.
+ * @return True if the path exists.
+ */
 static bool pathExists(const std::string &path)
 {
 	struct stat pathStat;
@@ -40,6 +66,11 @@ static bool pathExists(const std::string &path)
 	return (stat(path.c_str(), &pathStat) == 0);
 }
 
+/**
+ * @brief Checks whether a path is a directory.
+ * @param path - Filesystem path.
+ * @return True if the path is a directory.
+ */
 static bool isDirectory(const std::string &path)
 {
 	struct stat pathStat;
@@ -49,6 +80,11 @@ static bool isDirectory(const std::string &path)
 	return (S_ISDIR(pathStat.st_mode));
 }
 
+/**
+ * @brief Checks whether a path is a regular file.
+ * @param path - Filesystem path.
+ * @return True if the path is a regular file.
+ */
 static bool isRegularFile(const std::string &path)
 {
 	struct stat pathStat;
@@ -58,6 +94,11 @@ static bool isRegularFile(const std::string &path)
 	return (S_ISREG(pathStat.st_mode));
 }
 
+/**
+ * @brief Builds a file response.
+ * @param path - File path to serve.
+ * @return HTTP 200 response with file content.
+ */
 static Response buildFileResponse(const std::string &path)
 {
 	Response response;
@@ -70,6 +111,12 @@ static Response buildFileResponse(const std::string &path)
 	return (response);
 }
 
+/**
+ * @brief Orders autoindex entries by type and name.
+ * @param left - Left entry.
+ * @param right - Right entry.
+ * @return True when left should come first.
+ */
 static bool compareAutoindexEntries(const AutoindexEntry &left, const AutoindexEntry &right)
 {
 	if (left.isDirectory != right.isDirectory)
@@ -77,6 +124,12 @@ static bool compareAutoindexEntries(const AutoindexEntry &left, const AutoindexE
 	return (left.name < right.name);
 }
 
+/**
+ * @brief Reads and sorts directory entries for autoindex.
+ * @param dir - Open directory stream.
+ * @param directoryPath - Directory path.
+ * @return Sorted autoindex entries.
+ */
 static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std::string &directoryPath)
 {
 	std::vector<AutoindexEntry> entries;
@@ -102,6 +155,12 @@ static std::vector<AutoindexEntry> getSortedDirectoryEntries(DIR *dir, const std
 	return (entries);
 }
 
+/**
+ * @brief Builds HTML for autoindex entries.
+ * @param entries - Directory entries.
+ * @param baseUrl - Base URL for links.
+ * @return HTML fragment for the listing.
+ */
 static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &entries,
 	const std::string &baseUrl)
 {
@@ -139,6 +198,13 @@ static std::string buildAutoindexEntriesHtml(const std::vector<AutoindexEntry> &
 	return (html);
 }
 
+/**
+ * @brief Builds a simple fallback autoindex page.
+ * @param requestPath - Original request path.
+ * @param entries - Directory entries.
+ * @param baseUrl - Base URL for links.
+ * @return HTML page body.
+ */
 static std::string buildFallbackAutoindexBody(const std::string &requestPath,
 	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl)
 {
@@ -170,6 +236,14 @@ static std::string buildFallbackAutoindexBody(const std::string &requestPath,
 	return (body);
 }
 
+/**
+ * @brief Builds the main autoindex body.
+ * @param requestPath - Original request path.
+ * @param entries - Directory entries.
+ * @param baseUrl - Base URL for links.
+ * @param server - Server configuration.
+ * @return Rendered HTML body.
+ */
 static std::string buildAutoindexBody(const std::string &requestPath,
 	const std::vector<AutoindexEntry> &entries, const std::string &baseUrl,
 	const ServerConfig &server)
@@ -188,6 +262,13 @@ static std::string buildAutoindexBody(const std::string &requestPath,
 	return (body);
 }
 
+/**
+ * @brief Builds an autoindex response for a directory.
+ * @param requestPath - Original request path.
+ * @param directoryPath - Filesystem directory path.
+ * @param server - Server configuration.
+ * @return HTTP response or error response.
+ */
 static Response buildAutoindexResponse(const std::string &requestPath, const std::string &directoryPath, const ServerConfig &server)
 {
 	Response response;
@@ -216,6 +297,12 @@ static Response buildAutoindexResponse(const std::string &requestPath, const std
 	return (response);
 }
 
+/**
+ * @brief Tries to serve a configured index file.
+ * @param fullPath - Directory path.
+ * @param indexName - Index file name.
+ * @return File response or empty response.
+ */
 static Response tryServeDirectoryIndex(const std::string &fullPath,
 	const std::string &indexName)
 {
@@ -228,6 +315,13 @@ static Response tryServeDirectoryIndex(const std::string &fullPath,
 	return (buildFileResponse(indexPath));
 }
 
+/**
+ * @brief Tries route and server index files in order.
+ * @param fullPath - Directory path.
+ * @param route - Matched route configuration.
+ * @param server - Server configuration.
+ * @return File response or empty response.
+ */
 static Response tryServeConfiguredIndexFiles(const std::string &fullPath,
 	const RouteConfig &route, const ServerConfig &server)
 {
@@ -241,6 +335,14 @@ static Response tryServeConfiguredIndexFiles(const std::string &fullPath,
 	return (Response());
 }
 
+/**
+ * @brief Handles directory requests.
+ * @param requestPath - Original request path.
+ * @param fullPath - Filesystem directory path.
+ * @param route - Matched route configuration.
+ * @param server - Server configuration.
+ * @return Index, autoindex, or error response.
+ */
 static Response handleDirectoryRequest(const std::string &requestPath, const std::string &fullPath, const RouteConfig &route, const ServerConfig &server)
 {
 	Response response;
@@ -253,6 +355,11 @@ static Response handleDirectoryRequest(const std::string &requestPath, const std
 	return (ErrorResponseHandler::build(403, "Forbidden", server));
 }
 
+/**
+ * @brief Detects path traversal segments.
+ * @param path - Decoded request path.
+ * @return True when a traversal segment is found.
+ */
 static bool hasPathTraversal(const std::string &path)
 {
 	size_t start;
@@ -278,6 +385,14 @@ static bool hasPathTraversal(const std::string &path)
 	return (false);
 }
 
+/**
+ * @brief Handles static file requests.
+ * Serves files, directories, or errors after path validation.
+ * @param request - Incoming request.
+ * @param route - Matched route configuration.
+ * @param server - Server configuration.
+ * @return HTTP response for the request.
+ */
 Response StaticFileHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string cleanPath;

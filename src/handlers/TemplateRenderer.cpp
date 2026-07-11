@@ -7,6 +7,11 @@
 
 namespace
 {
+	/**
+	 * @brief Checks whether a character is safe in a URL segment.
+	 * @param c - Character to test.
+	 * @return True when the character can stay unescaped.
+	 */
 	bool	isUrlSafeChar(unsigned char c)
 	{
 		if (std::isalnum(c))
@@ -17,6 +22,12 @@ namespace
 	}
 }
 
+
+/**
+ * @brief Reads a file into a string.
+ * @param path - File path.
+ * @return File content or an empty string.
+ */
 std::string	TemplateRenderer::readFile(const std::string &path)
 {
 	std::ifstream		file(path.c_str());
@@ -28,6 +39,13 @@ std::string	TemplateRenderer::readFile(const std::string &path)
 	return (buffer.str());
 }
 
+
+/**
+ * @brief Replaces all occurrences of a substring.
+ * @param text - Source text.
+ * @param from - Substring to replace.
+ * @param to - Replacement text.
+ */
 void	TemplateRenderer::replaceAll(std::string &text,
 	const std::string &from, const std::string &to)
 {
@@ -43,6 +61,13 @@ void	TemplateRenderer::replaceAll(std::string &text,
 	}
 }
 
+
+/**
+ * @brief Renders a template file with variables.
+ * @param path - Template path.
+ * @param variables - Placeholder replacements.
+ * @return Rendered body or an empty string.
+ */
 std::string	TemplateRenderer::render(const std::string &path,
 	const Variables &variables)
 {
@@ -61,6 +86,12 @@ std::string	TemplateRenderer::render(const std::string &path,
 	return (body);
 }
 
+
+/**
+ * @brief Escapes HTML special characters.
+ * @param text - Input text.
+ * @return Escaped HTML string.
+ */
 std::string	TemplateRenderer::htmlEscape(const std::string &text)
 {
 	std::string	result;
@@ -86,6 +117,12 @@ std::string	TemplateRenderer::htmlEscape(const std::string &text)
 	return (result);
 }
 
+
+/**
+ * @brief URL-encodes one path segment.
+ * @param text - Input segment.
+ * @return Encoded segment.
+ */
 std::string	TemplateRenderer::urlEncodePathSegment(const std::string &text)
 {
 	std::ostringstream	stream;

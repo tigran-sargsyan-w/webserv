@@ -9,6 +9,11 @@ namespace
 {
 	static const int CGI_REAP_POLL_INTERVAL_MS = 100;
 
+	/**
+	 * @brief Reap a finished child process for a client if present.
+	 * @param client - client with possible finished child
+	 * @return 0 if not finished or exited cleanly, 1 on abnormal exit/error
+	 */
 	int	reapFinishedChild(Client &client)
 	{
 		int		status;
@@ -29,6 +34,11 @@ namespace
 	}
 }
 
+/**
+ * @brief Determine poll timeout (ms) for CGI sessions based on remaining time.
+ * @param clients - map of clients to evaluate
+ * @return timeout in milliseconds or -1 if none
+ */
 int	CgiTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients)
 {
 	std::map<int, Client>::const_iterator it;
@@ -65,6 +75,14 @@ int	CgiTimeoutHandler::getPollTimeoutMs(const std::map<int, Client> &clients)
 	return (shortestTimeout);
 }
 
+/**
+ * @brief Inspect clients for expired CGI sessions and act on them.
+ * @param clients - clients map to check
+ * @param configs - server configurations for error responses
+ * @param pollManager - poll manager to update
+ * @param fdRegistry - CGI fd registry
+ * @return 0 on completion
+ */
 int	CgiTimeoutHandler::handleTimeouts(std::map<int, Client> &clients,
 	const std::vector<ServerConfig> &configs, PollManager &pollManager,
 	CgiFdRegistry &fdRegistry)
@@ -103,6 +121,12 @@ int	CgiTimeoutHandler::handleTimeouts(std::map<int, Client> &clients,
 	return (0);
 }
 
+/**
+ * @brief Check whether a client's CGI session has exceeded the timeout.
+ * @param client - client to check
+ * @param now - current time
+ * @return true if expired
+ */
 bool	CgiTimeoutHandler::isExpired(const Client &client, time_t now)
 {
 	return (client.cgi.pid > 0 && client.cgi.startTime > 0

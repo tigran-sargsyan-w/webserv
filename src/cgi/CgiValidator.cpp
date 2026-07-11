@@ -4,6 +4,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/**
+ * @brief Convert a CGI-related status code into a human-readable message.
+ * @param statusCode - HTTP-like status code
+ * @return short description string
+ */
 std::string	CgiValidator::messageForStatus(int statusCode)
 {
 	if (statusCode == 403)
@@ -15,6 +20,11 @@ std::string	CgiValidator::messageForStatus(int statusCode)
 	return ("Internal Server Error");
 }
 
+/**
+ * @brief Validate the CGI script path exists and is readable.
+ * @param scriptPath - path to the script file
+ * @return 0 if ok, 404 if not found, 403 if inaccessible
+ */
 int	CgiValidator::checkScriptPath(const std::string &scriptPath)
 {
 	struct stat	scriptStat;
@@ -34,6 +44,11 @@ int	CgiValidator::checkScriptPath(const std::string &scriptPath)
 	return (0);
 }
 
+/**
+ * @brief Validate the CGI executable exists and is executable.
+ * @param executablePath - path to the CGI executable
+ * @return 0 if ok, 502 on problems
+ */
 int	CgiValidator::checkExecutablePath(const std::string &executablePath)
 {
 	struct stat	executableStat;
@@ -49,6 +64,11 @@ int	CgiValidator::checkExecutablePath(const std::string &executablePath)
 	return (0);
 }
 
+/**
+ * @brief Validate both script and executable paths in the context.
+ * @param context - CGI context to validate
+ * @return 0 if valid, otherwise an HTTP-like error code
+ */
 int	CgiValidator::validate(const CgiContext &context)
 {
 	int	statusCode;

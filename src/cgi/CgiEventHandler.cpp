@@ -6,6 +6,12 @@
 
 namespace
 {
+	/**
+	 * @brief Close CGI stdin fd and mark it closed in the session.
+	 * @param client - client owning the CGI session
+	 * @param pollManager - poll manager to update
+	 * @param fdRegistry - registry of CGI fds
+	 */
 	void	closeCgiStdin(Client &client, PollManager &pollManager,
 		CgiFdRegistry &fdRegistry)
 	{
@@ -14,6 +20,12 @@ namespace
 		client.cgi.stdinClosed = true;
 	}
 
+	/**
+	 * @brief Close CGI stdout fd and mark it closed in the session.
+	 * @param client - client owning the CGI session
+	 * @param pollManager - poll manager to update
+	 * @param fdRegistry - registry of CGI fds
+	 */
 	void	closeCgiStdout(Client &client, PollManager &pollManager,
 		CgiFdRegistry &fdRegistry)
 	{
@@ -22,6 +34,14 @@ namespace
 		client.cgi.stdoutClosed = true;
 	}
 
+	/**
+	 * @brief Handle errors on a CGI fd by closing the matching fd.
+	 * @param cgiFd - file descriptor that reported an error
+	 * @param client - client owning the CGI session
+	 * @param pollManager - poll manager to update
+	 * @param fdRegistry - registry of CGI fds
+	 * @return 1 if handled, 0 otherwise
+	 */
 	int	handleCgiFdError(int cgiFd, Client &client,
 		PollManager &pollManager, CgiFdRegistry &fdRegistry)
 	{
@@ -39,6 +59,16 @@ namespace
 	}
 }
 
+/**
+ * @brief Dispatch and handle events for a CGI-related fd.
+ * @param cgiFd - the CGI file descriptor that has events
+ * @param revents - poll events flags
+ * @param clients - map of client fds to clients
+ * @param configs - server configurations vector
+ * @param pollManager - poll manager used for fd events
+ * @param fdRegistry - registry mapping CGI fds to client fds
+ * @return 1 on error/remove, 0 otherwise
+ */
 int	CgiEventHandler::handleEvent(int cgiFd, short revents,
 	std::map<int, Client> &clients,
 	const std::vector<ServerConfig> &configs, PollManager &pollManager,
@@ -99,6 +129,13 @@ int	CgiEventHandler::handleEvent(int cgiFd, short revents,
 	return (fdRemoved);
 }
 
+/**
+ * @brief Write pending request body data to the CGI stdin.
+ * @param client - client containing the CGI session and buffers
+ * @param pollManager - poll manager to update fds
+ * @param fdRegistry - registry of CGI fds
+ * @return 0 on success, 1 on write error
+ */
 int	CgiEventHandler::writeToCgi(Client &client, PollManager &pollManager,
 	CgiFdRegistry &fdRegistry)
 {
@@ -122,6 +159,13 @@ int	CgiEventHandler::writeToCgi(Client &client, PollManager &pollManager,
 	return (0);
 }
 
+/**
+ * @brief Read available data from CGI stdout into the session buffer.
+ * @param client - client containing the CGI session
+ * @param pollManager - poll manager to update fds
+ * @param fdRegistry - registry of CGI fds
+ * @return 0 on success, 1 on read error
+ */
 int	CgiEventHandler::readFromCgi(Client &client, PollManager &pollManager,
 	CgiFdRegistry &fdRegistry)
 {
@@ -141,6 +185,11 @@ int	CgiEventHandler::readFromCgi(Client &client, PollManager &pollManager,
 	return (0);
 }
 
+/**
+ * @brief Check whether the CGI child has exited and update session.
+ * @param client - client containing the CGI session
+ * @return 0 if not finished or exited successfully, 1 on error/abnormal exit
+ */
 int	CgiEventHandler::checkFinished(Client &client)
 {
 	int status;

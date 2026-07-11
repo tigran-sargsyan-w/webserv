@@ -10,6 +10,11 @@
 
 namespace
 {
+	/**
+	 * @brief Builds a fallback 201 response.
+	 * @param fileName - stored file name
+	 * @return created response with inline HTML body
+	 */
 	Response	buildFallbackCreatedResponse(const std::string &fileName)
 	{
 		Response	response;
@@ -24,6 +29,12 @@ namespace
 		return (response);
 	}
 
+	/**
+	 * @brief Builds a templated 201 response.
+	 * @param fileName - stored file name
+	 * @param server - current server configuration
+	 * @return created response or fallback response if template is missing
+	 */
 	Response	buildCreatedResponse(const std::string &fileName,
 		const ServerConfig &server)
 	{
@@ -46,6 +57,11 @@ namespace
 		return (response);
 	}
 
+	/**
+	 * @brief Checks whether a path points to a directory.
+	 * @param path - filesystem path
+	 * @return true when the path is a directory
+	 */
 	bool	isDirectory(const std::string &path)
 	{
 		struct stat	pathStat;
@@ -55,6 +71,14 @@ namespace
 		return (S_ISDIR(pathStat.st_mode));
 	}
 
+	/**
+	 * @brief Writes uploaded content to disk.
+	 * @param content - file content
+	 * @param fullPath - destination path
+	 * @param fileName - stored file name
+	 * @param server - current server configuration
+	 * @return created response or error response
+	 */
 	Response	writeContentToFile(const std::string &content,
 		const std::string &fullPath, const std::string &fileName,
 		const ServerConfig &server)
@@ -77,6 +101,11 @@ namespace
 	}
 }
 
+	/**
+	 * @brief Validates that a file name is safe for storage.
+	 * @param fileName - candidate file name
+	 * @return true when the file name is safe
+	 */
 bool	UploadStorage::isSafeFileName(const std::string &fileName)
 {
 	if (fileName.empty())
@@ -92,6 +121,14 @@ bool	UploadStorage::isSafeFileName(const std::string &fileName)
 	return (true);
 }
 
+	/**
+	 * @brief Saves uploaded content to the target directory.
+	 * @param directory - destination directory
+	 * @param fileName - output file name
+	 * @param content - file content
+	 * @param server - current server configuration
+	 * @return created response or error response
+	 */
 Response	UploadStorage::save(const std::string &directory,
 	const std::string &fileName, const std::string &content,
 	const ServerConfig &server)

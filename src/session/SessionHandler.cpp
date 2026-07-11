@@ -8,6 +8,11 @@
 #include <map>
 #include <sstream>
 
+/**
+ * @brief Converts time_t value to string
+ * @param value - time value to convert
+ * @return string representation of time
+ */
 static std::string toStringTime(std::time_t value)
 {
 	std::ostringstream oss;
@@ -16,6 +21,11 @@ static std::string toStringTime(std::time_t value)
 	return (oss.str());
 }
 
+/**
+ * @brief Converts unsigned long value to string
+ * @param value - unsigned value to convert
+ * @return string representation of value
+ */
 static std::string toStringUnsigned(unsigned long value)
 {
 	std::ostringstream oss;
@@ -24,6 +34,12 @@ static std::string toStringUnsigned(unsigned long value)
 	return (oss.str());
 }
 
+/**
+ * @brief Gets the template root directory from route or server config
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return template root path
+ */
 static std::string getTemplateRoot(const RouteConfig &route, const ServerConfig &server)
 {
 	if (!route.root.empty())
@@ -31,6 +47,11 @@ static std::string getTemplateRoot(const RouteConfig &route, const ServerConfig 
 	return (server.root);
 }
 
+/**
+ * @brief Removes query string from request path
+ * @param path - path with possible query string
+ * @return normalized path without query parameters
+ */
 std::string SessionHandler::normalizePath(const std::string &path)
 {
 	size_t queryPos = path.find('?');
@@ -40,6 +61,11 @@ std::string SessionHandler::normalizePath(const std::string &path)
 	return (path.substr(0, queryPos));
 }
 
+/**
+ * @brief Constructs the logout path for a session route
+ * @param route - route configuration
+ * @return logout path
+ */
 std::string SessionHandler::getLogoutPath(const RouteConfig &route)
 {
 	if (route.sessionPath == "/")
@@ -47,6 +73,12 @@ std::string SessionHandler::getLogoutPath(const RouteConfig &route)
 	return (route.sessionPath + "/logout");
 }
 
+/**
+ * @brief Checks if this handler can process the request
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @return true if handler can handle the request
+ */
 bool SessionHandler::canHandle(const Request &request, const RouteConfig &route)
 {
 	std::string path = normalizePath(request.getPath());
@@ -56,6 +88,11 @@ bool SessionHandler::canHandle(const Request &request, const RouteConfig &route)
 	return (path == route.sessionPath || path == getLogoutPath(route));
 }
 
+/**
+ * @brief Extracts Cookie header from the request
+ * @param request - HTTP request
+ * @return Cookie header value or empty string
+ */
 std::string SessionHandler::getCookieHeader(const Request &request)
 {
 	const std::map<std::string, std::string> &headers = request.getHeaders();
@@ -66,6 +103,13 @@ std::string SessionHandler::getCookieHeader(const Request &request)
 	return (it->second);
 }
 
+/**
+ * @brief Handles session-related HTTP requests
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return HTTP response
+ */
 Response SessionHandler::handle(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	HttpMethod method = parseHttpMethod(request.getMethod());
@@ -82,6 +126,13 @@ Response SessionHandler::handle(const Request &request, const RouteConfig &route
 	return (handleSession(request, route, server));
 }
 
+/**
+ * @brief Handles session page display and session management
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return HTTP response with session page
+ */
 Response SessionHandler::handleSession(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	bool created;
@@ -95,6 +146,13 @@ Response SessionHandler::handleSession(const Request &request, const RouteConfig
 	return (response);
 }
 
+/**
+ * @brief Handles session logout and cookie expiration
+ * @param request - HTTP request
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return HTTP response with logout confirmation
+ */
 Response SessionHandler::handleLogout(const Request &request, const RouteConfig &route, const ServerConfig &server)
 {
 	bool destroyed = SessionManager::destroy(getCookieHeader(request));
@@ -107,6 +165,14 @@ Response SessionHandler::handleLogout(const Request &request, const RouteConfig 
 	return (response);
 }
 
+/**
+ * @brief Builds HTML session page from template
+ * @param session - session data
+ * @param created - true if session was newly created
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return rendered HTML page
+ */
 std::string SessionHandler::buildSessionPage(const SessionData &session, bool created, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string templatePath = PathUtils::join(getTemplateRoot(route, server), "session.html");
@@ -131,6 +197,13 @@ std::string SessionHandler::buildSessionPage(const SessionData &session, bool cr
 	return (body);
 }
 
+/**
+ * @brief Builds HTML logout confirmation page from template
+ * @param destroyed - true if session was successfully destroyed
+ * @param route - route configuration
+ * @param server - server configuration
+ * @return rendered HTML page
+ */
 std::string SessionHandler::buildLogoutPage(bool destroyed, const RouteConfig &route, const ServerConfig &server)
 {
 	std::string templatePath = PathUtils::join(getTemplateRoot(route, server), "session-logout.html");

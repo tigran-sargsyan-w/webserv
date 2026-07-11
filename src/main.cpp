@@ -5,6 +5,10 @@
 #include <exception>
 #include <signal.h>
 
+/**
+ * @brief Sets up signal handlers.
+ * @return 0 on success, 1 on error.
+ */
 static int	setupSignals()
 {
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
@@ -15,6 +19,12 @@ static int	setupSignals()
 	return (0);
 }
 
+/**
+ * @brief Main function for the web server.
+ * @param argc - Number of command-line arguments.
+ * @param argv - Command-line arguments.
+ * @return 0 on success, 1 on error.
+ */
 int	main(int argc, char **argv)
 {
 	std::string	configPath;

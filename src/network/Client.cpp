@@ -4,6 +4,10 @@
 #include <ctime>
 #include "Client.hpp"
 
+/**
+ * @brief Create a client wrapper for a socket descriptor.
+ * @param fd - client socket fd
+ */
 Client::Client(int fd)
     : fd(fd),
       state(READING),
@@ -13,6 +17,9 @@ Client::Client(int fd)
       responseReady(false),
       lastActivity(std::time(NULL)) {}
 
+/**
+ * @brief Refresh the client's last activity timestamp.
+ */
 void Client::touchActivity()
 {
   lastActivity = std::time(NULL);

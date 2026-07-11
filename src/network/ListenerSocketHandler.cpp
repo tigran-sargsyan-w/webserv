@@ -12,19 +12,34 @@
 #include <unistd.h>
 #include <utility>
 
+/**
+ * @brief Create an empty listener socket handler.
+ */
 ListenerSocketHandler::ListenerSocketHandler()
 {
 }
 
+/**
+ * @brief Copy listener socket state from another handler.
+ * @param other - source handler
+ */
 ListenerSocketHandler::ListenerSocketHandler(const ListenerSocketHandler &other)
 {
 	*this = other;
 }
 
+/**
+ * @brief Destroy the listener socket handler.
+ */
 ListenerSocketHandler::~ListenerSocketHandler()
 {
 }
 
+/**
+ * @brief Copy listener socket state.
+ * @param other - source handler
+ * @return reference to this handler
+ */
 ListenerSocketHandler &ListenerSocketHandler::operator=(
 	const ListenerSocketHandler &other)
 {
@@ -33,6 +48,11 @@ ListenerSocketHandler &ListenerSocketHandler::operator=(
 	return (*this);
 }
 
+/**
+ * @brief Set a socket to non-blocking mode.
+ * @param fd - socket descriptor
+ * @return 0 on success, 1 on failure
+ */
 int ListenerSocketHandler::setNonBlocking(int fd) const
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1)
@@ -43,6 +63,10 @@ int ListenerSocketHandler::setNonBlocking(int fd) const
 	return (0);
 }
 
+/**
+ * @brief Create a listening socket with reuse enabled.
+ * @return listening socket descriptor, or -1 on failure
+ */
 int ListenerSocketHandler::initListeningSocket(void) const
 {
 	int listeningSocket;
@@ -66,6 +90,12 @@ int ListenerSocketHandler::initListeningSocket(void) const
 	return (listeningSocket);
 }
 
+/**
+ * @brief Bind a listening socket to a configured address.
+ * @param listeningSocket - socket descriptor
+ * @param config - server configuration
+ * @return 0 on success, 1 on failure
+ */
 int ListenerSocketHandler::bindSockAddress(int listeningSocket,
 	const ServerConfig &config) const
 {
@@ -104,6 +134,13 @@ int ListenerSocketHandler::bindSockAddress(int listeningSocket,
 	return (0);
 }
 
+/**
+ * @brief Set up one server listener socket.
+ * @param config - server configuration
+ * @param configIndex - index of the configuration
+ * @param pollManager - poll manager to register the socket
+ * @return 0 on success, 1 on failure
+ */
 int ListenerSocketHandler::setupSingleListener(const ServerConfig &config,
 	size_t configIndex, PollManager &pollManager)
 {
@@ -134,6 +171,12 @@ int ListenerSocketHandler::setupSingleListener(const ServerConfig &config,
 	return (0);
 }
 
+/**
+ * @brief Set up listeners for all configured servers.
+ * @param configs - server configuration list
+ * @param pollManager - poll manager to register sockets
+ * @return 0 on success, 1 if every listener failed
+ */
 int ListenerSocketHandler::setup(const std::vector<ServerConfig> &configs,
 	PollManager &pollManager)
 {
@@ -155,6 +198,11 @@ int ListenerSocketHandler::setup(const std::vector<ServerConfig> &configs,
 	return (0);
 }
 
+/**
+ * @brief Convert an IPv4 address to dotted decimal notation.
+ * @param address - network-order address
+ * @return printable IP string
+ */
 std::string ListenerSocketHandler::ipToString(unsigned int address) const
 {
 	std::ostringstream	oss;
@@ -166,6 +214,13 @@ std::string ListenerSocketHandler::ipToString(unsigned int address) const
 	return (oss.str());
 }
 
+/**
+ * @brief Accept a new client connection.
+ * @param listeningSocket - listener descriptor
+ * @param clients - tracked clients map
+ * @param pollManager - poll manager to register the client socket
+ * @return accepted client descriptor, or -1 on failure
+ */
 int ListenerSocketHandler::acceptConnection(int listeningSocket,
 	std::map<int, Client> &clients, PollManager &pollManager)
 {
@@ -200,11 +255,20 @@ int ListenerSocketHandler::acceptConnection(int listeningSocket,
 	return (clientSocket);
 }
 
+/**
+ * @brief Check whether a descriptor belongs to a listener socket.
+ * @param fd - file descriptor to test
+ * @return true if the descriptor is a listener
+ */
 bool ListenerSocketHandler::isListeningFd(int fd) const
 {
 	return (listenerFdToIndex.find(fd) != listenerFdToIndex.end());
 }
 
+/**
+ * @brief Remove a listener socket from the registry.
+ * @param fd - listener descriptor
+ */
 void ListenerSocketHandler::removeFd(int fd)
 {
 	listenerFdToIndex.erase(fd);

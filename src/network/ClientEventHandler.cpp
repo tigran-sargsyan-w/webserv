@@ -20,6 +20,11 @@ namespace
 		READ_EVENT_CLOSE
 	};
 
+	/**
+	 * @brief Read incoming data from a client socket.
+	 * @param client - target client
+	 * @return 0 on success, 1 on failure
+	 */
 	int readFromClient(Client &client)
 	{
 		ssize_t bytesRead;
@@ -43,6 +48,11 @@ namespace
 		return (0);
 	}
 
+	/**
+	 * @brief Consume and discard remaining request body bytes.
+	 * @param client - target client
+	 * @return 0 on success, 1 on failure
+	 */
 	int discardRequestBody(Client &client)
 	{
 		ssize_t bytesRead;
@@ -82,6 +92,14 @@ namespace
 		return (0);
 	}
 
+	/**
+	 * @brief Build and send a response to the client.
+	 * @param client - target client
+	 * @param server - active server configuration
+	 * @param cgiManager - CGI manager used for async dispatch
+	 * @param pollManager - poll manager to update socket events
+	 * @return 0 on success, 1 on failure
+	 */
 	int sendToClient(Client &client, const ServerConfig &server,
 					 CgiManager &cgiManager, PollManager &pollManager)
 	{
@@ -121,6 +139,11 @@ namespace
 		return (0);
 	}
 
+	/**
+	 * @brief Map inspector status to an error message.
+	 * @param status - inspection result
+	 * @return matching human-readable message
+	 */
 	std::string getInspectorErrorMessage(InspectRequestStatus status)
 	{
 		if (status == BAD_REQUEST)
@@ -136,6 +159,12 @@ namespace
 		return ("Bad Request");
 	}
 
+	/**
+	 * @brief Prepare an error response from inspection failure.
+	 * @param client - target client
+	 * @param server - active server configuration
+	 * @param status - inspection result
+	 */
 	void prepareInspectorErrorResponse(Client &client,
 								   const ServerConfig &server, InspectRequestStatus status)
 	{
@@ -150,6 +179,11 @@ namespace
 		ClientResponseApplier::apply(client, response);
 	}
 
+	/**
+	 * @brief Compute how much of the request body still needs to be discarded.
+	 * @param client - target client
+	 * @param inspection - parsed request inspection data
+	 */
 	void prepareBodyDiscard(Client &client, const RequestInspection &inspection)
 	{
 		size_t currentBodySize;
@@ -167,6 +201,13 @@ namespace
 		}
 	}
 
+	/**
+	 * @brief Handle a client that is discarding request body data.
+	 * @param client - target client
+	 * @param revents - poll events
+	 * @param pollManager - poll manager to update socket events
+	 * @return event handling result
+	 */
 	ClientEventHandler::Result handleDiscardingBody(Client &client,
 											short revents, PollManager &pollManager)
 	{
@@ -181,6 +222,12 @@ namespace
 		return (ClientEventHandler::EVENT_HANDLED);
 	}
 
+	/**
+	 * @brief Handle a CGI client socket without parsing a new request.
+	 * @param client - target client
+	 * @param revents - poll events
+	 * @return event handling result
+	 */
 	ClientEventHandler::Result handleActiveCgiClient(Client &client,
 											 short revents)
 	{
@@ -194,6 +241,13 @@ namespace
 		return (ClientEventHandler::EVENT_HANDLED);
 	}
 
+	/**
+	 * @brief Inspect the current request and decide the next action.
+	 * @param client - target client
+	 * @param server - active server configuration
+	 * @param pollManager - poll manager to update socket events
+	 * @return read event result
+	 */
 	ReadEventResult inspectClientRequest(Client &client,
 									 const ServerConfig &server, PollManager &pollManager)
 	{
@@ -221,6 +275,13 @@ namespace
 		return (READ_EVENT_DONE);
 	}
 
+	/**
+	 * @brief Process a readable client socket.
+	 * @param client - target client
+	 * @param server - active server configuration
+	 * @param pollManager - poll manager to update socket events
+	 * @return read event result
+	 */
 	ReadEventResult handleReadEvent(Client &client,
 								const ServerConfig &server, PollManager &pollManager)
 	{
@@ -231,6 +292,14 @@ namespace
 		return (inspectClientRequest(client, server, pollManager));
 	}
 
+	/**
+	 * @brief Process a writable client socket.
+	 * @param client - target client
+	 * @param server - active server configuration
+	 * @param cgiManager - CGI manager used for async dispatch
+	 * @param pollManager - poll manager to update socket events
+	 * @return event handling result
+	 */
 	ClientEventHandler::Result handleWriteEvent(Client &client,
 										const ServerConfig &server, CgiManager &cgiManager,
 										PollManager &pollManager)
@@ -243,6 +312,15 @@ namespace
 	}
 }
 
+/**
+ * @brief Handle poll events for a client connection.
+ * @param client - target client
+ * @param revents - poll events
+ * @param server - active server configuration
+ * @param cgiManager - CGI manager used for async dispatch
+ * @param pollManager - poll manager to update socket events
+ * @return event handling result
+ */
 ClientEventHandler::Result ClientEventHandler::handle(Client &client,
 											  short revents, const ServerConfig &server, CgiManager &cgiManager,
 											  PollManager &pollManager)

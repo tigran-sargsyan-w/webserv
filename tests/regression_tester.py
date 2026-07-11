@@ -24,6 +24,12 @@ Usage from the repository root:
         --check-relink \
         --baseline tests/baselines/before_refactor.json
 
+    python3 tests/regression_tester.py compare \
+        --build \
+        --stress \
+        --check-relink \
+        --baseline tests/baselines/before_refactor.json
+
 The tester creates an isolated runtime directory, generates its own config and
 website fixtures, starts ./webserv, performs deterministic tests, and stops it.
 Only Python's standard library is used.

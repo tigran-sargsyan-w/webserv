@@ -1,0 +1,543 @@
+{
+  "format": 1,
+  "generated_at": "2026-07-11T21:10:21Z",
+  "tests": {
+    "CGI PATH_INFO": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CONTENT_LENGTH=\nCONTENT_TYPE=\nGATEWAY_INTERFACE=CGI/1.1\nPATH_INFO=/extra/path\nPATH_TRANSLATED=./.webserv_regression_runtime/www1/cgi-bin/extra/path\nQUERY_STRING=x=42\nREMOTE_ADDR=127.0.0.1\nREQUEST_METHOD=GET\nSCRIPT_NAME=/cgi-bin/env.py\nSERVER_NAME=regression_primary\nSERVER_PORT=18080\nSERVER_PROTOCOL=HTTP/1.1\nSERVER_SOFTWARE=webserv/1.0\nHTTP_CONNECTION=close\nHTTP_HOST=127.0.0.1\nBODY:\n\n",
+        "body_sha256": "3010d9a89be66636fadb0f398a761187f17fb7b8e84c4194bf97b674ee9e841b",
+        "body_size": 386,
+        "headers": {
+          "connection": "close",
+          "content-length": "386",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI POST stdin": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CONTENT_LENGTH=27\nCONTENT_TYPE=application/x-www-form-urlencoded\nGATEWAY_INTERFACE=CGI/1.1\nPATH_INFO=\nPATH_TRANSLATED=\nQUERY_STRING=source=tester\nREMOTE_ADDR=127.0.0.1\nREQUEST_METHOD=POST\nSCRIPT_NAME=/cgi-bin/env.py\nSERVER_NAME=regression_primary\nSERVER_PORT=18080\nSERVER_PROTOCOL=HTTP/1.1\nSERVER_SOFTWARE=webserv/1.0\nHTTP_CONNECTION=close\nHTTP_HOST=127.0.0.1\nBODY:\nname=tigran&mode=regression\n",
+        "body_sha256": "69bcecd35ac51341b8ac2591013c1801ea7c4486f4c9768650b45f1b44923fe0",
+        "body_size": 394,
+        "headers": {
+          "connection": "close",
+          "content-length": "394",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI Status header": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CGI_CUSTOM_STATUS\n",
+        "body_sha256": "570199e00a4841b2beccad67af73bfe2b725cb64d1df4660e2eb8ca90648a6d5",
+        "body_size": 18,
+        "headers": {
+          "connection": "close",
+          "content-length": "18",
+          "content-type": "text/plain"
+        },
+        "reason": "Created",
+        "status": 201
+      }
+    },
+    "CGI basic GET": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "HELLO_FROM_REGRESSION_CGI\n",
+        "body_sha256": "63ae9d15c67fecefcbe7d0c4df0d0f72b53963071d167dd646005a33a4443e3b",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI output without headers": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CGI_WITHOUT_HEADERS\n",
+        "body_sha256": "cd04ffb98bbcfef75ee93c5de57be3606b50df251eaa69cb4848faa42cb9b17c",
+        "body_size": 20,
+        "headers": {
+          "connection": "close",
+          "content-length": "20",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI query and HTTP headers": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CONTENT_LENGTH=\nCONTENT_TYPE=\nGATEWAY_INTERFACE=CGI/1.1\nPATH_INFO=\nPATH_TRANSLATED=\nQUERY_STRING=x=42\nREMOTE_ADDR=127.0.0.1\nREQUEST_METHOD=GET\nSCRIPT_NAME=/cgi-bin/env.py\nSERVER_NAME=regression_primary\nSERVER_PORT=18080\nSERVER_PROTOCOL=HTTP/1.1\nSERVER_SOFTWARE=webserv/1.0\nHTTP_CONNECTION=close\nHTTP_HOST=127.0.0.1\nHTTP_USER_AGENT=webserv-regression-tester\nHTTP_X_TEST_HEADER=regression\nBODY:\n\n",
+        "body_sha256": "631e92133f7e48fe6cd9ee5063f0060adf82c208be83f0916f8bbc4a446763f5",
+        "body_size": 394,
+        "headers": {
+          "connection": "close",
+          "content-length": "394",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI shell type": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "HELLO_FROM_SHELL_CGI\nREQUEST_METHOD=GET\nQUERY_STRING=mode=multi\n",
+        "body_sha256": "8d0657d8f43b145281acd107f3d175ac00b8c78d295828bd4970659252385fe3",
+        "body_size": 64,
+        "headers": {
+          "connection": "close",
+          "content-length": "64",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "CGI timeout": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_504</h1>\n",
+        "body_sha256": "cef2d1fc241914bc9931a0f8ada0fadfeff29ba4f1be2ed0fb4fb15fdf73d206",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Gateway Timeout",
+        "status": 504
+      }
+    },
+    "Content-Length plus chunked": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_400</h1>\n",
+        "body_sha256": "420e2183ea6f516d6f6f5e06b00fbe06685a61bf4509b2ceeaa074acbab43d3c",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Bad Request",
+        "status": 400
+      }
+    },
+    "HTTP redirect": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<html><body><h1>301 Redirect</h1><p>Redirecting to /</p></body></html>",
+        "body_sha256": "df12c76b871f139322897bf025eb3d1da4a1c2836e888aa9d4851fbcec1b3f9e",
+        "body_size": 70,
+        "headers": {
+          "connection": "close",
+          "content-length": "70",
+          "content-type": "text/html",
+          "location": "/"
+        },
+        "reason": "Moved Permanently",
+        "status": 301
+      }
+    },
+    "HTTP/1.0 request": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>WEBSERV_REGRESSION_PORT_1</h1>\n",
+        "body_sha256": "a82eea03baeb735f2cdf4e7eb62d51a5a7d768c097fbcf03615d399357a0bedb",
+        "body_size": 35,
+        "headers": {
+          "connection": "close",
+          "content-length": "35",
+          "content-type": "text/html"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "autoindex listing": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<html><body><h1>Index of /files/</h1><ul><li><a href=\"/files/nested/\">nested/</a></li><li><a href=\"/files/alpha.txt\">alpha.txt</a></li></ul></body></html>",
+        "body_sha256": "605f6560f3d9bebece1b329a059d2e4baaf9de427af6c9b5c28e51d054d3388c",
+        "body_size": 154,
+        "headers": {
+          "connection": "close",
+          "content-length": "154",
+          "content-type": "text/html"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "chunk extensions and trailer": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CONTENT_LENGTH=4\nCONTENT_TYPE=text/plain\nGATEWAY_INTERFACE=CGI/1.1\nPATH_INFO=\nPATH_TRANSLATED=\nQUERY_STRING=\nREMOTE_ADDR=127.0.0.1\nREQUEST_METHOD=POST\nSCRIPT_NAME=/cgi-bin/env.py\nSERVER_NAME=regression_primary\nSERVER_PORT=18080\nSERVER_PROTOCOL=HTTP/1.1\nSERVER_SOFTWARE=webserv/1.0\nHTTP_CONNECTION=close\nHTTP_HOST=localhost\nBODY:\ntest\n",
+        "body_sha256": "b156d24f583b353d9cfef3f9c47c4f641cf4bd1e0850c318d48d2942e0bc2061",
+        "body_size": 334,
+        "headers": {
+          "connection": "close",
+          "content-length": "334",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "client_max_body_size": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_413</h1>\n",
+        "body_sha256": "1fa16fba897f7548d2ccc340a1647151dea330caa30fbcc9e5efc57f46394145",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Payload Too Large",
+        "status": 413
+      }
+    },
+    "conflicting Content-Length": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_400</h1>\n",
+        "body_sha256": "420e2183ea6f516d6f6f5e06b00fbe06685a61bf4509b2ceeaa074acbab43d3c",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Bad Request",
+        "status": 400
+      }
+    },
+    "directory listing disabled": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_403</h1>\n",
+        "body_sha256": "8b1e9db7673c3ca0848a6fe4f65ae0a31ea31e92171bacd641f4a505e55d4b3e",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Forbidden",
+        "status": 403
+      }
+    },
+    "disconnect during response": {
+      "passed": true,
+      "snapshot": {
+        "health_status": 200,
+        "server_alive": true
+      }
+    },
+    "encoded path traversal": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_403</h1>\n",
+        "body_sha256": "8b1e9db7673c3ca0848a6fe4f65ae0a31ea31e92171bacd641f4a505e55d4b3e",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Forbidden",
+        "status": 403
+      }
+    },
+    "extended parallel stress": {
+      "passed": true,
+      "snapshot": {
+        "completed": 500,
+        "failed": 0,
+        "requested": 500,
+        "statuses": [
+          200
+        ]
+      }
+    },
+    "final health check": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>WEBSERV_REGRESSION_PORT_1</h1>\n",
+        "body_sha256": "a82eea03baeb735f2cdf4e7eb62d51a5a7d768c097fbcf03615d399357a0bedb",
+        "body_size": 35,
+        "headers": {
+          "connection": "close",
+          "content-length": "35",
+          "content-type": "text/html"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "invalid Content-Length": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_400</h1>\n",
+        "body_sha256": "420e2183ea6f516d6f6f5e06b00fbe06685a61bf4509b2ceeaa074acbab43d3c",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Bad Request",
+        "status": 400
+      }
+    },
+    "large partial response": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "WEBServ regression large file\n\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd...<truncated>",
+        "body_sha256": "4e742a82f7f79fc0e206e8b38bcbad6000656cba6836cac102b46a4b5ff1f588",
+        "body_size": 524318,
+        "headers": {
+          "connection": "close",
+          "content-length": "524318",
+          "content-type": "application/octet-stream"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "malformed chunk size": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_400</h1>\n",
+        "body_sha256": "420e2183ea6f516d6f6f5e06b00fbe06685a61bf4509b2ceeaa074acbab43d3c",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Bad Request",
+        "status": 400
+      }
+    },
+    "malformed request line": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_400</h1>\n",
+        "body_sha256": "420e2183ea6f516d6f6f5e06b00fbe06685a61bf4509b2ceeaa074acbab43d3c",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Bad Request",
+        "status": 400
+      }
+    },
+    "method not allowed": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_405</h1>\n",
+        "body_sha256": "4b267f1c25e7ec1f29789e60b4230767f034facceea5a52b19b3179b14191518",
+        "body_size": 26,
+        "headers": {
+          "allow": "GET",
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Method Not Allowed",
+        "status": 405
+      }
+    },
+    "missing CGI script": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_404</h1>\n",
+        "body_sha256": "ba6295640c8d17fe33344db60fb9c868decff6834e72ede0a837628d38980f68",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Not Found",
+        "status": 404
+      }
+    },
+    "missing resource": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_404</h1>\n",
+        "body_sha256": "ba6295640c8d17fe33344db60fb9c868decff6834e72ede0a837628d38980f68",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Not Found",
+        "status": 404
+      }
+    },
+    "parallel clients": {
+      "passed": true,
+      "snapshot": {
+        "completed": 50,
+        "failed": 0,
+        "requested": 50,
+        "statuses": [
+          200
+        ]
+      }
+    },
+    "primary server index": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>WEBSERV_REGRESSION_PORT_1</h1>\n",
+        "body_sha256": "a82eea03baeb735f2cdf4e7eb62d51a5a7d768c097fbcf03615d399357a0bedb",
+        "body_size": 35,
+        "headers": {
+          "connection": "close",
+          "content-length": "35",
+          "content-type": "text/html"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "raw upload, GET and DELETE": {
+      "passed": true,
+      "snapshot": {
+        "delete_status": 200,
+        "get_sha256": "54d367ddf7d1841e2f518ed1cdbf8ca396e74cfd0acd60853b40e38bfaf13248",
+        "get_status": 200,
+        "second_delete_status": 404,
+        "stored_sha256": "54d367ddf7d1841e2f518ed1cdbf8ca396e74cfd0acd60853b40e38bfaf13248",
+        "upload_status": 201
+      }
+    },
+    "request split across packets": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "ALPHA_FILE\n",
+        "body_sha256": "c4d655addb8cc9f62c9a92915b2354eb1786011ecb49e0feaf38c7965e87ce90",
+        "body_size": 11,
+        "headers": {
+          "connection": "close",
+          "content-length": "11",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "second listening port": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>WEBSERV_REGRESSION_PORT_2</h1>\n",
+        "body_sha256": "7b7a1df6cb21519e69e9f2912063f3228542fe7398a404844e0c9b9976e9a6b1",
+        "body_size": 35,
+        "headers": {
+          "connection": "close",
+          "content-length": "35",
+          "content-type": "text/html"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "slow CGI does not block event loop": {
+      "passed": true,
+      "snapshot": {
+        "fast_completed_without_blocking": true,
+        "fast_status": 200,
+        "slow_status": 200
+      }
+    },
+    "slow incomplete client": {
+      "passed": true,
+      "snapshot": {
+        "completed_without_blocking": true,
+        "health_status": 200
+      }
+    },
+    "static text file": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "ALPHA_FILE\n",
+        "body_sha256": "c4d655addb8cc9f62c9a92915b2354eb1786011ecb49e0feaf38c7965e87ce90",
+        "body_size": 11,
+        "headers": {
+          "connection": "close",
+          "content-length": "11",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    },
+    "unknown method": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_501</h1>\n",
+        "body_sha256": "2969ba1c32a7e6b9803d82e5808aa2053a7bba6850e0a113d8ef9ff9d592fb6f",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Not Implemented",
+        "status": 501
+      }
+    },
+    "unsupported CGI extension": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "<h1>CUSTOM_ERROR_403</h1>\n",
+        "body_sha256": "8b1e9db7673c3ca0848a6fe4f65ae0a31ea31e92171bacd641f4a505e55d4b3e",
+        "body_size": 26,
+        "headers": {
+          "connection": "close",
+          "content-length": "26",
+          "content-type": "text/html"
+        },
+        "reason": "Forbidden",
+        "status": 403
+      }
+    },
+    "valid chunked CGI body": {
+      "passed": true,
+      "snapshot": {
+        "body_preview": "CONTENT_LENGTH=13\nCONTENT_TYPE=text/plain\nGATEWAY_INTERFACE=CGI/1.1\nPATH_INFO=\nPATH_TRANSLATED=\nQUERY_STRING=mode=chunked\nREMOTE_ADDR=127.0.0.1\nREQUEST_METHOD=POST\nSCRIPT_NAME=/cgi-bin/env.py\nSERVER_NAME=regression_primary\nSERVER_PORT=18080\nSERVER_PROTOCOL=HTTP/1.1\nSERVER_SOFTWARE=webserv/1.0\nHTTP_CONNECTION=close\nHTTP_HOST=localhost\nBODY:\nhello chunked\n",
+        "body_sha256": "1b889cd2a4f94d4b439e9b39329d3f38963584a454d173d273982a9eaaebfa31",
+        "body_size": 356,
+        "headers": {
+          "connection": "close",
+          "content-length": "356",
+          "content-type": "text/plain"
+        },
+        "reason": "OK",
+        "status": 200
+      }
+    }
+  }
+}

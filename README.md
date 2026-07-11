@@ -750,6 +750,3 @@ This project brings together several low-level systems concepts:
 - [Summary of topics covered in Webserv](https://hackmd.io/@fttranscendance/H1mLWxbr_)
 - [Creating an HTTP Server from Scratch](https://medium.com/@sakhawy/creating-an-http-server-from-scratch-ed41ef83314b)
 
----
-
-Built as part of the **42 curriculum**.

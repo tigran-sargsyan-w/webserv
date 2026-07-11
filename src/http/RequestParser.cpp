@@ -8,6 +8,9 @@
 #include <string>
 #include <map>
 
+/**
+ * @brief Parse a single raw header line into the request object.
+ */
 static void parseHeader(std::string &header, Request &request)
 {
 	std::string key;
@@ -21,6 +24,9 @@ static void parseHeader(std::string &header, Request &request)
 	request.addHeader(key, value);
 }
 
+/**
+ * @brief Print parsed request details in debug mode.
+ */
 static void debugPrintParsedRequest(const Request &request)
 {
 	std::map<std::string, std::string>::const_iterator it;
@@ -40,6 +46,9 @@ static void debugPrintParsedRequest(const Request &request)
 	}
 }
 
+/**
+ * @brief Parse a raw request into a Request object.
+ */
 int RequestParser::parse(const std::string &rawRequest, Request &req, const RequestInspection &inspection)
 {
 	std::string headerPart;

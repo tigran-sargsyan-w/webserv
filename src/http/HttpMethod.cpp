@@ -1,5 +1,8 @@
 #include "HttpMethod.hpp"
 
+/**
+ * @brief Convert a method string to its enum value.
+ */
 HttpMethod parseHttpMethod(const std::string &method)
 {
     if (method == "GET")
@@ -11,6 +14,9 @@ HttpMethod parseHttpMethod(const std::string &method)
     return (HTTP_UNKNOWN);
 }
 
+/**
+ * @brief Convert an HTTP method enum to its string form.
+ */
 std::string httpMethodToString(HttpMethod method)
 {
     if (method == HTTP_GET)

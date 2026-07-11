@@ -26,6 +26,9 @@ namespace
 	const std::size_t MAX_HEADERS_SIZE = 32768;
 }
 
+/**
+ * @brief Create a default request inspection state.
+ */
 RequestInspection::RequestInspection()
 	: status(EMPTY),
 	  headerEnd(std::string::npos),
@@ -36,6 +39,9 @@ RequestInspection::RequestInspection()
 	  contentLength(0),
 	  requestLine() {}
 
+/**
+ * @brief Update both inspector and inspection status before returning.
+ */
 static RequestInspection finishInspection(RequestInspector &inspector,
 										  RequestInspection &inspection, InspectRequestStatus status)
 {
@@ -44,6 +50,9 @@ static RequestInspection finishInspection(RequestInspector &inspector,
 	return (inspection);
 }
 
+/**
+ * @brief Parse Content-Length headers and validate duplicates.
+ */
 static ContentLengthResult getContentLength(const std::string &headers, size_t &contentLength)
 {
 	std::istringstream stream;
@@ -78,6 +87,9 @@ static ContentLengthResult getContentLength(const std::string &headers, size_t &
 	return (CL_VALID);
 }
 
+/**
+ * @brief Parse the Transfer-Encoding header.
+ */
 static TransferEncodingResult getTransferEncoding(const std::string &headers)
 {
 	std::istringstream stream;
@@ -117,6 +129,9 @@ static TransferEncodingResult getTransferEncoding(const std::string &headers)
 	return (TE_ABSENT);
 }
 
+/**
+ * @brief Convert request-line status to inspection status.
+ */
 static InspectRequestStatus toInspectStatus(RequestLineStatus status)
 {
 	if (status == REQUEST_LINE_OK)
@@ -128,6 +143,9 @@ static InspectRequestStatus toInspectStatus(RequestLineStatus status)
 	return (BAD_REQUEST);
 }
 
+/**
+ * @brief Extract the first line of a raw request.
+ */
 static bool extractRequestLine(const std::string &rawRequest,
 	std::string &requestLine)
 {
@@ -139,6 +157,9 @@ static bool extractRequestLine(const std::string &rawRequest,
 	return (true);
 }
 
+/**
+ * @brief Locate and extract the header section.
+ */
 static InspectRequestStatus inspectHeaderSection(
 	const std::string &rawRequest,
 	RequestInspection &inspection,
@@ -153,6 +174,9 @@ static InspectRequestStatus inspectHeaderSection(
 	return (COMPLETED);
 }
 
+/**
+ * @brief Inspect message framing headers.
+ */
 static InspectRequestStatus inspectMessageFraming(
 	RequestInspection &inspection,
 	const std::string &headers)
@@ -185,6 +209,9 @@ static InspectRequestStatus inspectMessageFraming(
 	return (COMPLETED);
 }
 
+/**
+ * @brief Inspect a chunked request body.
+ */
 static InspectRequestStatus inspectChunkedBody(
 	const std::string &rawRequest,
 	size_t maxBodySize,
@@ -203,6 +230,9 @@ static InspectRequestStatus inspectChunkedBody(
 	return (COMPLETED);
 }
 
+/**
+ * @brief Inspect a Content-Length-delimited body.
+ */
 static InspectRequestStatus inspectContentLengthBody(
 	const std::string &rawRequest,
 	size_t maxBodySize,
@@ -219,6 +249,9 @@ static InspectRequestStatus inspectContentLengthBody(
 	return (COMPLETED);
 }
 
+/**
+ * @brief Inspect the request body according to framing headers.
+ */
 static InspectRequestStatus inspectMessageBody(
 	const std::string &rawRequest,
 	size_t maxBodySize,
@@ -232,6 +265,9 @@ static InspectRequestStatus inspectMessageBody(
 	return (COMPLETED);
 }
 
+/**
+ * @brief Inspect and parse a request line.
+ */
 void RequestInspector::inspectRequestLine(const std::string &requestLine, RequestLine &parsedLine)
 {
 	if (!parsedLine.parse(requestLine))
@@ -242,6 +278,9 @@ void RequestInspector::inspectRequestLine(const std::string &requestLine, Reques
 	this->status = COMPLETED;
 }
 
+/**
+ * @brief Inspect a raw HTTP request and determine its boundaries.
+ */
 RequestInspection RequestInspector::inspectRequest(const std::string &rawRequest, size_t maxBodySize)
 {
 	RequestInspection inspection;

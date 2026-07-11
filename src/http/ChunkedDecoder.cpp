@@ -3,6 +3,9 @@
 static const std::size_t MAX_CHUNK_SIZE_LINE = 1024;
 static const std::size_t MAX_TRAILER_SECTION = 32768;
 
+/**
+ * @brief Convert a hexadecimal character to its numeric value.
+ */
 static int hexDigitValue(char character)
 {
 	if (character >= '0' && character <= '9')
@@ -14,6 +17,9 @@ static int hexDigitValue(char character)
 	return (-1);
 }
 
+/**
+ * @brief Parse a chunk-size line and extract the chunk length.
+ */
 static bool parseChunkSize(const std::string &line, std::size_t &chunkSize)
 {
 	std::string sizeText;
@@ -51,6 +57,9 @@ static bool parseChunkSize(const std::string &line, std::size_t &chunkSize)
 	return (true);
 }
 
+/**
+ * @brief Check whether a trailer line has a valid header-like format.
+ */
 static bool isValidTrailerLine(const std::string &line)
 {
 	std::size_t colonPosition;
@@ -65,6 +74,9 @@ static bool isValidTrailerLine(const std::string &line)
 	return (true);
 }
 
+/**
+ * @brief Process a chunked body and optionally decode it.
+ */
 ChunkedDecodeStatus ChunkedDecoder::process(const std::string &input, std::size_t bodyStart,
 	std::size_t maxBodySize, std::string *decodedBody, std::size_t &messageEnd)
 {
@@ -167,12 +179,18 @@ ChunkedDecodeStatus ChunkedDecoder::process(const std::string &input, std::size_
 	}
 }
 
+/**
+ * @brief Inspect a chunked body without materializing it.
+ */
 ChunkedDecodeStatus ChunkedDecoder::inspect(const std::string &input, std::size_t bodyStart,
 	std::size_t maxBodySize, std::size_t &messageEnd)
 {
 	return (process(input, bodyStart, maxBodySize, NULL, messageEnd));
 }
 
+/**
+ * @brief Decode a complete chunked body into a string.
+ */
 bool ChunkedDecoder::decode(const std::string &input, std::size_t bodyStart,
 	std::string &decodedBody, std::size_t &messageEnd)
 {

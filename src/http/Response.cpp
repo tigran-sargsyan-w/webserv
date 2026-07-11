@@ -7,10 +7,19 @@
 #include "Logger.hpp"
 #include "Utils.hpp"
 
+/**
+ * @brief Create an empty response.
+ */
 Response::Response () : statusCode(0) {}
 
+/**
+ * @brief Destroy the response.
+ */
 Response::~Response () {}
 
+/**
+ * @brief Get a response header by name.
+ */
 std::string Response::getHeader (const std::string &key) const
 {
 	std::map<std::string, std::string>::const_iterator it =
@@ -22,6 +31,9 @@ std::string Response::getHeader (const std::string &key) const
 	return "";
 }
 
+/**
+ * @brief Map the status code to its reason phrase.
+ */
 std::string Response::getReasonPhrase () const
 {
 	switch (this->statusCode)
@@ -71,6 +83,9 @@ std::string Response::getReasonPhrase () const
 	}
 }
 
+/**
+ * @brief Serialize the response to a raw HTTP message.
+ */
 std::string Response::toString () const
 {
 	std::string response = "HTTP/1.1 " + intToString (this->statusCode) + " " +
@@ -86,6 +101,9 @@ std::string Response::toString () const
 	return response;
 }
 
+/**
+ * @brief Load the response body from a file.
+ */
 void Response::setBodyFromFile (const std::string &path)
 {
 	std::ifstream file (path.c_str ());

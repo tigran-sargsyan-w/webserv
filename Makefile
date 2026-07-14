@@ -9,6 +9,10 @@ RM := rm -rf
 
 LOG_LEVEL ?= 1
 
+# -------------------------------
+# Log level description
+# -------------------------------
+
 ifeq ($(LOG_LEVEL),1)
 LOG_LEVEL_DESC := errors only
 else ifeq ($(LOG_LEVEL),2)
@@ -19,6 +23,10 @@ else
 LOG_LEVEL_DESC := custom
 endif
 
+# -------------------------------
+# Compiler flags
+# -------------------------------
+
 CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -g
 DEPFLAGS := -MMD -MP
 
@@ -28,6 +36,10 @@ INC_DIR := include
 
 LOG_LEVEL_FILE := $(OBJ_DIR)/.log_level
 BUILD_MARKER := $(OBJ_DIR)/.build_started
+
+# -------------------------------
+# Color codes
+# -------------------------------
 
 RESET := \033[0m
 BOLD := \033[1m
@@ -162,7 +174,7 @@ DEPS := $(OBJS:.o=.d)
 # **************************************************************************** #
 
 all:
-	@printf "\n$(BOLD)Webserv build$(RESET)\n"
+	@printf "$(BOLD)Webserv build$(RESET)\n"
 	@printf "$(CYAN)[CONFIG]$(RESET) Target: $(NAME)\n"
 	@printf "$(CYAN)[CONFIG]$(RESET) Logger level: $(LOG_LEVEL)"
 	@printf " ($(LOG_LEVEL_DESC))\n"

@@ -9,12 +9,45 @@ RM := rm -rf
 
 LOG_LEVEL ?= 1
 
+# -------------------------------
+# Log level description
+# -------------------------------
+
+ifeq ($(LOG_LEVEL),1)
+LOG_LEVEL_DESC := errors only
+else ifeq ($(LOG_LEVEL),2)
+LOG_LEVEL_DESC := errors + info
+else ifeq ($(LOG_LEVEL),3)
+LOG_LEVEL_DESC := errors + info + debug
+else
+LOG_LEVEL_DESC := custom
+endif
+
+# -------------------------------
+# Compiler flags
+# -------------------------------
+
 CXXFLAGS := -Wall -Wextra -Werror -std=c++98 -g
 DEPFLAGS := -MMD -MP
 
 SRC_DIR := src
 OBJ_DIR := obj
 INC_DIR := include
+
+LOG_LEVEL_FILE := $(OBJ_DIR)/.log_level
+BUILD_MARKER := $(OBJ_DIR)/.build_started
+
+# -------------------------------
+# Color codes
+# -------------------------------
+
+RESET := \033[0m
+BOLD := \033[1m
+RED := \033[31m
+GREEN := \033[32m
+YELLOW := \033[33m
+MAGENTA := \033[35m
+CYAN := \033[36m
 
 # -------------------------------
 # Include directories
@@ -140,23 +173,52 @@ DEPS := $(OBJS:.o=.d)
 #                                 Build Rules                                  #
 # **************************************************************************** #
 
-all: $(NAME)
+all:
+	@printf "$(BOLD)Webserv build$(RESET)\n"
+	@printf "$(CYAN)[CONFIG]$(RESET) Target: $(NAME)\n"
+	@printf "$(CYAN)[CONFIG]$(RESET) Logger level: $(LOG_LEVEL)"
+	@printf " ($(LOG_LEVEL_DESC))\n"
+	@printf "$(YELLOW)[CHECK]$(RESET) Resolving build dependencies\n"
+	@$(RM) $(BUILD_MARKER)
+	@$(MAKE) --no-print-directory $(NAME)
+	@$(RM) $(BUILD_MARKER)
+	@printf "$(GREEN)[DONE]$(RESET) $(BOLD)$(NAME)$(RESET) is ready\n"
+
+$(LOG_LEVEL_FILE): FORCE
+	@mkdir -p $(OBJ_DIR)
+	@if [ ! -f $@ ]; then \
+		printf "%s\n" "$(LOG_LEVEL)" > $@; \
+	elif [ "$$(cat $@)" != "$(LOG_LEVEL)" ]; then \
+		old_level="$$(cat $@)"; \
+		printf "$(MAGENTA)[CONFIG]$(RESET) "; \
+		printf "Logger level changed: %s -> $(LOG_LEVEL)\n" "$$old_level"; \
+		printf "%s\n" "$(LOG_LEVEL)" > $@; \
+	fi
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $@
+	@printf "$(YELLOW)[LINK]$(RESET) Creating $(BOLD)$(NAME)$(RESET)\n"
+	@$(CXX) $(CXXFLAGS) $(OBJS) -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp Makefile $(LOG_LEVEL_FILE)
 	@mkdir -p $(@D)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+	@if mkdir $(BUILD_MARKER) 2>/dev/null; then \
+		printf "$(YELLOW)[BUILD]$(RESET) Compiling source files\n"; \
+	fi
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 clean:
-	$(RM) $(OBJ_DIR)
+	@printf "$(RED)[CLEAN]$(RESET) Removing object files\n"
+	@$(RM) $(OBJ_DIR)
 
 fclean: clean
-	$(RM) $(NAME)
+	@printf "$(RED)[FCLEAN]$(RESET) Removing $(NAME)\n"
+	@$(RM) $(NAME)
 
-re: fclean all
+re: fclean
+	@$(MAKE) --no-print-directory all LOG_LEVEL=$(LOG_LEVEL)
+
+FORCE:
 
 -include $(DEPS)
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re FORCE
